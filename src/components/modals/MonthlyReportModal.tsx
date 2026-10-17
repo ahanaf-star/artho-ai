@@ -121,7 +121,7 @@ export const MonthlyReportModal: React.FC<MonthlyReportModalProps> = ({
 
         {/* Printable Content Block */}
         <div className="flex flex-col gap-4 text-on-surface print:gap-3.5">
-          {/* Member Card */}
+          {/* User Profile Card */}
           <div className="p-3.5 rounded-xl bg-surface-container-low flex justify-between items-center text-sm print:bg-[#f8f9ff] print:border print:border-[#cbd5e1] print:rounded-lg print:p-3 print:break-inside-avoid">
             <div>
               <span className="font-bold text-on-surface print:text-[#0b1c30] print:text-base">{user.name}</span> • <span className="print:text-[#475569]">{user.city}</span>
