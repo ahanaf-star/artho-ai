@@ -133,11 +133,7 @@ export const Header: React.FC<HeaderProps> = ({
                 setIsSearchOpen(true);
               }}
               onFocus={() => setIsSearchOpen(true)}
-              placeholder={
-                isBangla
-                  ? 'লেনদেন, সঞ্চয় বা পরামর্শ খুঁজুন...'
-                  : 'Search transactions, goals, AI Coach...'
-              }
+              placeholder="Search transactions, goals, AI Coach..."
               className="w-full h-10 sm:h-11 pl-9 sm:pl-10 pr-space-md bg-surface-container-lowest rounded-xl font-body-sm text-xs sm:text-body-sm text-on-surface placeholder:text-outline border border-outline-variant/40 focus:outline-none focus:ring-2 focus:ring-primary-container transition-all"
             />
             {searchQuery && (
@@ -271,12 +267,10 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="px-2 py-1 flex items-center justify-between border-b border-outline-variant/15 pb-2">
                 <div>
                   <h3 className="font-title-md text-xs sm:text-sm font-bold text-on-surface">
-                    {isBangla ? 'মুদ্রা নির্বাচন করুন' : 'Select Display Currency'}
+                    Select Display Currency
                   </h3>
                   <p className="text-[11px] text-on-surface-variant">
-                    {isBangla
-                      ? 'ড্যাশবোর্ড ও রিপোর্ট এই মুদ্রায় রূপান্তর হবে'
-                      : 'Dashboard, reports & totals convert live'}
+                    Dashboard, reports & totals convert live
                   </p>
                 </div>
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container">
@@ -293,7 +287,7 @@ export const Header: React.FC<HeaderProps> = ({
                   type="text"
                   value={currencyFilter}
                   onChange={(e) => setCurrencyFilter(e.target.value)}
-                  placeholder={isBangla ? 'মুদ্রা বা কোড খুঁজুন...' : 'Search currency (e.g. USD, EUR, JPY)...'}
+                  placeholder="Search currency (e.g. USD, EUR, JPY)..."
                   className="w-full pl-8 pr-2.5 py-1.5 text-xs rounded-xl bg-surface-container-low border border-outline-variant/30 text-on-surface placeholder:text-outline focus:outline-none focus:ring-1 focus:ring-secondary"
                   autoFocus
                 />
@@ -332,7 +326,7 @@ export const Header: React.FC<HeaderProps> = ({
                             <span className="text-[11px] text-outline">({c.symbol})</span>
                           </div>
                           <span className="text-[11px] text-on-surface-variant truncate max-w-[150px] sm:max-w-[170px]">
-                            {isBangla ? c.nameBn : c.name}
+                            {c.name}
                           </span>
                         </div>
                       </div>
@@ -380,7 +374,7 @@ export const Header: React.FC<HeaderProps> = ({
           title="Visit Home / Landing Page"
         >
           <span className="material-symbols-outlined text-[16px] text-secondary">home</span>
-          <span>{isBangla ? 'হোম' : 'Home'}</span>
+          <span>Home</span>
         </button>
 
         {/* Ask ArthoBachao AI Action Button */}
@@ -392,7 +386,7 @@ export const Header: React.FC<HeaderProps> = ({
             auto_awesome
           </span>
           <span className="font-title-md text-xs sm:text-title-md whitespace-nowrap">
-            {isBangla ? 'পরামর্শ' : 'Ask AI Coach'}
+            Ask AI Coach
           </span>
         </button>
 
@@ -449,7 +443,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
                   manage_accounts
                 </span>
-                <span>{isBangla ? 'প্রোফাইল ও সেটিংস' : 'Profile & Settings'}</span>
+                <span>Profile & Settings</span>
               </button>
 
               {onLogout && (
@@ -461,7 +455,7 @@ export const Header: React.FC<HeaderProps> = ({
                   className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-sm text-error hover:bg-error-container/20 transition-colors border-t border-outline-variant/10 mt-1"
                 >
                   <span className="material-symbols-outlined text-[18px]">logout</span>
-                  <span>{isBangla ? 'লগআউট করুন' : 'Sign Out'}</span>
+                  <span>Sign Out</span>
                 </button>
               )}
             </div>

@@ -178,7 +178,7 @@ export const CategoryDetailsModal: React.FC<CategoryDetailsModalProps> = ({
                   {details.categoryName}
                 </h2>
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-secondary/15 text-secondary border border-secondary/25">
-                  {isBangla ? 'ব্যয় বিবরণী' : 'Expense Category'}
+                  Expense Category
                 </span>
                 <span
                   className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
@@ -195,9 +195,7 @@ export const CategoryDetailsModal: React.FC<CategoryDetailsModalProps> = ({
                 </span>
               </div>
               <p className="font-body-sm text-xs sm:text-sm text-on-surface-variant mt-0.5">
-                {isBangla
-                  ? `${details.categoryName} খাতে সকল লেনদেন ও বাজেটের সম্পূর্ণ বিবরণ`
-                  : `Comprehensive financial breakdown and transaction ledger for ${details.categoryName}`}
+                {`Comprehensive financial breakdown and transaction ledger for ${details.categoryName}`}
               </p>
             </div>
           </div>
@@ -215,7 +213,7 @@ export const CategoryDetailsModal: React.FC<CategoryDetailsModalProps> = ({
                     : 'text-on-surface-variant hover:text-on-surface'
                 }`}
               >
-                {formatMonthName(activeMonth, isBangla) || activeMonth}
+                {formatMonthName(activeMonth, false) || activeMonth}
               </button>
               <button
                 type="button"
@@ -226,7 +224,7 @@ export const CategoryDetailsModal: React.FC<CategoryDetailsModalProps> = ({
                     : 'text-on-surface-variant hover:text-on-surface'
                 }`}
               >
-                {isBangla ? 'সর্বকালীন' : 'All-Time'}
+                All-Time
               </button>
             </div>
 
@@ -265,11 +263,7 @@ export const CategoryDetailsModal: React.FC<CategoryDetailsModalProps> = ({
             <div className="p-3.5 sm:p-4 rounded-xl bg-surface-container-low/50 border border-outline-variant/20 flex flex-col justify-between relative overflow-hidden">
               <span className="font-label-sm text-[11px] uppercase tracking-wider text-outline font-semibold">
                 {periodMode === 'all'
-                  ? isBangla
-                    ? 'সর্বকালীন মোট খরচ'
-                    : 'Total Spent (All-Time)'
-                  : isBangla
-                  ? 'চলতি মাসে মোট খরচ'
+                  ? 'Total Spent (All-Time)'
                   : 'Total Spent This Month'}
               </span>
               <div className="mt-2 flex items-baseline gap-1.5">
@@ -294,7 +288,7 @@ export const CategoryDetailsModal: React.FC<CategoryDetailsModalProps> = ({
             {/* KPI 2: Transaction Count & Average */}
             <div className="p-3.5 sm:p-4 rounded-xl bg-surface-container-low/50 border border-outline-variant/20 flex flex-col justify-between">
               <span className="font-label-sm text-[11px] uppercase tracking-wider text-outline font-semibold">
-                {isBangla ? 'লেনদেনের সংখ্যা ও গড়' : 'Activity & Average'}
+                Activity & Average
               </span>
               <div className="mt-2 flex items-baseline gap-2">
                 <span className="font-headline-lg text-2xl sm:text-3xl font-bold text-on-surface">
@@ -326,7 +320,7 @@ export const CategoryDetailsModal: React.FC<CategoryDetailsModalProps> = ({
             {/* KPI 3: Month-over-Month Comparison */}
             <div className="p-3.5 sm:p-4 rounded-xl bg-surface-container-low/50 border border-outline-variant/20 flex flex-col justify-between">
               <span className="font-label-sm text-[11px] uppercase tracking-wider text-outline font-semibold">
-                {isBangla ? 'পূর্ববর্তী মাসের তুলনা' : 'MoM Spending Shift'}
+                MoM Spending Shift
               </span>
               <div className="mt-2 flex items-center gap-2">
                 {details.prevMonthTotal > 0 ? (
@@ -382,7 +376,7 @@ export const CategoryDetailsModal: React.FC<CategoryDetailsModalProps> = ({
             {/* KPI 4: Monthly Budget & Pacing */}
             <div className="p-3.5 sm:p-4 rounded-xl bg-surface-container-low/50 border border-outline-variant/20 flex flex-col justify-between">
               <span className="font-label-sm text-[11px] uppercase tracking-wider text-outline font-semibold">
-                {isBangla ? 'মাসিক বাজেট ও গতি' : 'Budget Pacing'}
+                Budget Pacing
               </span>
               <div className="mt-2 flex items-baseline justify-between">
                 <span className="font-headline-lg text-lg font-bold text-on-surface">
@@ -452,7 +446,7 @@ export const CategoryDetailsModal: React.FC<CategoryDetailsModalProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               <div className="flex items-center gap-2">
                 <h3 className="font-title-lg text-base sm:text-lg font-bold text-on-surface flex items-center gap-1.5">
-                  <span>{isBangla ? 'লেনদেনের তালিকা' : 'Recorded Transactions'}</span>
+                  <span>Recorded Transactions</span>
                   <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-surface-container-high text-on-surface-variant">
                     {filteredTransactions.length}
                   </span>
@@ -469,9 +463,7 @@ export const CategoryDetailsModal: React.FC<CategoryDetailsModalProps> = ({
                   >
                     <span className="material-symbols-outlined text-[16px]">add</span>
                     <span>
-                      {isBangla
-                        ? `+ ${details.categoryName} খাতে খরচ যুক্ত করুন`
-                        : `+ Add ${details.categoryName} Expense`}
+                      {`+ Add ${details.categoryName} Expense`}
                     </span>
                   </button>
                 )}
@@ -489,11 +481,7 @@ export const CategoryDetailsModal: React.FC<CategoryDetailsModalProps> = ({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={
-                    isBangla
-                      ? 'বিবরণ বা মার্চেন্ট দিয়ে খুঁজুন...'
-                      : 'Search by description or merchant...'
-                  }
+                  placeholder="Search by description or merchant..."
                   className="w-full h-8 pl-8 pr-7 text-xs rounded-lg bg-surface-container-lowest text-on-surface placeholder:text-outline border border-outline-variant/40 focus:outline-none focus:ring-1 focus:ring-secondary"
                 />
                 {searchQuery && (
@@ -653,7 +641,7 @@ export const CategoryDetailsModal: React.FC<CategoryDetailsModalProps> = ({
                             onSelectTransactionForEdit(tx);
                           }}
                           className="p-1.5 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
-                          title={isBangla ? 'লেনদেন সম্পাদনা করুন' : 'Edit transaction'}
+                          title="Edit transaction"
                           aria-label={`Edit ${tx.merchant || tx.description}`}
                         >
                           <span className="material-symbols-outlined text-[18px]">edit</span>
@@ -674,9 +662,7 @@ export const CategoryDetailsModal: React.FC<CategoryDetailsModalProps> = ({
                   </div>
                   <div>
                     <h4 className="font-title-lg text-base font-bold text-on-surface">
-                      {isBangla
-                        ? `${details.categoryName} খাতে কোনো লেনদেন পাওয়া যায়নি`
-                        : `No transactions found for ${details.categoryName}`}
+                      {`No transactions found for ${details.categoryName}`}
                     </h4>
                     <p className="font-body-sm text-xs text-on-surface-variant max-w-sm mx-auto mt-1">
                       {searchQuery
@@ -684,7 +670,7 @@ export const CategoryDetailsModal: React.FC<CategoryDetailsModalProps> = ({
                         : periodMode === 'month'
                         ? `No expenses were recorded under this category for ${formatMonthName(
                             activeMonth,
-                            isBangla
+                            false
                           )}.`
                         : 'No expenses have been recorded for this category yet.'}
                     </p>
@@ -697,9 +683,7 @@ export const CategoryDetailsModal: React.FC<CategoryDetailsModalProps> = ({
                     >
                       <span className="material-symbols-outlined text-[18px]">add_circle</span>
                       <span>
-                        {isBangla
-                          ? `+ ${details.categoryName} খাতে প্রথম খরচ যোগ করুন`
-                          : `+ Add First ${details.categoryName} Expense`}
+                        {`+ Add First ${details.categoryName} Expense`}
                       </span>
                     </button>
                   )}
@@ -720,7 +704,7 @@ export const CategoryDetailsModal: React.FC<CategoryDetailsModalProps> = ({
               onClick={onClose}
               className="px-5 py-2 rounded-xl bg-surface-container text-on-surface font-title-md text-sm hover:bg-surface-container-high transition-colors cursor-pointer w-full sm:w-auto"
             >
-              {isBangla ? 'বন্ধ করুন' : 'Close'}
+              Close
             </button>
           </div>
         </div>

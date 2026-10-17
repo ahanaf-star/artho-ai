@@ -87,11 +87,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
     if (trimmedIncome !== '') {
       const num = Number(trimmedIncome);
       if (isNaN(num) || !isFinite(num) || num < 0) {
-        setMonthlyIncomeError(
-          isBangla
-            ? 'অনুগ্রহ করে একটি বৈধ এবং অ-ঋণাত্মক আর্থিক পরিমাণ লিখুন।'
-            : 'Please enter a valid, non-negative monetary value.'
-        );
+        setMonthlyIncomeError('Please enter a valid, non-negative monetary value.');
         return;
       }
       parsedIncome = Math.round(num * 100) / 100;
@@ -116,12 +112,10 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md">
         <div>
           <h1 className="font-headline-xl text-headline-xl text-on-surface tracking-tight font-bold">
-            {isBangla ? 'সেটিংস এবং প্রোফাইল' : 'Settings & Profile'}
+            Settings & Profile
           </h1>
           <p className="font-body-md text-body-md text-on-surface-variant">
-            {isBangla
-              ? 'আপনার ব্যক্তিগত প্রোফাইল, ভাষা, কারেন্সি এবং আর্থিক সেটিংস পরিচালনা করুন।'
-              : 'Manage your authenticated account, profile avatar, language, and financial baselines.'}
+            Manage your authenticated account, profile avatar, language, and financial baselines.
           </p>
         </div>
         {onLogout && (
@@ -131,7 +125,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-error-container text-on-error-container font-title-md text-sm hover:opacity-90 active:scale-95 transition-all shadow-xs border border-error/20 self-start sm:self-auto"
           >
             <span className="material-symbols-outlined text-[18px]">logout</span>
-            <span>{isBangla ? 'লগআউট' : 'Sign Out'}</span>
+            <span>Sign Out</span>
           </button>
         )}
       </div>
@@ -140,7 +134,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
         <div className="p-3 rounded-xl bg-secondary text-on-secondary text-sm font-semibold flex items-center gap-2 animate-in fade-in duration-200">
           <span className="material-symbols-outlined text-[18px]">check_circle</span>
           <span>
-            {isBangla ? 'প্রোফাইল সফলভাবে আপডেট করা হয়েছে!' : 'Profile baselines and preferences updated successfully!'}
+            Profile baselines and preferences updated successfully!
           </span>
         </div>
       )}
@@ -152,7 +146,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
       >
         <div className="pb-3 border-b border-outline-variant/15">
           <h2 className="font-title-lg text-title-lg text-on-surface font-bold">
-            {isBangla ? 'ব্যবহারকারীর তথ্য ও পছন্দসমূহ' : 'User Profile & Identity'}
+            User Profile & Identity
           </h2>
         </div>
 
@@ -174,7 +168,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
           </div>
           <div className="flex-1 flex flex-col gap-1.5 w-full">
             <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-              {isBangla ? 'প্রোফাইল ছবি (URL বা পছন্দের অ্যাভাটার)' : 'Profile Image URL / Quick Avatar'}
+              Profile Image URL / Quick Avatar
             </label>
             <input
               type="url"
@@ -186,7 +180,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
             {/* Quick avatar selection pills */}
             <div className="flex items-center gap-2 mt-1">
               <span className="text-[11px] text-outline">
-                {isBangla ? 'দ্রুত নির্বাচন:' : 'Quick Select:'}
+                Quick Select:
               </span>
               {sampleAvatars.map((url, idx) => (
                 <button
@@ -206,7 +200,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
                   onClick={() => setProfileImage('')}
                   className="text-[11px] text-error hover:underline ml-1"
                 >
-                  {isBangla ? 'মুছে ফেলুন' : 'Clear'}
+                  Clear
                 </button>
               )}
             </div>
@@ -217,7 +211,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
           {/* Name */}
           <div className="flex flex-col gap-1.5">
             <label className="font-label-md text-xs font-semibold text-outline uppercase tracking-wider">
-              {isBangla ? 'পুরো নাম' : 'Full Legal Name'}
+              Full Legal Name
             </label>
             <input
               type="text"
@@ -231,7 +225,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
           {/* Email */}
           <div className="flex flex-col gap-1.5">
             <label className="font-label-md text-xs font-semibold text-outline uppercase tracking-wider">
-              {isBangla ? 'ইমেইল ঠিকানা' : 'Email Address'}
+              Email Address
             </label>
             <input
               type="email"
@@ -246,10 +240,10 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
               <label className="font-label-md text-xs font-semibold text-outline uppercase tracking-wider">
-                {isBangla ? 'মাসিক নিয়মিত আয়' : 'MONTHLY INFLOW BASELINE'}
+                MONTHLY INFLOW BASELINE
               </label>
               <span className="text-[11px] text-outline font-normal">
-                {isBangla ? '(ঐচ্ছিক)' : '(Optional)'}
+                (Optional)
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -262,11 +256,11 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
                   setMonthlyIncomeCurrency(normalizeCurrencyCode(e.target.value));
                 }}
                 className="w-44 sm:w-56 p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-body-md text-sm cursor-pointer shrink-0 font-medium"
-                title={isBangla ? 'আয়ের মুদ্রা নির্বাচন করুন' : 'Select baseline currency'}
+                title="Select baseline currency"
               >
                 {SUPPORTED_CURRENCIES.map((c) => (
                   <option key={c.code} value={c.code}>
-                    {isBangla ? `${c.nameBn} (${c.displaySymbol})` : `${c.name} (${c.displaySymbol})`}
+                    {c.name} ({c.displaySymbol})
                   </option>
                 ))}
               </select>
@@ -290,15 +284,11 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
                     if (val.trim() !== '') {
                       const num = Number(val);
                       if (isNaN(num) || !isFinite(num) || num < 0) {
-                        setMonthlyIncomeError(
-                          isBangla
-                            ? 'মান ০ বা তার বেশি হতে হবে।'
-                            : 'Value must be zero or a positive number.'
-                        );
+                        setMonthlyIncomeError('Value must be zero or a positive number.');
                       }
                     }
                   }}
-                  placeholder={isBangla ? 'যেমন: ৩৫০০০ (ঐচ্ছিক আয়)' : 'e.g. 35000 (Optional baseline)'}
+                  placeholder="e.g. 35000 (Optional baseline)"
                   className={`w-full pl-8 pr-3 py-3 rounded-xl border bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 font-body-md text-sm transition-all ${
                     monthlyIncomeError
                       ? 'border-error focus:ring-error text-error'
@@ -314,9 +304,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
               </span>
             ) : (
               <span className="text-[11px] text-outline">
-                {isBangla
-                  ? 'বাজেট এবং নগদ প্রবাহ হিসাবের ভিত্তি হিসেবে ব্যবহৃত হবে।'
-                  : 'Used for liquidity buffer and cash flow projections.'}
+                Used for liquidity buffer and cash flow projections.
               </span>
             )}
           </div>
@@ -324,7 +312,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
           {/* Currency */}
           <div className="flex flex-col gap-1.5">
             <label className="font-label-md text-xs font-semibold text-outline uppercase tracking-wider">
-              {isBangla ? 'মুদ্রা (Preferred Currency)' : 'Display & Base Currency'}
+              Display & Base Currency
             </label>
             <select
               value={currency}
@@ -333,7 +321,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
             >
               {SUPPORTED_CURRENCIES.map((c) => (
                 <option key={c.code} value={c.code}>
-                  {c.code} ({c.displaySymbol}) — {isBangla ? c.nameBn : c.name} {c.code === 'BDT' ? '(Default)' : ''}
+                  {c.code} ({c.displaySymbol}) — {c.name} {c.code === 'BDT' ? '(Default)' : ''}
                 </option>
               ))}
             </select>
@@ -345,7 +333,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
             type="submit"
             className="px-space-md py-2.5 rounded-xl bg-primary text-on-primary font-title-md text-sm hover:opacity-90 active:scale-95 transition-all shadow-sm"
           >
-            {isBangla ? 'পরিবর্তন সংরক্ষণ করুন' : 'Save Profile Changes'}
+            Save Profile Changes
           </button>
         </div>
       </form>
@@ -368,7 +356,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
       <div className="p-space-lg rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/20 flex flex-col gap-space-md">
         <div className="flex items-center justify-between">
           <h2 className="font-title-lg text-title-lg text-on-surface font-bold">
-            {isBangla ? 'সংযুক্ত ডিজিটাল অ্যাকাউন্ট' : 'Linked Digital Accounts'}
+            Linked Digital Accounts
           </h2>
           <span className="text-xs font-semibold text-secondary flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-secondary"></span>
@@ -400,19 +388,17 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
       {/* Data Management & Reset */}
       <div className="p-space-lg rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/20 flex flex-col gap-3">
         <h2 className="font-title-lg text-title-lg text-on-surface font-bold">
-          {isBangla ? 'ব্যবহারকারী ডেটা ব্যবস্থাপনা' : 'Account Data Management'}
+          Account Data Management
         </h2>
         <p className="font-body-sm text-body-sm text-on-surface-variant">
-          {isBangla
-            ? 'আপনার অ্যাকাউন্টের লেনদেন এবং সঞ্চয় লক্ষ্য ডিফল্ট অবস্থায় ফিরিয়ে নিন।'
-            : 'Reset your user-specific transactions, savings goals, and wallet balances to starter defaults.'}
+          Reset your user-specific transactions, savings goals, and wallet balances to starter defaults.
         </p>
         <button
           type="button"
           onClick={onResetData}
           className="self-start px-space-md py-2 rounded-xl bg-error-container text-on-error-container font-title-md text-sm hover:opacity-90 active:scale-95"
         >
-          {isBangla ? 'অ্যাকাউন্ট ডেটা রিসেট করুন' : 'Reset My Account Data'}
+          Reset My Account Data
         </button>
       </div>
     </div>

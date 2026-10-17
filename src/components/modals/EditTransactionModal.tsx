@@ -57,17 +57,13 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
 
     const parsedAmount = parseFloat(amount);
     if (!parsedAmount || parsedAmount <= 0) {
-      setErrorMessage(isBangla ? 'অনুগ্রহ করে সঠিক পরিমাণ লিখুন' : 'Please enter a valid amount greater than 0');
+      setErrorMessage('Please enter a valid amount greater than 0');
       return;
     }
 
     const trimmedMerchant = merchant.trim();
     if (type === 'expense' && !trimmedMerchant) {
-      setMerchantError(
-        isBangla
-          ? 'মার্চেন্ট / প্রতিষ্ঠানের নাম দেওয়া আবশ্যক'
-          : 'Merchant / Counterparty name is required'
-      );
+      setMerchantError('Merchant / Counterparty name is required');
       return;
     }
 
@@ -97,7 +93,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
       onClose();
     } catch (err: any) {
       setIsSubmitting(false);
-      setErrorMessage(err?.message || (isBangla ? 'লেনদেন আপডেট করতে ব্যর্থ হয়েছে' : 'Failed to update transaction'));
+      setErrorMessage(err?.message || 'Failed to update transaction');
     }
   };
 
@@ -111,7 +107,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
       onClose();
     } catch (err: any) {
       setIsDeleting(false);
-      setErrorMessage(err?.message || (isBangla ? 'লেনদেন ডিলিট করতে ব্যর্থ হয়েছে' : 'Failed to delete transaction'));
+      setErrorMessage(err?.message || 'Failed to delete transaction');
     }
   };
 
@@ -123,7 +119,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-[22px] text-primary">edit_note</span>
             <h2 className="font-headline-md text-headline-md text-on-surface font-bold">
-              {isBangla ? 'লেনদেন সম্পাদনা করুন' : 'Edit Transaction'}
+              Edit Transaction
             </h2>
           </div>
           <button
@@ -148,12 +144,10 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
           <div className="p-4 rounded-xl bg-error-container/20 border border-error/30 flex flex-col gap-3">
             <div className="flex items-center gap-2 text-error font-title-md font-bold">
               <span className="material-symbols-outlined text-[20px]">warning</span>
-              <span>{isBangla ? 'আপনি কি নিশ্চিত?' : 'Confirm Deletion'}</span>
+              <span>Confirm Deletion</span>
             </div>
             <p className="text-xs text-on-surface-variant leading-relaxed">
-              {isBangla
-                ? 'এই লেনদেনটি স্থায়ীভাবে ডিলিট করা হবে এবং ডাটাবেজ ও সমস্ত আর্থিক হিসাব থেকে অপসারিত হবে।'
-                : 'This transaction will be permanently removed from MongoDB and all dependent financial calculations will recalculate.'}
+              This transaction will be permanently removed from MongoDB and all dependent financial calculations will recalculate.
             </p>
             <div className="flex items-center gap-2 pt-1">
               <button
@@ -162,7 +156,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
                 onClick={() => setShowDeleteConfirm(false)}
                 className="flex-1 py-2 rounded-lg bg-surface-container text-on-surface text-xs font-semibold hover:bg-surface-container-high transition-colors"
               >
-                {isBangla ? 'বাতিল' : 'Cancel'}
+                Cancel
               </button>
               <button
                 type="button"
@@ -171,7 +165,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
                 className="flex-1 py-2 rounded-lg bg-error text-on-error text-xs font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5 shadow-sm"
               >
                 {isDeleting && <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>}
-                <span>{isDeleting ? (isBangla ? 'ডিলিট হচ্ছে...' : 'Deleting...') : (isBangla ? 'ডিলিট নিশ্চিত করুন' : 'Confirm Delete')}</span>
+                <span>{isDeleting ? 'Deleting...' : 'Confirm Delete'}</span>
               </button>
             </div>
           </div>
@@ -184,11 +178,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
                 onClick={() => {
                   setType('expense');
                   if (!merchant.trim()) {
-                    setMerchantError(
-                      isBangla
-                        ? 'মার্চেন্ট / প্রতিষ্ঠানের নাম দেওয়া আবশ্যক'
-                        : 'Merchant / Counterparty name is required'
-                    );
+                    setMerchantError('Merchant / Counterparty name is required');
                   } else {
                     setMerchantError(null);
                   }
@@ -198,7 +188,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
                   : 'text-on-surface-variant hover:text-on-surface'
                   }`}
               >
-                {isBangla ? 'ব্যয় (-)' : 'Expense (-)'}
+                Expense (-)
               </button>
               <button
                 type="button"
@@ -214,14 +204,14 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
                   : 'text-on-surface-variant hover:text-on-surface'
                   }`}
               >
-                {isBangla ? 'আয় (+)' : 'Income (+)'}
+                Income (+)
               </button>
             </div>
 
             {/* Amount */}
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                {isBangla ? 'পরিমাণ (৳ BDT)' : 'Amount (৳ BDT)'}
+                Amount (৳ BDT)
               </label>
               <div className="relative flex items-center">
                 <span className="absolute left-3 font-bold text-secondary text-lg">৳</span>
@@ -240,7 +230,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
             {/* Date */}
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                {isBangla ? 'তারিখ' : 'Transaction Date'}
+                Transaction Date
               </label>
               <input
                 type="date"
@@ -254,11 +244,11 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
             {/* Merchant */}
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-outline uppercase tracking-wider flex items-center gap-1">
-                <span>{isBangla ? 'মার্চেন্ট / প্রতিষ্ঠান' : 'Merchant / Counterparty'}</span>
+                <span>Merchant / Counterparty</span>
                 {type === 'expense' ? (
-                  <span className="text-error font-bold" title={isBangla ? 'বাধ্যতামূলক' : 'Required'}>*</span>
+                  <span className="text-error font-bold" title="Required">*</span>
                 ) : (
-                  <span className="text-[10px] font-normal text-outline">({isBangla ? 'ঐচ্ছিক' : 'Optional'})</span>
+                  <span className="text-[10px] font-normal text-outline">(Optional)</span>
                 )}
               </label>
               <input
@@ -271,11 +261,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
                     if (val.trim()) {
                       setMerchantError(null);
                     } else if (merchantError) {
-                      setMerchantError(
-                        isBangla
-                          ? 'মার্চেন্ট / প্রতিষ্ঠানের নাম দেওয়া আবশ্যক'
-                          : 'Merchant / Counterparty name is required'
-                      );
+                      setMerchantError('Merchant / Counterparty name is required');
                     }
                   } else {
                     setMerchantError(null);
@@ -283,11 +269,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
                 }}
                 placeholder={
                   type === 'expense'
-                    ? isBangla
-                      ? 'মার্চেন্ট বা প্রতিষ্ঠানের নাম লিখুন'
-                      : 'Enter merchant or counterparty name'
-                    : isBangla
-                    ? 'যেমন: প্রতিষ্ঠান, ক্লায়েন্ট, উৎস (ঐচ্ছিক)'
+                    ? 'Enter merchant or counterparty name'
                     : 'e.g. Employer, Client, Source (Optional)'
                 }
                 className={`w-full px-3.5 py-2.5 rounded-xl border ${
@@ -305,7 +287,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
             {/* Category */}
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                {isBangla ? 'ক্যাটাগরি' : 'Category'}
+                Category
               </label>
               <select
                 value={category}
@@ -314,7 +296,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
               >
                 {type === 'expense' ? (
                   <>
-                    <optgroup label={isBangla ? 'স্ট্যান্ডার্ড ক্যাটাগরি' : 'Standard Categories'}>
+                    <optgroup label="Standard Categories">
                       <option value="Food & Groceries">Food &amp; Groceries</option>
                       <option value="Shopping & Gadgets">Shopping &amp; Gadgets</option>
                       <option value="Utility & Fixed Costs">Utility &amp; Fixed Costs</option>
@@ -332,7 +314,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
                           'Cash-out & Bank Fees',
                           'Entertainment & Others',
                         ].includes(category))) && (
-                      <optgroup label={isBangla ? 'কাস্টম ক্যাটাগরি' : 'Custom Categories'}>
+                      <optgroup label="Custom Categories">
                         {customCategories.map((c) => (
                           <option key={c.id || c.name} value={c.name}>
                             {c.name}
@@ -367,7 +349,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
             {/* Account */}
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                {isBangla ? 'অ্যাকাউন্ট / ওয়ালেট' : 'Account / Wallet'}
+                Account / Wallet
               </label>
               <select
                 value={account}
@@ -383,7 +365,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
             {/* Description */}
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                {isBangla ? 'বিবরণ' : 'Description / Note'}
+                Description / Note
               </label>
               <input
                 type="text"
@@ -403,7 +385,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
                 className="px-3 py-2.5 rounded-xl text-error hover:bg-error-container/20 text-xs font-bold transition-colors flex items-center gap-1"
               >
                 <span className="material-symbols-outlined text-[18px]">delete</span>
-                <span>{isBangla ? 'ডিলিট' : 'Delete'}</span>
+                <span>Delete</span>
               </button>
 
               <div className="flex items-center gap-2">
@@ -413,7 +395,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
                   onClick={onClose}
                   className="px-4 py-2.5 rounded-xl bg-surface-container text-on-surface font-title-md text-sm hover:bg-surface-container-high transition-colors disabled:opacity-50"
                 >
-                  {isBangla ? 'বাতিল' : 'Cancel'}
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -421,7 +403,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
                   className="px-4 py-2.5 rounded-xl bg-primary-container text-on-primary font-title-md text-sm hover:opacity-95 transition-opacity active:scale-95 shadow-sm flex items-center gap-1.5 disabled:opacity-60"
                 >
                   {isSubmitting && <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>}
-                  <span>{isSubmitting ? (isBangla ? 'সংরক্ষণ হচ্ছে...' : 'Saving...') : (isBangla ? 'পরিবর্তন সংরক্ষণ করুন' : 'Save Changes')}</span>
+                  <span>{isSubmitting ? 'Saving...' : 'Save Changes'}</span>
                 </button>
               </div>
             </div>

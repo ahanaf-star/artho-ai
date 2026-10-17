@@ -119,11 +119,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
   const zonedHour = getZonedHour();
   const getGreeting = (): string => {
-    if (isBangla) {
-      if (zonedHour < 12) return firstName ? `শুভ সকাল, ${firstName}` : 'শুভ সকাল';
-      if (zonedHour < 17) return firstName ? `শুভ দুপুর, ${firstName}` : 'শুভ দুপুর';
-      return firstName ? `শুভ সন্ধ্যা, ${firstName}` : 'শুভ সন্ধ্যা';
-    }
     if (zonedHour < 12) return firstName ? `Good morning, ${firstName}` : 'Good morning';
     if (zonedHour < 17) return firstName ? `Good afternoon, ${firstName}` : 'Good afternoon';
     return firstName ? `Good evening, ${firstName}` : 'Good evening';
@@ -141,14 +136,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
           <p className="font-body-md text-body-md text-on-surface-variant mt-1 flex flex-wrap items-center gap-2">
             <span>
-              {isBangla
-                ? 'চলতি মাসে আপনার আর্থিক অবস্থার সামগ্রিক বিবরণ'
-                : "Here's how your money is doing this month"}
+              Here's how your money is doing this month
             </span>
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-outline-variant"></span>
             <span
               className="text-on-surface-variant/80 flex items-center gap-1.5 select-none"
-              title={`${isBangla ? 'সর্বশেষ ডেটা আপডেট' : 'Last successful update'}: ${exactTooltip}`}
+              title={`Last successful update: ${exactTooltip}`}
             >
               <span
                 className={`w-1.5 h-1.5 rounded-full transition-all ${
@@ -162,7 +155,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   onClick={() => onRefreshData()}
                   disabled={isRefreshing}
                   className="p-1 -my-1 rounded-lg hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-50 flex items-center justify-center cursor-pointer"
-                  title={isBangla ? 'এখনই তথ্য রিফ্রেশ করুন' : 'Refresh live financial data now'}
+                  title="Refresh live financial data now"
                   aria-label="Refresh financial data"
                 >
                   <span
@@ -187,21 +180,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <span className="material-symbols-outlined text-[20px] text-secondary-container">
               add_circle
             </span>
-            <span>{isBangla ? '+ লেনদেন যুক্ত করুন' : 'Add Transaction'}</span>
+            <span>Add Transaction</span>
           </button>
           <button
             onClick={onOpenTransfer}
             className="flex items-center gap-2 px-space-md py-2.5 rounded-xl bg-surface-container-lowest text-on-surface font-title-md text-title-md shadow-sm hover:bg-surface-container-low active:scale-95 transition-all border border-outline-variant/30"
           >
             <span className="material-symbols-outlined text-[20px] text-secondary">sync_alt</span>
-            <span>{isBangla ? 'স্থানান্তর' : 'Transfer'}</span>
+            <span>Transfer</span>
           </button>
           <button
             onClick={onOpenMonthlyReport}
             className="flex items-center gap-2 px-space-md py-2.5 rounded-xl bg-surface-container-lowest text-on-surface-variant font-title-md text-title-md shadow-sm hover:text-on-surface hover:bg-surface-container-low transition-all border border-outline-variant/30"
           >
             <span className="material-symbols-outlined text-[20px]">download</span>
-            <span>{isBangla ? 'মাসিক রিপোর্ট (PDF)' : 'Monthly Report (PDF)'}</span>
+            <span>Monthly Report (PDF)</span>
           </button>
         </div>
       </div>
@@ -229,21 +222,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="flex items-center gap-1.5">
               {recent7DayTxs.length === 0 ? (
                 <span className="text-on-surface-variant font-label-sm text-[11px] italic">
-                  {isBangla ? 'এই সপ্তাহে লেনদেন নেই' : 'No activity this week'}
+                  No activity this week
                 </span>
               ) : net7Days > 0 ? (
                 <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-semibold">
                   <span className="material-symbols-outlined text-[14px]">trending_up</span>
-                  +{formatMoney(net7Days)} {isBangla ? 'এই সপ্তাহে' : 'this week'}
+                  +{formatMoney(net7Days)} this week
                 </span>
               ) : net7Days < 0 ? (
                 <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-label-sm text-label-sm font-semibold">
                   <span className="material-symbols-outlined text-[14px]">trending_down</span>
-                  -{formatMoney(Math.abs(net7Days))} {isBangla ? 'এই সপ্তাহে' : 'this week'}
+                  -{formatMoney(Math.abs(net7Days))} this week
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold">
-                  {formatMoney(0)} {isBangla ? 'এই সপ্তাহে' : 'this week'}
+                  {formatMoney(0)} this week
                 </span>
               )}
             </div>
@@ -260,7 +253,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 ))
               ) : (
                 <span className="text-on-surface-variant font-label-sm text-[11px] italic">
-                  {isBangla ? 'কোন অ্যাকাউন্ট সংযুক্ত নেই' : 'No accounts connected'}
+                  No accounts connected
                 </span>
               )}
             </div>
@@ -272,7 +265,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex items-start justify-between">
             <div className="flex flex-col">
               <span className="font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">
-                Total Income ({formatMonthName(activeMonth, isBangla).toUpperCase().slice(0, 3)})
+                Total Income ({formatMonthName(activeMonth, false).toUpperCase().slice(0, 3)})
               </span>
               <div className="flex items-baseline gap-1 mt-1">
                 <span className="font-headline-lg text-headline-lg text-on-surface font-bold">
@@ -288,18 +281,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="flex flex-col">
               <span className="font-body-sm text-body-sm text-on-surface-variant">
                 {overview.totalIncome > 0
-                  ? (isBangla ? 'রেকর্ডকৃত আয়' : 'Recorded Income Inflow')
-                  : (isBangla ? 'কোন আয় রেকর্ড নেই' : 'No income recorded')}
+                  ? 'Recorded Income Inflow'
+                  : 'No income recorded'}
               </span>
               <div className="flex items-center gap-1 text-secondary mt-0.5 font-label-sm text-label-sm font-medium">
                 {overview.totalIncome > 0 ? (
                   <>
                     <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    <span>{isBangla ? 'সফলভাবে জমা হয়েছে' : 'Deposited to accounts'}</span>
+                    <span>Deposited to accounts</span>
                   </>
                 ) : (
                   <span className="text-outline text-xs">
-                    {isBangla ? 'আয়ের লেনদেন যুক্ত করুন' : 'Add income transaction'}
+                    Add income transaction
                   </span>
                 )}
               </div>
@@ -331,12 +324,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   {formatMoney(overview.dailyAverageSpend)}/day
                 </span>
                 <span className="font-body-sm text-body-sm text-on-surface-variant">
-                  {isBangla ? 'দৈনিক গড় ব্যয়' : 'daily average'}
+                  daily average
                 </span>
               </div>
             ) : (
               <span className="font-body-sm text-body-sm text-outline italic">
-                {isBangla ? 'চলতি মাসে কোন ব্যয় নেই' : 'No spending recorded this month'}
+                No spending recorded this month
               </span>
             )}
           </div>

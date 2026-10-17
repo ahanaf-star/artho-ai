@@ -12,31 +12,23 @@ interface AICoachProps {
   user?: User;
   initialQuery?: string;
   onNavigate: (screen: NavScreen) => void;
-  isBanglaMode: boolean;
-  onToggleBangla: (val: boolean) => void;
+  isBanglaMode?: boolean;
+  onToggleBangla?: (val: boolean) => void;
 }
 
-function formatGreeting(userName?: string, isBangla?: boolean): string {
+function formatGreeting(userName?: string): string {
   const trimmed = userName?.trim();
   const firstName = trimmed ? trimmed.split(' ')[0] : '';
-  if (isBangla) {
-    return firstName ? `আসসালামু আলাইকুম ${firstName}!` : 'আসসালামু আলাইকুম!';
-  }
   return firstName ? `Assalamu Alaikum ${firstName}!` : 'Assalamu Alaikum!';
 }
 
-function buildInitialCoachMessages(
-  userName?: string,
-  isBangla?: boolean
-): CoachMessage[] {
-  const greeting = formatGreeting(userName, isBangla);
+function buildInitialCoachMessages(userName?: string): CoachMessage[] {
+  const greeting = formatGreeting(userName);
   return [
     {
       id: 'msg-initial-assistant',
       sender: 'assistant',
-      text: isBangla
-        ? `${greeting} আমি অর্থবাঁচাও এআই (ArthoAI) পার্সোনাল ফাইন্যান্সিয়াল কোচ।\n\nআপনার মাসিক বাজেট, সঞ্চয়ের লক্ষ্য বা ক্যাশ-ফ্লো সম্পর্কিত যেকোনো প্রশ্ন আমাকে করতে পারেন। আপনার সঠিক লেনদেন এবং সঞ্চয়ের লক্ষ্য অনুযায়ী আমি আপনার জন্য সম্পূর্ণ তথ্যভিত্তিক পরামর্শ ও বিশ্লেষণ প্রদান করব।\n\nশুরু করতে নিচের সাজেস্ট করা প্রশ্নগুলো ক্লিক করুন অথবা আপনার প্রশ্ন লিখুন:`
-        : `${greeting} I am your ArthoAI Personal Financial Coach.\n\nAsk me anything about your monthly budget, savings goals, or cash flow. Once you log your transactions and savings targets, I will deliver precise, ledger-grounded insights tailored to your financial life in Bangladesh.\n\nTo get started, click a suggested question below or type your inquiry:`,
+      text: `${greeting} I am your ArthoAI Personal Financial Coach.\n\nAsk me anything about your monthly budget, savings goals, or cash flow. Once you log your transactions and savings targets, I will deliver precise, ledger-grounded insights tailored to your financial life in Bangladesh.\n\nTo get started, click a suggested question below or type your inquiry:`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isDeterministic: true,
     },
@@ -72,18 +64,18 @@ export const AICoach: React.FC<AICoachProps> = ({
 
   // Initialize conversation stream with authentic data
   const [messages, setMessages] = useState<CoachMessage[]>(() =>
-    buildInitialCoachMessages(effectiveUserName, isBanglaMode)
+    buildInitialCoachMessages(effectiveUserName)
   );
 
   // Keep greeting personalized to authenticated user when in initial state
   useEffect(() => {
     setMessages((prev) => {
       if (prev.length === 1 && prev[0].id === 'msg-initial-assistant') {
-        return buildInitialCoachMessages(effectiveUserName, isBanglaMode);
+        return buildInitialCoachMessages(effectiveUserName);
       }
       return prev;
     });
-  }, [effectiveUserName, isBanglaMode]);
+  }, [effectiveUserName]);
 
   const streamEndRef = useRef<HTMLDivElement>(null);
 
@@ -126,7 +118,7 @@ export const AICoach: React.FC<AICoachProps> = ({
         transactions,
         goals,
         effectiveIncome,
-        isBanglaMode,
+        false,
         effectiveUserName,
         0,
         recentHistory
@@ -158,7 +150,7 @@ export const AICoach: React.FC<AICoachProps> = ({
     setVoiceListening(true);
     setTimeout(() => {
       setVoiceListening(false);
-      setInputText('আগামী মাসে আমার টাকা কত থাকতে পারে?');
+      setInputText('What will my balance look like next month?');
     }, 2000);
   };
 
@@ -184,41 +176,15 @@ export const AICoach: React.FC<AICoachProps> = ({
             </span>
           </div>
           <h1 className="font-headline-lg text-headline-lg text-on-surface tracking-tight font-bold">
-            {isBanglaMode
-              ? 'অর্থবাঁচাও এআই আর্থিক কোচ'
-              : 'ArthoBachao AI Personal Financial Coach'}
+            ArthoBachao AI Personal Financial Coach
           </h1>
           <p className="font-body-md text-body-md text-on-surface-variant">
             Conversational intelligence backed by your actual transactional data &amp; behavioral models
           </p>
         </div>
 
-        {/* Controls & Localization */}
+        {/* Controls */}
         <div className="flex items-center gap-space-sm self-start lg:self-center">
-          <div className="inline-flex p-1 rounded-full bg-surface-container-low border border-outline-variant/20">
-            <button
-              onClick={() => onToggleBangla(false)}
-              className={`px-3 py-1.5 rounded-full font-label-md text-label-md font-semibold transition-all ${
-                !isBanglaMode
-                  ? 'bg-surface-container-lowest shadow-sm text-on-surface'
-                  : 'text-on-surface-variant hover:text-on-surface'
-              }`}
-              type="button"
-            >
-              English
-            </button>
-            <button
-              onClick={() => onToggleBangla(true)}
-              className={`px-3 py-1.5 rounded-full font-label-md text-label-md font-semibold transition-all ${
-                isBanglaMode
-                  ? 'bg-surface-container-lowest shadow-sm text-on-surface'
-                  : 'text-on-surface-variant hover:text-on-surface'
-              }`}
-              type="button"
-            >
-              বাংলা (Easy Bangla mode)
-            </button>
-          </div>
 
           <button
             onClick={() => {
@@ -282,11 +248,11 @@ export const AICoach: React.FC<AICoachProps> = ({
               icon: 'vital_signs',
             },
             {
-              text: 'আগামী মাসে আমার টাকা কত থাকতে পারে?',
+              text: 'What will my balance look like next month?',
               icon: 'calendar_month',
             },
             {
-              text: 'আমি কীভাবে প্রতি মাসে আরও টাকা save করতে পারি?',
+              text: 'How can I increase my monthly savings?',
               icon: 'savings',
             },
           ].map((prompt, idx) => (
@@ -321,12 +287,10 @@ export const AICoach: React.FC<AICoachProps> = ({
                   <span className="material-symbols-outlined text-[30px]">auto_awesome</span>
                 </div>
                 <h3 className="font-headline-md text-xl font-bold text-on-surface">
-                  {isBanglaMode ? 'অর্থবাঁচাও এআই কোচ প্রস্তুত' : 'How can I assist your finances today?'}
+                  How can I assist your finances today?
                 </h3>
                 <p className="font-body-md text-sm text-on-surface-variant max-w-md mt-1">
-                  {isBanglaMode
-                    ? 'আপনার মাসিক আয়, ব্যয়, বিকাশ ও ব্যাংকের লেনদেন বিশ্লেষণ করে বাস্তবভিত্তিক পরামর্শ প্রদান করা হবে।'
-                    : 'Grounded in your actual transactions, bKash balances, and ৳30,000 Emergency Fund progress.'}
+                  Grounded in your actual transactions, bKash balances, and ৳30,000 Emergency Fund progress.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-6 max-w-lg w-full">
                   <button
@@ -348,10 +312,10 @@ export const AICoach: React.FC<AICoachProps> = ({
                     "Am I on track for my emergency fund?"
                   </button>
                   <button
-                    onClick={() => handleSendMessage('আগামী মাসে আমার টাকা কত থাকতে পারে?')}
+                    onClick={() => handleSendMessage('What will my balance look like next month?')}
                     className="p-3 text-left rounded-xl bg-surface-container-low hover:bg-surface-container text-xs font-semibold text-on-surface border border-outline-variant/30 transition-colors"
                   >
-                    "আগামী মাসে আমার টাকা কত থাকতে পারে?"
+                    "What will my balance look like next month?"
                   </button>
                 </div>
               </div>
@@ -686,11 +650,7 @@ export const AICoach: React.FC<AICoachProps> = ({
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder={
-                  isBanglaMode
-                    ? 'আপনার বাজেট বা সঞ্চয় সম্পর্কে জিজ্ঞাসা করুন (যেমন: আমি কীভাবে আরও সঞ্চয় করব?)...'
-                    : 'Ask ArthoBachao AI anything about your money in English or বাংলা...'
-                }
+                placeholder="Ask ArthoBachao AI anything about your money in English..."
                 className="flex-1 bg-transparent py-2.5 px-space-xs text-on-surface placeholder:text-outline font-body-md text-body-md focus:outline-none"
               />
 
@@ -702,7 +662,7 @@ export const AICoach: React.FC<AICoachProps> = ({
                     ? 'bg-error-container text-error animate-pulse'
                     : 'hover:bg-surface-container-low text-on-surface-variant'
                 }`}
-                title="Voice query in Bangla/English"
+                title="Voice query in English"
               >
                 <span className="material-symbols-outlined text-[20px]">mic</span>
               </button>

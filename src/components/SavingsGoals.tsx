@@ -164,16 +164,14 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
         <div className="flex items-center gap-2 mb-1">
           <span className="w-2 h-2 rounded-full bg-secondary"></span>
           <span className="font-label-sm text-label-sm font-bold uppercase tracking-wider text-secondary">
-            {isBangla ? 'সেভিংস গাইড' : 'Savings Guide'}
+            Savings Guide
           </span>
         </div>
         <h2 className="font-title-lg sm:font-headline-sm text-title-lg sm:text-headline-sm text-on-surface font-bold tracking-tight">
-          {isBangla ? 'আপনার সঞ্চয় পরিকল্পনা করুন, লক্ষ্য অর্জন করুন' : 'Plan Your Savings, Achieve Your Goals'}
+          Plan Your Savings, Achieve Your Goals
         </h2>
         <p className="font-body-md text-body-md text-on-surface-variant mt-1.5 max-w-3xl leading-relaxed">
-          {isBangla
-            ? 'সেভিংস গোল আপনাকে আপনার জন্য গুরুত্বপূর্ণ বিষয়গুলোর জন্য অর্থ পরিকল্পনা ও ট্র্যাক করতে সাহায্য করে। একটি লক্ষ্য পরিমাণ নির্ধারণ করুন, একটি নির্দিষ্ট তারিখ বেছে নিন এবং সঞ্চয় করার সাথে সাথে আপনার অগ্রগতি ট্র্যাক করুন।'
-            : 'Savings Goals helps you plan and track money for the things that matter to you. Set a target amount, choose a target date, and track your progress as you save.'}
+          Savings Goals helps you plan and track money for the things that matter to you. Set a target amount, choose a target date, and track your progress as you save.
         </p>
 
         {/* Three Steps Grid */}
@@ -187,17 +185,15 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                 </div>
                 <div>
                   <span className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-secondary block leading-none">
-                    {isBangla ? 'ধাপ ১' : 'STEP 1'}
+                    STEP 1
                   </span>
                   <h3 className="font-title-md text-title-md font-bold text-on-surface leading-tight mt-0.5">
-                    {isBangla ? 'লক্ষ্য নির্ধারণ করুন' : 'Set Your Goal'}
+                    Set Your Goal
                   </h3>
                 </div>
               </div>
               <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
-                {isBangla
-                  ? 'আপনি কিসের জন্য সঞ্চয় করছেন তা বেছে নিন, যেমন ল্যাপটপ, জরুরি তহবিল, শিক্ষা বা ভ্রমণ।'
-                  : 'Choose what you are saving for, such as a laptop, emergency fund, education, or a trip.'}
+                Choose what you are saving for, such as a laptop, emergency fund, education, or a trip.
               </p>
             </div>
           </div>
@@ -211,17 +207,15 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                 </div>
                 <div>
                   <span className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-secondary block leading-none">
-                    {isBangla ? 'ধাপ ২' : 'STEP 2'}
+                    STEP 2
                   </span>
                   <h3 className="font-title-md text-title-md font-bold text-on-surface leading-tight mt-0.5">
-                    {isBangla ? 'টার্গেট সেট করুন' : 'Set Your Target'}
+                    Set Your Target
                   </h3>
                 </div>
               </div>
               <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
-                {isBangla
-                  ? 'আপনি যে পরিমাণ সঞ্চয় করতে চান এবং আপনার লক্ষ্য তারিখ লিখুন।'
-                  : 'Enter the amount you want to save and your target date.'}
+                Enter the amount you want to save and your target date.
               </p>
             </div>
           </div>
@@ -235,17 +229,15 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                 </div>
                 <div>
                   <span className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-secondary block leading-none">
-                    {isBangla ? 'ধাপ ৩' : 'STEP 3'}
+                    STEP 3
                   </span>
                   <h3 className="font-title-md text-title-md font-bold text-on-surface leading-tight mt-0.5">
-                    {isBangla ? 'অগ্রগতি ট্র্যাক করুন' : 'Track Your Progress'}
+                    Track Your Progress
                   </h3>
                 </div>
               </div>
               <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
-                {isBangla
-                  ? 'আপনি সঞ্চয় জমা করার সাথে সাথে আপনার সঞ্চয় আপডেট করুন এবং লক্ষ্য অর্জনের কতটা কাছাকাছি আছেন তা পর্যবেক্ষণ করুন।'
-                  : 'Update your savings as you contribute and monitor how close you are to reaching your target.'}
+                Update your savings as you contribute and monitor how close you are to reaching your target.
               </p>
             </div>
           </div>
@@ -258,11 +250,9 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
           </span>
           <p className="font-body-sm text-body-sm text-on-surface leading-relaxed">
             <strong className="text-secondary font-semibold">
-              {isBangla ? 'পরামর্শ: ' : 'Tip: '}
+              Tip:{' '}
             </strong>
-            {isBangla
-              ? 'বাস্তবসম্মত লক্ষ্য নির্ধারণ করুন এবং নিয়মিত সঞ্চয় করুন। আপনার অগ্রগতি যেন আপনার প্রকৃত সঞ্চয়কে প্রতিফলিত করে।'
-              : 'Set realistic targets and contribute regularly. Your progress should reflect your actual savings.'}
+            Set realistic targets and contribute regularly. Your progress should reflect your actual savings.
           </p>
         </div>
       </div>
@@ -331,7 +321,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
             </span>
           </div>
           <h1 className="font-headline-xl text-headline-xl text-on-surface tracking-tight font-bold">
-            {isBangla ? 'লক্ষ্য অর্জন এবং সঞ্চয় পরিকল্পনা' : 'Turn Goals into a Plan'}
+            Turn Goals into a Plan
           </h1>
           <p className="font-body-lg text-body-lg text-on-surface-variant mt-1">
             AI-assisted savings projection, automated pace tracking, and timeline simulation

@@ -149,8 +149,8 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
     if (topM && topM.length > 0) {
       return `Key merchant: ${topM[0]}`;
     }
-    return isBangla ? 'শীর্ষ নিয়মিত ব্যয়' : 'Primary recurring expenditure';
-  }, [hasLargestCategory, categoryAnomalies, overview.largestCategory, isBangla]);
+    return 'Primary recurring expenditure';
+  }, [hasLargestCategory, categoryAnomalies, overview.largestCategory]);
 
   // Filter transactions for table
   const filteredTransactions = useMemo(() => {
@@ -181,11 +181,11 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
     setCategorySuccess(null);
     const trimmed = newCategoryName.trim();
     if (!trimmed) {
-      setCategoryError(isBangla ? 'ক্যাটাগরির নাম আবশ্যক' : 'Category name cannot be empty');
+      setCategoryError('Category name cannot be empty');
       return;
     }
     if (trimmed.length > 50) {
-      setCategoryError(isBangla ? 'ক্যাটাগরির নাম ৫০ অক্ষরের কম হতে হবে' : 'Category name must be 50 characters or fewer');
+      setCategoryError('Category name must be 50 characters or fewer');
       return;
     }
     const standardList = [
@@ -199,17 +199,11 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
       'savings & investment',
     ];
     if (standardList.includes(trimmed.toLowerCase())) {
-      setCategoryError(
-        isBangla
-          ? 'স্ট্যান্ডার্ড ক্যাটাগরির নামে নতুন ক্যাটাগরি তৈরি করা যাবে না'
-          : 'Cannot use a standard category name'
-      );
+      setCategoryError('Cannot use a standard category name');
       return;
     }
     if (customCategories.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
-      setCategoryError(
-        isBangla ? 'এই নামের ক্যাটাগরি ইতিমধ্যে রয়েছে' : 'A category with this name already exists'
-      );
+      setCategoryError('A category with this name already exists');
       return;
     }
     if (onCreateCategory) {
@@ -218,14 +212,10 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
         await onCreateCategory(trimmed);
         setNewCategoryName('');
         setIsAddCategoryOpen(false);
-        setCategorySuccess(
-          isBangla
-            ? `ক্যাটাগরি "${trimmed}" সফলভাবে তৈরি হয়েছে!`
-            : `Category "${trimmed}" created successfully!`
-        );
+        setCategorySuccess(`Category "${trimmed}" created successfully!`);
         setTimeout(() => setCategorySuccess(null), 3500);
       } catch (err: any) {
-        setCategoryError(err?.message || (isBangla ? 'ক্যাটাগরি তৈরি করতে ব্যর্থ হয়েছে' : 'Failed to create category'));
+        setCategoryError(err?.message || 'Failed to create category');
       } finally {
         setIsSubmittingCategory(false);
       }
@@ -242,11 +232,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
         (t) => t.category.toLowerCase() === catName.toLowerCase()
       ).length;
       if (txCount > 0) {
-        setCategoryError(
-          isBangla
-            ? `মুছে ফেলা সম্ভব নয়: ${txCount} টি লেনদেন এই ক্যাটাগরি ব্যবহার করছে`
-            : `Cannot delete: ${txCount} transaction(s) use this category`
-        );
+        setCategoryError(`Cannot delete: ${txCount} transaction(s) use this category`);
         setDeleteConfirmCatId(null);
         return;
       }
@@ -256,10 +242,10 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
     try {
       await onDeleteCategory(catId);
       setDeleteConfirmCatId(null);
-      setCategorySuccess(isBangla ? 'ক্যাটাগরি সফলভাবে অপসারিত হয়েছে' : 'Category deleted successfully');
+      setCategorySuccess('Category deleted successfully');
       setTimeout(() => setCategorySuccess(null), 3500);
     } catch (err: any) {
-      setCategoryError(err?.message || (isBangla ? 'ক্যাটাগরি মুছতে ব্যর্থ হয়েছে' : 'Failed to delete category'));
+      setCategoryError(err?.message || 'Failed to delete category');
     } finally {
       setDeletingCatId(null);
     }
@@ -280,7 +266,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
             </span>
           </div>
           <h1 className="font-headline-xl text-headline-xl text-on-surface tracking-tight font-bold">
-            {isBangla ? 'ব্যয়ের বিস্তারিত বিশ্লেষণ' : 'Understand Where Your Money Goes'}
+            Understand Where Your Money Goes
           </h1>
           <p className="font-body-md text-body-md text-on-surface-variant max-w-2xl mt-0.5">
             Deep categorical breakdown, merchant habits, and explainable AI anomaly detection.
@@ -332,7 +318,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
           <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-primary/5 pointer-events-none"></div>
           <div className="flex items-center justify-between">
             <span className="font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">
-              {isBangla ? 'মাসিক মোট ব্যয়' : 'Monthly Spending'}
+              Monthly Spending
             </span>
             {momSpendingDiff !== null && (
               <span
@@ -359,7 +345,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
             <p className="font-body-sm text-body-sm text-outline mt-1">
               {prevMonthExpenses > 0
                 ? `vs ${formatMoney(prevMonthExpenses)} last month`
-                : (isBangla ? 'পূর্ববর্তী মাসের রেকর্ড নেই' : 'No prior month record')}
+                : 'No prior month record'}
             </p>
           </div>
           <div className="mt-space-md h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
@@ -396,8 +382,8 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
             </div>
             <p className="font-body-sm text-body-sm text-secondary font-medium mt-1">
               {overview.totalExpenses > 0
-                ? (isBangla ? 'চলতি মাসের দৈনিক গড়' : `Target ceiling: ${formatMoney(1050)}/day`)
-                : (isBangla ? 'কোন ব্যয় রেকর্ড নেই' : 'No expenses recorded')}
+                ? `Target ceiling: ${formatMoney(1050)}/day`
+                : 'No expenses recorded'}
             </p>
           </div>
           {/* Mini Sparkline inline */}
@@ -416,11 +402,11 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
         <div className="flex flex-col justify-between p-space-lg rounded-xl bg-surface-container-lowest shadow-sm border border-outline-variant/20">
           <div className="flex items-center justify-between gap-2">
             <span className="font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">
-              {isBangla ? 'সর্বোচ্চ ব্যয় খাত' : 'Largest Category'}
+              Largest Category
             </span>
             {hasLargestCategory && (
               <span className="px-2 py-0.5 rounded-full bg-surface-container-highest text-tertiary-container font-label-sm text-label-sm font-semibold shrink-0">
-                {overview.largestCategory.percentage}% {isBangla ? 'মোট ব্যয়ের' : 'of total'}
+                {overview.largestCategory.percentage}% of total
               </span>
             )}
           </div>
@@ -439,7 +425,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                   </span>
                   {isLargestOutlier && (
                     <span className="font-body-sm text-xs px-1.5 py-0.5 rounded bg-error-container text-on-error-container font-medium">
-                      {isBangla ? 'অস্বাভাবিক ব্যয় চিহ্নিত' : 'Outlier flagged'}
+                      Outlier flagged
                     </span>
                   )}
                 </div>
@@ -447,10 +433,10 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
             ) : (
               <div className="py-2">
                 <span className="text-on-surface-variant font-body-md text-sm font-medium italic block">
-                  {isBangla ? 'কোন ব্যয়ের তথ্য নেই' : 'No spending data available'}
+                  No spending data available
                 </span>
                 <p className="font-body-sm text-xs text-outline mt-1">
-                  {isBangla ? 'নির্বাচিত মাসে কোনো ব্যয় পাওয়া যায়নি' : 'No expenses recorded in selected month'}
+                  No expenses recorded in selected month
                 </p>
               </div>
             )}
@@ -467,7 +453,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
               </>
             ) : (
               <span className="text-xs text-outline italic">
-                {isBangla ? 'লেনদেন যুক্ত করলে বিশ্লেষণ দৃশ্যমান হবে' : 'Add transactions to populate analysis'}
+                Add transactions to populate analysis
               </span>
             )}
           </div>
@@ -531,18 +517,16 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-title-lg text-title-lg text-on-surface font-bold">
-                  {isBangla ? 'ক্যাটাগরি পরিচালনা করুন' : 'Manage Categories'}
+                  Manage Categories
                 </h3>
                 {customCategories.length > 0 && (
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-surface-container text-on-surface-variant">
-                    {customCategories.length} {isBangla ? 'কাস্টম' : 'Custom'}
+                    {customCategories.length} Custom
                   </span>
                 )}
               </div>
               <p className="font-body-sm text-body-sm text-on-surface-variant">
-                {isBangla
-                  ? 'ব্যক্তিগত ব্যয়ের হিসাব রাখতে নিজস্ব ক্যাটাগরি তৈরি ও পরিচালনা করুন'
-                  : 'Create and manage custom expense categories for personalized spending tracking'}
+                Create and manage custom expense categories for personalized spending tracking
               </p>
             </div>
           </div>
@@ -559,13 +543,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
               {isAddCategoryOpen ? 'close' : 'add'}
             </span>
             <span>
-              {isAddCategoryOpen
-                ? isBangla
-                  ? 'বাতিল'
-                  : 'Cancel'
-                : isBangla
-                ? 'ক্যাটাগরি যোগ করুন'
-                : 'Add Category'}
+              {isAddCategoryOpen ? 'Cancel' : 'Add Category'}
             </span>
           </button>
         </div>
@@ -602,11 +580,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                   setNewCategoryName(e.target.value);
                   setCategoryError(null);
                 }}
-                placeholder={
-                  isBangla
-                    ? 'যেমন: স্বাস্থ্যসেবা, গৃহ সংস্কার, অনুদান (সর্বোচ্চ ৫০ অক্ষর)'
-                    : 'e.g. Healthcare, Home Renovation, Education (max 50 chars)'
-                }
+                placeholder="e.g. Healthcare, Home Renovation, Education (max 50 chars)"
                 maxLength={50}
                 autoFocus
                 className="w-full pl-9 pr-3 py-2 rounded-xl border border-outline-variant/30 bg-surface-container-lowest text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
@@ -625,7 +599,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                 ) : (
                   <span className="material-symbols-outlined text-[18px]">check</span>
                 )}
-                <span>{isBangla ? 'তৈরি করুন' : 'Create'}</span>
+                <span>Create</span>
               </button>
               <button
                 type="button"
@@ -637,7 +611,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                 }}
                 className="px-3 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-sm font-medium transition-colors"
               >
-                {isBangla ? 'বাতিল' : 'Cancel'}
+                Cancel
               </button>
             </div>
           </form>
@@ -649,12 +623,10 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
             <div className="p-6 text-center text-xs text-on-surface-variant flex flex-col items-center gap-1.5 bg-surface-container-low/30">
               <span className="material-symbols-outlined text-outline text-[28px]">category</span>
               <p className="font-semibold text-sm text-on-surface">
-                {isBangla ? 'কোনো কাস্টম ক্যাটাগরি তৈরি করা হয়নি' : 'No custom categories yet'}
+                No custom categories yet
               </p>
               <p className="text-xs text-outline max-w-sm">
-                {isBangla
-                  ? 'আপনার নিজস্ব ব্যয়ের ধরণ ট্র্যাক করতে একটি নতুন ক্যাটাগরি তৈরি করুন।'
-                  : 'Create one to organize your spending and tailor your financial reports.'}
+                Create one to organize your spending and tailor your financial reports.
               </p>
               {!isAddCategoryOpen && (
                 <button
@@ -663,7 +635,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                   className="mt-2 px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container text-on-surface text-xs font-semibold transition-colors flex items-center gap-1"
                 >
                   <span className="material-symbols-outlined text-[16px]">add</span>
-                  <span>{isBangla ? 'ক্যাটাগরি যোগ করুন' : 'Add Category'}</span>
+                  <span>Add Category</span>
                 </button>
               )}
             </div>
@@ -698,7 +670,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                       }
                     }}
                     className="flex items-center gap-3 cursor-pointer group/item select-none text-left"
-                    title={isBangla ? `${cat.name} এর বিস্তারিত বিবরণ দেখুন` : `View details for ${cat.name}`}
+                    title={`View details for ${cat.name}`}
                   >
                     <div className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center shrink-0 group-hover/item:bg-secondary-container group-hover/item:text-on-secondary-container transition-colors">
                       <span className="material-symbols-outlined text-[20px] text-secondary group-hover/item:text-on-secondary-container">
@@ -711,7 +683,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                           {cat.name}
                         </span>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-secondary/10 text-secondary border border-secondary/20">
-                          {isBangla ? 'কাস্টম' : 'Custom'}
+                          Custom
                         </span>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-surface-container text-on-surface-variant">
                           Expense
@@ -719,11 +691,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                       </div>
                       <span className="text-[11px] text-outline">
                         {txCount > 0
-                          ? isBangla
-                            ? `${txCount} টি লেনদেনে ব্যবহৃত • বিস্তারিত দেখতে ক্লিক করুন`
-                            : `Used in ${txCount} transaction(s) • Click to inspect`
-                          : isBangla
-                          ? 'কোনো লেনদেনে ব্যবহৃত হয়নি'
+                          ? `Used in ${txCount} transaction(s) • Click to inspect`
                           : 'Not used in any transactions'}
                       </span>
                     </div>
@@ -739,18 +707,18 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                         setIsCategoryModalOpen(true);
                       }}
                       className="p-1.5 rounded-lg text-outline hover:text-secondary hover:bg-secondary/10 transition-colors flex items-center gap-1 text-xs"
-                      title={isBangla ? 'বিস্তারিত বিবরণ দেখুন' : 'View category details'}
+                      title="View category details"
                     >
                       <span className="material-symbols-outlined text-[18px]">open_in_new</span>
                       <span className="hidden sm:inline font-medium">
-                        {isBangla ? 'বিস্তারিত' : 'Details'}
+                        Details
                       </span>
                     </button>
 
                     {isConfirming ? (
                       <div className="flex items-center gap-1.5 animate-in fade-in duration-150">
                         <span className="text-[11px] text-error font-medium">
-                          {isBangla ? 'মুছে ফেলতে নিশ্চিত?' : 'Confirm delete?'}
+                          Confirm delete?
                         </span>
                         <button
                           type="button"
@@ -763,7 +731,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                               progress_activity
                             </span>
                           )}
-                          <span>{isBangla ? 'হ্যাঁ' : 'Yes'}</span>
+                          <span>Yes</span>
                         </button>
                         <button
                           type="button"
@@ -771,7 +739,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                           onClick={() => setDeleteConfirmCatId(null)}
                           className="px-2.5 py-1 rounded-lg bg-surface-container text-on-surface text-xs font-semibold hover:bg-surface-container-high transition-colors"
                         >
-                          {isBangla ? 'না' : 'No'}
+                          No
                         </button>
                       </div>
                     ) : (
@@ -780,11 +748,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                         onClick={() => {
                           setCategoryError(null);
                           if (txCount > 0) {
-                            setCategoryError(
-                              isBangla
-                                ? `মুছে ফেলা সম্ভব নয়: ${txCount} টি লেনদেন এই ক্যাটাগরি ব্যবহার করছে`
-                                : `Cannot delete: ${txCount} transaction(s) use this category`
-                            );
+                            setCategoryError(`Cannot delete: ${txCount} transaction(s) use this category`);
                             return;
                           }
                           setDeleteConfirmCatId(catIdentifier);
@@ -792,11 +756,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                         className="p-1.5 rounded-lg text-outline hover:text-error hover:bg-error-container/20 transition-colors"
                         title={
                           txCount > 0
-                            ? isBangla
-                              ? `মুছে ফেলা সম্ভব নয়: ${txCount} টি লেনদেনে ব্যবহৃত`
-                              : `Cannot delete: ${txCount} transaction(s) use this category`
-                            : isBangla
-                            ? 'ক্যাটাগরি মুছুন'
+                            ? `Cannot delete: ${txCount} transaction(s) use this category`
                             : 'Delete category'
                         }
                       >
@@ -853,7 +813,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                   }
                 }}
                 className="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between hover:shadow-md hover:border-secondary/50 transition-all cursor-pointer relative border border-outline-variant/20 active:scale-[0.995] group select-none focus:outline-none focus:ring-2 focus:ring-secondary/40"
-                title={isBangla ? `${cat.category} এর বিস্তারিত বিবরণ দেখুন` : `View details for ${cat.category}`}
+                title={`View details for ${cat.category}`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-space-sm">
@@ -1084,7 +1044,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                   <button
                     onClick={() => onSelectTransactionForEdit?.(tx)}
                     className="p-2 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
-                    title={isBangla ? 'সম্পাদনা বা ডিলিট করুন' : 'Edit or delete transaction'}
+                    title="Edit or delete transaction"
                   >
                     <span className="material-symbols-outlined text-[20px]">edit</span>
                   </button>

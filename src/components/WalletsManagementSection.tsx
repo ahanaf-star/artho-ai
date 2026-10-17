@@ -126,11 +126,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
     const effectiveProvider =
       providerSelect === 'Other' ? customProvider.trim() : providerSelect.trim();
     if (!effectiveProvider) {
-      setFormError(
-        isBangla
-          ? 'অনুগ্রহ করে প্রোভাইডার বা প্রতিষ্ঠানের নাম লিখুন।'
-          : 'Please enter a provider or institution name.'
-      );
+      setFormError('Please enter a provider or institution name.');
       return;
     }
 
@@ -139,11 +135,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
     if (balance.trim() !== '') {
       const num = Number(balance.trim());
       if (isNaN(num) || !isFinite(num) || num < 0) {
-        setFormError(
-          isBangla
-            ? 'ব্যালেন্স একটি বৈধ অ-ঋণাত্মক সংখ্যা হতে হবে।'
-            : 'Current balance must be a valid non-negative number.'
-        );
+        setFormError('Current balance must be a valid non-negative number.');
         return;
       }
       parsedBalance = num;
@@ -270,16 +262,14 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-secondary text-[22px]">account_balance_wallet</span>
             <h2 className="font-title-lg text-title-lg text-on-surface font-bold">
-              {isBangla ? 'ওয়ালেট ও ব্যাংক অ্যাকাউন্ট' : 'Wallets & Banking Accounts'}
+              Wallets & Banking Accounts
             </h2>
             <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container">
-              {walletAccounts.length} {isBangla ? 'অ্যাকাউন্ট' : 'Accounts'}
+              {walletAccounts.length} Accounts
             </span>
           </div>
           <p className="text-xs text-on-surface-variant mt-0.5">
-            {isBangla
-              ? 'আপনার ব্যক্তিগত ওয়ালেট ও ব্যাংক অ্যাকাউন্টসমূহ ম্যানুয়ালি পরিচালনা করুন।'
-              : 'Manually managed wallets, bank accounts, and mobile financial services.'}
+            Manually managed wallets, bank accounts, and mobile financial services.
           </p>
         </div>
 
@@ -290,7 +280,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
               title="Combined balance of all manually entered accounts (indicative, user-provided)"
             >
               <span className="text-outline text-[11px] uppercase tracking-wider font-semibold">
-                {isBangla ? 'ম্যানুয়াল মোট:' : 'Manual Total:'}
+                Manual Total:
               </span>
               <span className="font-bold text-secondary font-mono">
                 {formatCurrency(totalManualBalance, displayCurrency)}
@@ -304,7 +294,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-secondary text-on-secondary font-title-md text-sm font-semibold hover:opacity-90 active:scale-95 transition-all shadow-xs"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
-            <span>{isBangla ? 'অ্যাকাউন্ট যোগ করুন' : 'Add Account'}</span>
+            <span>Add Account</span>
           </button>
         </div>
       </div>
@@ -317,12 +307,10 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
           </div>
           <div>
             <h3 className="font-title-md text-sm font-bold text-on-surface">
-              {isBangla ? 'এখনও কোনো অ্যাকাউন্ট যোগ করা হয়নি' : 'No Wallets or Bank Accounts Added Yet'}
+              No Wallets or Bank Accounts Added Yet
             </h3>
             <p className="text-xs text-on-surface-variant max-w-md mt-1 leading-relaxed">
-              {isBangla
-                ? 'আপনার ব্যক্তিগত বিকাশ, নগদ, রকেট বা ব্যাংক অ্যাকাউন্ট এখানে যুক্ত করে ব্যালেন্স পর্যবেক্ষণ করুন।'
-                : 'Track your personal bKash, Nagad, Rocket, or bank accounts here to manage your finances in one place.'}
+              Track your personal bKash, Nagad, Rocket, or bank accounts here to manage your finances in one place.
             </p>
           </div>
           <button
@@ -331,7 +319,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
             className="mt-1 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary text-on-secondary text-xs font-semibold hover:opacity-90 transition-opacity shadow-xs"
           >
             <span className="material-symbols-outlined text-[16px]">add</span>
-            <span>{isBangla ? 'প্রথম অ্যাকাউন্ট যোগ করুন' : 'Add Your First Account'}</span>
+            <span>Add Your First Account</span>
           </button>
         </div>
       ) : (
@@ -400,12 +388,12 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
                           </span>
                         )}
                         <span className="text-[10px] text-outline">
-                          {isBangla ? 'ম্যানুয়াল ব্যালেন্স' : 'Manual Balance'}
+                          Manual Balance
                         </span>
                       </>
                     ) : (
                       <span className="text-xs text-outline italic">
-                        {isBangla ? 'ব্যালেন্স নির্ধারিত নেই' : 'No balance set'}
+                        No balance set
                       </span>
                     )}
                   </div>
@@ -415,7 +403,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
                       type="button"
                       onClick={() => openEditModal(acc)}
                       className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
-                      title={isBangla ? 'সম্পাদনা করুন' : 'Edit Account'}
+                      title="Edit Account"
                       aria-label="Edit account"
                     >
                       <span className="material-symbols-outlined text-[18px]">edit</span>
@@ -424,7 +412,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
                       type="button"
                       onClick={() => setDeletingAccount(acc)}
                       className="p-1.5 rounded-lg text-outline hover:text-error hover:bg-error-container/20 transition-colors"
-                      title={isBangla ? 'মুছে ফেলুন' : 'Remove Account'}
+                      title="Remove Account"
                       aria-label="Remove account"
                     >
                       <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -448,11 +436,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
                 </span>
                 <h3 className="font-title-lg text-title-lg text-on-surface font-bold">
                   {editingAccount
-                    ? isBangla
-                      ? 'অ্যাকাউন্ট সম্পাদনা'
-                      : 'Edit Account'
-                    : isBangla
-                    ? 'নতুন অ্যাকাউন্ট যোগ করুন'
+                    ? 'Edit Account'
                     : 'Add Wallet or Bank Account'}
                 </h3>
               </div>
@@ -477,7 +461,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
               {/* Account Type */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                  {isBangla ? 'অ্যাকাউন্টের ধরন' : 'Account Type'} *
+                  Account Type *
                 </label>
                 <select
                   value={accountType}
@@ -495,7 +479,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
               {/* Provider / Institution */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                  {isBangla ? 'প্রোভাইডার / প্রতিষ্ঠান' : 'Provider / Institution'} *
+                  Provider / Institution *
                 </label>
                 <select
                   value={providerSelect}
@@ -515,9 +499,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
                     required
                     value={customProvider}
                     onChange={(e) => setCustomProvider(e.target.value)}
-                    placeholder={
-                      isBangla ? 'প্রতিষ্ঠানের নাম লিখুন (যেমন: Standard Chartered)' : 'Enter custom provider / bank name'
-                    }
+                    placeholder="Enter custom provider / bank name"
                     className="mt-1 p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
                   />
                 )}
@@ -526,13 +508,13 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
               {/* Display Name */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                  {isBangla ? 'অ্যাকাউন্ট ডিসপ্লে নাম (ঐচ্ছিক)' : 'Account Display Name (Optional)'}
+                  Account Display Name (Optional)
                 </label>
                 <input
                   type="text"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder={isBangla ? 'যেমন: বেতন অ্যাকাউন্ট, প্রাইমারি বিকাশ' : 'e.g. Salary Account, Primary Wallet'}
+                  placeholder="e.g. Salary Account, Primary Wallet"
                   className="p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
                 />
               </div>
@@ -540,26 +522,24 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
               {/* Account Number / Identifier */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                  {isBangla ? 'অ্যাকাউন্ট নম্বর / আইডি (ঐচ্ছিক)' : 'Account Number / Identifier (Optional)'}
+                  Account Number / Identifier (Optional)
                 </label>
                 <input
                   type="text"
                   value={accountNumber}
                   onChange={(e) => setAccountNumber(e.target.value)}
-                  placeholder={isBangla ? 'যেমন: 01712345678 বা 2104092' : 'e.g. 01712345678 or AC-98765432'}
+                  placeholder="e.g. 01712345678 or AC-98765432"
                   className="p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary font-mono"
                 />
                 <p className="text-[11px] text-outline italic">
-                  {isBangla
-                    ? '* গোপনীয়তার জন্য তালিকায় এটি শুধুমাত্র ****১২৩৪ হিসেবে প্রদর্শিত হবে।'
-                    : '* Stored for your reference; will be masked as ****1234 in the interface.'}
+                  * Stored for your reference; will be masked as ****1234 in the interface.
                 </p>
               </div>
 
               {/* Current Balance & Currency */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                  {isBangla ? 'বর্তমান ব্যালেন্স (ঐচ্ছিক)' : 'CURRENT BALANCE (OPTIONAL)'}
+                  CURRENT BALANCE (OPTIONAL)
                 </label>
                 <div className="flex items-center gap-2">
                   {/* Currency Selector alongside input */}
@@ -567,7 +547,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
                     value={accountCurrency}
                     onChange={(e) => setAccountCurrency(normalizeCurrencyCode(e.target.value))}
                     className="w-32 sm:w-36 p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary cursor-pointer shrink-0 font-medium"
-                    title={isBangla ? 'অ্যাকাউন্টের মুদ্রা' : 'Account Currency'}
+                    title="Account Currency"
                   >
                     {SUPPORTED_CURRENCIES.map((c) => (
                       <option key={c.code} value={c.code}>
@@ -599,22 +579,20 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
                   </div>
                 </div>
                 <p className="text-[11px] text-outline">
-                  {isBangla
-                    ? `ব্যালেন্স ${accountCurrency} মুদ্রায় সংরক্ষিত হবে এবং সামগ্রিক হিসাবে স্বয়ংক্রিয়ভাবে রূপান্তরিত হবে।`
-                    : `Balance is stored in ${accountCurrency} and converted to reporting currency in summary totals.`}
+                  Balance is stored in {accountCurrency} and converted to reporting currency in summary totals.
                 </p>
               </div>
 
               {/* Notes */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                  {isBangla ? 'নোট (ঐচ্ছিক)' : 'Notes (Optional)'}
+                  Notes (Optional)
                 </label>
                 <input
                   type="text"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder={isBangla ? 'যেমন: জরুরি ফান্ড, দৈনিক খরচ' : 'e.g. Emergency reserve, daily utility wallet'}
+                  placeholder="e.g. Emergency reserve, daily utility wallet"
                   className="p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
                 />
               </div>
@@ -625,19 +603,13 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
                   onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2 rounded-xl border border-outline-variant/30 text-on-surface text-sm font-medium hover:bg-surface-container-low transition-colors"
                 >
-                  {isBangla ? 'বাতিল' : 'Cancel'}
+                  Cancel
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 rounded-xl bg-secondary text-on-secondary font-title-md text-sm font-semibold hover:opacity-90 active:scale-95 transition-all shadow-xs"
                 >
-                  {editingAccount
-                    ? isBangla
-                      ? 'আপডেট করুন'
-                      : 'Update Account'
-                    : isBangla
-                    ? 'সংরক্ষণ করুন'
-                    : 'Save Account'}
+                  {editingAccount ? 'Update Account' : 'Save Account'}
                 </button>
               </div>
             </form>
@@ -654,21 +626,12 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
             </div>
             <div>
               <h3 className="font-title-lg text-title-lg text-on-surface font-bold">
-                {isBangla ? 'অ্যাকাউন্ট মুছে ফেলতে চান?' : 'Remove Account?'}
+                Remove Account?
               </h3>
               <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-                {isBangla ? (
-                  <>
-                    আপনি কি নিশ্চিত যে <strong>"{deletingAccount.displayName || deletingAccount.provider}"</strong>{' '}
-                    অ্যাকাউন্টটি মুছে ফেলতে চান?
-                  </>
-                ) : (
-                  <>
-                    Are you sure you want to remove{' '}
-                    <strong>"{deletingAccount.displayName || deletingAccount.provider}"</strong> from your manually
-                    managed accounts?
-                  </>
-                )}
+                Are you sure you want to remove{' '}
+                <strong>"{deletingAccount.displayName || deletingAccount.provider}"</strong> from your manually
+                managed accounts?
               </p>
             </div>
             <div className="flex justify-end gap-2 pt-2 border-t border-outline-variant/15 mt-1">
@@ -677,14 +640,14 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
                 onClick={() => setDeletingAccount(null)}
                 className="px-3.5 py-1.5 rounded-xl border border-outline-variant/30 text-on-surface text-sm font-medium hover:bg-surface-container-low"
               >
-                {isBangla ? 'বাতিল' : 'Cancel'}
+                Cancel
               </button>
               <button
                 type="button"
                 onClick={confirmDelete}
                 className="px-3.5 py-1.5 rounded-xl bg-error text-on-error font-title-md text-sm font-semibold hover:opacity-90 active:scale-95 transition-all shadow-xs"
               >
-                {isBangla ? 'মুছে ফেলুন' : 'Remove Account'}
+                Remove Account
               </button>
             </div>
           </div>

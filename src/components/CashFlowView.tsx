@@ -129,8 +129,8 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
     // Day 1: Starting Point
     events.push({
       day: 1,
-      date: isBangla ? '১ম দিন' : 'Day 1',
-      event: isBangla ? 'বর্তমান শুরুর ব্যালেন্স' : 'Starting Account Balance',
+      date: 'Day 1',
+      event: 'Starting Account Balance',
       impact: `+${formatMoney(startingBalance)}`,
       type: 'neutral',
       cushion: formatMoney(startingBalance),
@@ -145,7 +145,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
         const cushionVal = pointOnDay ? pointOnDay.projectedBalance : startingBalance;
         events.push({
           day: o.dueDay,
-          date: isBangla ? `${o.dueDay} তারিখ` : `Day ${o.dueDay}`,
+          date: `Day ${o.dueDay}`,
           event: o.name,
           impact: `-${formatMoney(o.amount)}`,
           type: 'pressure',
@@ -163,8 +163,8 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           const cushionVal = pointOnDay ? pointOnDay.projectedBalance : startingBalance;
           events.push({
             day: dueDay,
-            date: isBangla ? `${dueDay} তারিখ` : `Day ${dueDay}`,
-            event: t.description || (isBangla ? 'নিয়মিত আয়' : 'Recurring Income'),
+            date: `Day ${dueDay}`,
+            event: t.description || 'Recurring Income',
             impact: `+${formatMoney(t.amount)}`,
             type: 'inflow',
             cushion: formatMoney(cushionVal),
@@ -175,8 +175,8 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
     // Horizon End: Safe or close point
     events.push({
       day: horizon,
-      date: isBangla ? `${horizon}ম দিন` : `Day ${horizon}`,
-      event: isBangla ? 'প্রত্যাশিত সমাপনী ব্যালেন্স' : 'Projected Closing Balance',
+      date: `Day ${horizon}`,
+      event: 'Projected Closing Balance',
       impact: `${projectedEndBalance >= 0 ? '+' : ''}${formatMoney(projectedEndBalance)}`,
       type: projectedEndBalance >= recommendedBuffer ? 'safe' : 'pressure',
       cushion: formatMoney(projectedEndBalance),
@@ -218,16 +218,14 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
               AI-assisted forecast
             </span>
             <span className="font-label-sm text-label-sm text-outline">
-              {isBangla ? 'ঢাকা মেট্রো মডেল • পরিবর্তনশীল অনুমান' : 'Bangladesh Digital Ledger Model • Indicative, not guaranteed'}
+              Bangladesh Digital Ledger Model • Indicative, not guaranteed
             </span>
           </div>
           <h1 className="font-headline-xl text-headline-xl text-on-surface tracking-tight font-bold">
-            {isBangla ? 'ক্যাশ-ফ্লো পূর্বাভাস ও তারল্য বাফার' : 'Cash Flow Forecast & Liquidity Buffer'}
+            Cash Flow Forecast &amp; Liquidity Buffer
           </h1>
           <p className="font-body-md text-body-md text-on-surface-variant max-w-2xl mt-0.5">
-            {isBangla
-              ? 'আসন্ন নিয়মিত খরচ ও বিলের পূর্বাভাস দেখুন এবং মাসের শেষভাগের আর্থিক চাপ দূর করুন।'
-              : 'Understand upcoming obligations, eliminate month-end overdraft stress, and plan your liquidity buffer.'}
+            Understand upcoming obligations, eliminate month-end overdraft stress, and plan your liquidity buffer.
           </p>
         </div>
 
@@ -245,7 +243,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
                     : 'text-on-surface-variant hover:text-on-surface'
                 }`}
               >
-                {days} {isBangla ? 'দিন' : 'Days'}
+                {days} Days
               </button>
             ))}
           </div>
@@ -262,18 +260,14 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-title-md text-title-md text-on-surface font-bold">
-                  {isBangla
-                    ? `আসন্ন ক্যাশ-ফ্লো প্রেশার জোন (${forecast.pressureDays.map((d) => `${d} তারিখ`).join(', ')})`
-                    : `Upcoming Cash Flow Pressure Zone (Day ${forecast.pressureDays.join(', ')})`}
+                  Upcoming Cash Flow Pressure Zone (Day {forecast.pressureDays.join(', ')})
                 </h3>
                 <span className="px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-label-sm text-[10px] font-bold">
-                  {isBangla ? 'উচ্চ অগ্রাধিকার' : 'High Focus'}
+                  High Focus
                 </span>
               </div>
               <p className="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
-                {isBangla
-                  ? `নির্ধারিত দায় ও ব্যয়ের কারণে এ সময় তারল্য হ্রাস পাওয়ার সম্ভাবনা রয়েছে। পূর্বেই বাফার আলাদা রাখুন।`
-                  : `Scheduled commitments may reduce your available cash buffer during these days. Reserve liquidity early.`}
+                Scheduled commitments may reduce your available cash buffer during these days. Reserve liquidity early.
               </p>
             </div>
           </div>
@@ -286,11 +280,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             }`}
           >
             {lockedBuffer
-              ? isBangla
-                ? `✓ ${formatMoney(recommendedBuffer)} বাফার সংরক্ষিত`
-                : `✓ ${formatMoney(recommendedBuffer)} Buffer Reserved`
-              : isBangla
-              ? `এখনই ${formatMoney(recommendedBuffer)} বাফার রাখুন`
+              ? `✓ ${formatMoney(recommendedBuffer)} Buffer Reserved`
               : `Lock ${formatMoney(recommendedBuffer)} Buffer Now`}
           </button>
         </div>
@@ -302,15 +292,11 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             </div>
             <div>
               <h3 className="font-title-md text-title-md text-on-surface font-bold">
-                {isBangla ? 'ক্যাশ-ফ্লো স্থিতিশীল ও নিরাপদ' : 'Cash Flow Stable & Well-Buffered'}
+                Cash Flow Stable &amp; Well-Buffered
               </h3>
               <p className="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
                 {activeObligations.length === 0
-                  ? isBangla
-                    ? 'কোনো আসন্ন নির্ধারিত দায় নেই। বাড়িভাড়া বা বিল যোগ করে নির্ভুল পূর্বাভাস পর্যবেক্ষণ করুন।'
-                    : 'No upcoming scheduled obligations. Add recurring bills or rent to customize your forecast.'
-                  : isBangla
-                  ? 'আপনার বর্তমান ব্যালেন্স ও আয়ের ভিত্তিতে কোনো তাৎক্ষণিক ক্যাশ-ফ্লো সংকট নেই।'
+                  ? 'No upcoming scheduled obligations. Add recurring bills or rent to customize your forecast.'
                   : 'Projected cash flow remains positive throughout the forecast period.'}
               </p>
             </div>
@@ -320,7 +306,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             className="px-4 py-2 rounded-xl bg-surface-container-lowest text-on-surface border border-outline-variant/30 hover:bg-surface-container font-title-md text-sm flex items-center gap-1.5 shadow-xs shrink-0"
           >
             <span className="material-symbols-outlined text-[16px] text-secondary">add</span>
-            <span>{isBangla ? 'বিল বা নিয়মিত খরচ যোগ করুন' : '+ Add Recurring Bill'}</span>
+            <span>+ Add Recurring Bill</span>
           </button>
         </div>
       )}
@@ -329,58 +315,52 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
         <div className="p-4 rounded-xl bg-surface-container-lowest shadow-sm border border-outline-variant/20 flex flex-col justify-between">
           <span className="text-xs font-semibold text-outline uppercase tracking-wider">
-            {isBangla ? 'শুরুর মোট ব্যালেন্স' : 'Starting Balance'}
+            Starting Balance
           </span>
           <span className="font-headline-lg text-headline-lg text-on-surface font-bold mt-1">
             {formatMoney(startingBalance)}
           </span>
           <span className="text-xs text-on-surface-variant mt-1">
-            {user?.linkedAccounts?.length || 0} {isBangla ? 'অ্যাকাউন্ট সংযুক্ত' : 'Linked Accounts'}
+            {user?.linkedAccounts?.length || 0} Linked Accounts
           </span>
         </div>
 
         <div className="p-4 rounded-xl bg-surface-container-lowest shadow-sm border border-outline-variant/20 flex flex-col justify-between">
           <span className="text-xs font-semibold text-outline uppercase tracking-wider">
-            {isBangla ? `${horizon} দিন শেষের সম্ভাব্য ব্যালেন্স` : `Projected Day ${horizon} Balance`}
+            Projected Day {horizon} Balance
           </span>
           <span className="font-headline-lg text-headline-lg text-secondary font-bold mt-1">
             {formatMoney(projectedEndBalance)}
           </span>
           <span className="text-xs text-secondary font-medium mt-1">
-            {isBangla ? 'বাস্তব প্রজেকশন' : 'Authentic baseline'}
+            Authentic baseline
           </span>
         </div>
 
         <div className="p-4 rounded-xl bg-surface-container-lowest shadow-sm border border-outline-variant/20 flex flex-col justify-between">
           <span className="text-xs font-semibold text-outline uppercase tracking-wider">
-            {isBangla ? 'আসন্ন নির্ধারিত দায় ও বিল' : 'Upcoming Obligations'}
+            Upcoming Obligations
           </span>
           <span className="font-headline-lg text-headline-lg text-error font-bold mt-1">
             {formatMoney(upcomingBillsInHorizon)}
           </span>
           <span className="text-xs text-on-surface-variant mt-1">
             {activeObligations.length > 0
-              ? `${activeObligations.length} ${isBangla ? 'টি দায় নির্ধারিত' : 'recurring bills'}`
-              : isBangla
-              ? 'কোনো নির্ধারিত বিল নেই'
+              ? `${activeObligations.length} recurring bills`
               : 'No upcoming bills set'}
           </span>
         </div>
 
         <div className="p-4 rounded-xl bg-surface-container-lowest shadow-sm border border-outline-variant/20 flex flex-col justify-between">
           <span className="text-xs font-semibold text-outline uppercase tracking-wider">
-            {isBangla ? 'প্রস্তাবিত জরুরি বাফার' : 'Recommended Buffer'}
+            Recommended Buffer
           </span>
           <span className="font-headline-lg text-headline-lg text-on-surface font-bold mt-1">
             {formatMoney(recommendedBuffer)}
           </span>
           <span className="text-xs text-secondary font-medium mt-1">
             {lockedBuffer
-              ? isBangla
-                ? 'বাফার সংরক্ষিত'
-                : 'Reserved in liquid vault'
-              : isBangla
-              ? 'তারল্য নিরাপত্তা বাফার'
+              ? 'Reserved in liquid vault'
               : 'Calculated safety margin'}
           </span>
         </div>
@@ -392,18 +372,16 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           <div className="flex items-center gap-4 text-xs font-semibold flex-wrap">
             <span className="flex items-center gap-1.5 text-secondary">
               <span className="w-3 h-1 bg-secondary rounded-full"></span>{' '}
-              {isBangla ? 'সম্ভাব্য ব্যালেন্সের গতিপথ' : 'Projected Balance Curve'}
+              Projected Balance Curve
             </span>
             <span className="flex items-center gap-1.5 text-outline">
               <span className="w-3 h-1 bg-outline-variant rounded-full"></span>{' '}
-              {isBangla
-                ? `দৈনিক স্বাভাবিক ব্যয় (~${formatMoney(dailyBurn)}/দিন)`
-                : `Daily Burn (~${formatMoney(dailyBurn)}/day)`}
+              Daily Burn (~{formatMoney(dailyBurn)}/day)
             </span>
             {hasPressure && (
               <span className="flex items-center gap-1.5 text-error">
                 <span className="w-2 h-2 rounded-full bg-error"></span>{' '}
-                {isBangla ? 'প্রেশার জোন' : 'Pressure Zone'}
+                Pressure Zone
               </span>
             )}
           </div>
@@ -448,13 +426,13 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
 
           {/* Timeline X Markers */}
           <div className="flex justify-between items-center text-outline font-label-sm text-[11px] pt-2 px-1">
-            <span>{isBangla ? '১ম দিন (শুরু)' : 'Day 1 (Start)'}</span>
+            <span>Day 1 (Start)</span>
             {horizon >= 14 && (
               <span className="text-on-surface font-semibold">
-                {isBangla ? `${Math.round(horizon / 2)}তম দিন (মধ্যবর্তী)` : `Day ${Math.round(horizon / 2)} (Mid-point)`}
+                Day {Math.round(horizon / 2)} (Mid-point)
               </span>
             )}
-            <span>{isBangla ? `${horizon}তম দিন (সমাপ্তি)` : `Day ${horizon} (End)`}</span>
+            <span>Day {horizon} (End)</span>
           </div>
         </div>
       </div>
@@ -465,7 +443,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-secondary text-[22px]">info</span>
             <h3 className="font-title-lg text-title-lg text-on-surface font-bold">
-              {isBangla ? 'পূর্বাভাস গণনা ও কার্যপদ্ধতি' : 'Forecast Assumptions & Methodology'}
+              Forecast Assumptions &amp; Methodology
             </h3>
           </div>
           <button
@@ -473,7 +451,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             className="text-xs font-semibold text-secondary hover:underline flex items-center gap-1"
           >
             <span className="material-symbols-outlined text-[14px]">add</span>
-            <span>{isBangla ? 'নতুন বিল যোগ করুন' : 'Add Bill / Obligation'}</span>
+            <span>Add Bill / Obligation</span>
           </button>
         </div>
 
@@ -481,15 +459,11 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           <div className="p-3.5 rounded-xl bg-surface-container-low border border-outline-variant/15 flex flex-col gap-1">
             <span className="text-xs font-bold text-on-surface flex items-center gap-1.5">
               <span className="material-symbols-outlined text-[16px] text-secondary">speed</span>
-              {isBangla ? 'দৈনিক খরচের হার' : 'Daily Burn Rate'}
+              Daily Burn Rate
             </span>
             <p className="text-xs text-on-surface-variant leading-relaxed">
               {dailyBurn > 0
-                ? isBangla
-                  ? `আপনার লেনদেনের ভিত্তিতে দৈনিক গড় খরচ ${formatMoney(dailyBurn)} ধরা হয়েছে।`
-                  : `Calibrated at ${formatMoney(dailyBurn)}/day based on past 30-day non-recurring spending.`
-                : isBangla
-                ? 'এখনও কোনো ব্যয়ের ইতিহাস নেই। লেনদেন যোগ করলে স্বয়ংক্রিয়ভাবে দৈনিক গড় হিসাব হবে।'
+                ? `Calibrated at ${formatMoney(dailyBurn)}/day based on past 30-day non-recurring spending.`
                 : 'No expense history recorded. Daily burn rate will calibrate as you log transactions.'}
             </p>
           </div>
@@ -497,15 +471,11 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           <div className="p-3.5 rounded-xl bg-surface-container-low border border-outline-variant/15 flex flex-col gap-1">
             <span className="text-xs font-bold text-on-surface flex items-center gap-1.5">
               <span className="material-symbols-outlined text-[16px] text-error">event</span>
-              {isBangla ? 'নির্ধারিত মাসিক দায়' : 'Scheduled Recurring Obligations'}
+              Scheduled Recurring Obligations
             </span>
             <p className="text-xs text-on-surface-variant leading-relaxed">
               {activeObligations.length > 0
-                ? isBangla
-                  ? `মোট ${activeObligations.length}টি নিয়মিত দায় (মোট ${formatMoney(upcomingBillsInHorizon)}) নির্ধারিত রয়েছে।`
-                  : `Total ${activeObligations.length} obligation(s) totaling ${formatMoney(upcomingBillsInHorizon)} scheduled this month.`
-                : isBangla
-                ? 'কোনো নিয়মিত বিল বা বাসাভাড়া নির্ধারিত নেই। যুক্ত করতে ওপরের বাটনে ক্লিক করুন।'
+                ? `Total ${activeObligations.length} obligation(s) totaling ${formatMoney(upcomingBillsInHorizon)} scheduled this month.`
                 : 'No recurring obligations registered. Add your fixed rent or bills to enable automated detection.'}
             </p>
           </div>
@@ -513,15 +483,11 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           <div className="p-3.5 rounded-xl bg-surface-container-low border border-outline-variant/15 flex flex-col gap-1">
             <span className="text-xs font-bold text-on-surface flex items-center gap-1.5">
               <span className="material-symbols-outlined text-[16px] text-secondary">payments</span>
-              {isBangla ? 'উপলব্ধ তারল্য' : 'Available Liquidity'}
+              Available Liquidity
             </span>
             <p className="text-xs text-on-surface-variant leading-relaxed">
               {startingBalance > 0
-                ? isBangla
-                  ? `সংযুক্ত অ্যাকাউন্টসমূহ থেকে মোট ${formatMoney(startingBalance)} উপলব্ধ রয়েছে।`
-                  : `Starting balance of ${formatMoney(startingBalance)} across your linked accounts.`
-                : isBangla
-                ? 'বর্তমানে অ্যাকাউন্টে কোনো ব্যালেন্স নেই। ড্যাশবোর্ড থেকে ব্যাংক বা বিকাশ ব্যালেন্স যুক্ত করুন।'
+                ? `Starting balance of ${formatMoney(startingBalance)} across your linked accounts.`
                 : 'No liquid balance registered. Update your linked account balances on the Dashboard.'}
             </p>
           </div>
@@ -532,13 +498,13 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
       <div className="p-space-lg rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/20 flex flex-col gap-space-md">
         <div className="flex items-center justify-between">
           <h3 className="font-title-lg text-title-lg text-on-surface font-bold">
-            {isBangla ? `${horizon}-দিনের প্রধান নগদ প্রবাহ ইভেন্টসমূহ` : `Key Events within ${horizon}-Day Window`}
+            Key Events within {horizon}-Day Window
           </h3>
           <button
             onClick={() => onNavigate('ai-coach')}
             className="text-xs font-semibold text-secondary hover:underline flex items-center gap-1"
           >
-            <span>{isBangla ? 'কোচকে জিজ্ঞাসা করুন' : 'Ask AI Coach Details'}</span>
+            <span>Ask AI Coach Details</span>
             <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
           </button>
         </div>
@@ -586,7 +552,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-space-lg shadow-2xl border border-outline-variant/30 flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <h3 className="font-headline-md text-headline-md text-on-surface font-bold">
-                {isBangla ? 'নতুন নিয়মিত বিল বা দায় যোগ করুন' : 'Add Recurring Bill / Obligation'}
+                Add Recurring Bill / Obligation
               </h3>
               <button
                 onClick={() => setIsAddObligationOpen(false)}
@@ -598,7 +564,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             <form onSubmit={handleAddObligation} className="flex flex-col gap-3">
               <div>
                 <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                  {isBangla ? 'বিলের নাম (যেমন: বাসা ভাড়া, ইন্টারনেট)' : 'Obligation Name (e.g. Rent, Internet)'}
+                  Obligation Name (e.g. Rent, Internet)
                 </label>
                 <input
                   type="text"
@@ -611,7 +577,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
               </div>
               <div>
                 <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                  {isBangla ? `পরিমাণ (${currConfig.displaySymbol})` : `Amount (${currConfig.displaySymbol})`}
+                  Amount ({currConfig.displaySymbol})
                 </label>
                 <input
                   type="number"
@@ -625,7 +591,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
               </div>
               <div>
                 <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                  {isBangla ? 'মাসের কোন তারিখে দেয় (১ - ৩১)' : 'Due Day of Month (1 - 31)'}
+                  Due Day of Month (1 - 31)
                 </label>
                 <input
                   type="number"
@@ -643,13 +609,13 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
                   onClick={() => setIsAddObligationOpen(false)}
                   className="px-4 py-2 rounded-xl text-sm font-semibold text-outline hover:text-on-surface"
                 >
-                  {isBangla ? 'বাতিল' : 'Cancel'}
+                  Cancel
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 rounded-xl text-sm font-bold bg-secondary text-on-secondary shadow-sm hover:opacity-95"
                 >
-                  {isBangla ? 'সংরক্ষণ করুন' : 'Save Obligation'}
+                  Save Obligation
                 </button>
               </div>
             </form>

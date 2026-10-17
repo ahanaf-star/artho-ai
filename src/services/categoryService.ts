@@ -41,9 +41,7 @@ export function getCategoryIcon(categoryName: string): string {
     name.includes('dining') ||
     name.includes('restaurant') ||
     name.includes('bazaar') ||
-    name.includes('bazar') ||
-    name.includes('বাজার') ||
-    name.includes('খাবার')
+    name.includes('bazar')
   ) {
     return 'restaurant';
   }
@@ -59,10 +57,7 @@ export function getCategoryIcon(categoryName: string): string {
     name.includes('fuel') ||
     name.includes('octane') ||
     name.includes('petrol') ||
-    name.includes('diesel') ||
-    name.includes('গাড়ি') ||
-    name.includes('যাতায়াত') ||
-    name.includes('ভাড়া')
+    name.includes('diesel')
   ) {
     return 'directions_subway';
   }
@@ -74,8 +69,7 @@ export function getCategoryIcon(categoryName: string): string {
     name.includes('dress') ||
     name.includes('apparel') ||
     name.includes('electronics') ||
-    name.includes('device') ||
-    name.includes('কেনাকাটা')
+    name.includes('device')
   ) {
     return 'shopping_bag';
   }
@@ -94,9 +88,7 @@ export function getCategoryIcon(categoryName: string): string {
     name.includes('internet') ||
     name.includes('wifi') ||
     name.includes('broadband') ||
-    name.includes('bill') ||
-    name.includes('বিদ্যুৎ') ||
-    name.includes('বিল')
+    name.includes('bill')
   ) {
     return 'bolt';
   }
@@ -108,8 +100,7 @@ export function getCategoryIcon(categoryName: string): string {
     name.includes('charge') ||
     name.includes('cash-out') ||
     name.includes('cashout') ||
-    name.includes('bank fee') ||
-    name.includes('ব্যাংক')
+    name.includes('bank fee')
   ) {
     return 'price_change';
   }
@@ -121,8 +112,7 @@ export function getCategoryIcon(categoryName: string): string {
     name.includes('game') ||
     name.includes('netflix') ||
     name.includes('spotify') ||
-    name.includes('play') ||
-    name.includes('বিনোদ')
+    name.includes('play')
   ) {
     return 'movie';
   }
@@ -131,9 +121,7 @@ export function getCategoryIcon(categoryName: string): string {
     name.includes('medicine') ||
     name.includes('pharma') ||
     name.includes('drug') ||
-    name.includes('prescription') ||
-    name.includes('ঔষধ') ||
-    name.includes('ওষুধ')
+    name.includes('prescription')
   ) {
     return 'medical_services';
   }
@@ -145,9 +133,7 @@ export function getCategoryIcon(categoryName: string): string {
     name.includes('hospital') ||
     name.includes('clinic') ||
     name.includes('square hospital') ||
-    name.includes('evercare') ||
-    name.includes('ল্যাব') ||
-    name.includes('স্বাস্থ্য')
+    name.includes('evercare')
   ) {
     return 'health_and_safety';
   }
@@ -161,8 +147,7 @@ export function getCategoryIcon(categoryName: string): string {
     name.includes('varsity') ||
     name.includes('book') ||
     name.includes('course') ||
-    name.includes('exam') ||
-    name.includes('শিক্ষা')
+    name.includes('exam')
   ) {
     return 'school';
   }
@@ -173,8 +158,7 @@ export function getCategoryIcon(categoryName: string): string {
     name.includes('hotel') ||
     name.includes('resort') ||
     name.includes('flight') ||
-    name.includes('biman') ||
-    name.includes('ভ্রমণ')
+    name.includes('biman')
   ) {
     return 'flight';
   }
@@ -183,8 +167,7 @@ export function getCategoryIcon(categoryName: string): string {
     name.includes('pet') ||
     name.includes('dog') ||
     name.includes('cat') ||
-    name.includes('vet') ||
-    name.includes('পোষা')
+    name.includes('vet')
   ) {
     return 'pets';
   }
@@ -193,9 +176,7 @@ export function getCategoryIcon(categoryName: string): string {
     name.includes('rent') ||
     name.includes('home') ||
     name.includes('house') ||
-    name.includes('flat') ||
-    name.includes('বাড়ি') ||
-    name.includes('ভাড়া')
+    name.includes('flat')
   ) {
     return 'home';
   }
@@ -204,9 +185,7 @@ export function getCategoryIcon(categoryName: string): string {
     name.includes('salary') ||
     name.includes('inflow') ||
     name.includes('income') ||
-    name.includes('remittance') ||
-    name.includes('বেতন') ||
-    name.includes('আয়')
+    name.includes('remittance')
   ) {
     return 'payments';
   }
@@ -215,8 +194,7 @@ export function getCategoryIcon(categoryName: string): string {
     name.includes('gym') ||
     name.includes('fitness') ||
     name.includes('workout') ||
-    name.includes('exercise') ||
-    name.includes('ব্যায়াম')
+    name.includes('exercise')
   ) {
     return 'fitness_center';
   }
@@ -226,8 +204,7 @@ export function getCategoryIcon(categoryName: string): string {
     name.includes('invest') ||
     name.includes('vault') ||
     name.includes('dps') ||
-    name.includes('fdr') ||
-    name.includes('সঞ্চয়')
+    name.includes('fdr')
   ) {
     return 'savings';
   }

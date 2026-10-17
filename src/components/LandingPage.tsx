@@ -31,27 +31,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const faqs = [
     {
       qEn: 'How does ArthoBachao AI connect to bKash, Nagad, and City Bank?',
-      qBn: 'অর্থবাঁচাও এআই কীভাবে বিকাশ, নগদ এবং সিটি ব্যাংকের সাথে কাজ করে?',
       aEn: 'ArthoBachao AI aggregates read-only transaction alerts and statements with end-to-end local encryption. It never asks for your transactional PINs or OTPs, providing clean classification and anomaly detection without compromising account custody.',
-      aBn: 'অর্থবাঁচাও এআই লেনদেনের নোটিফিকেশন ও স্টেটমেন্ট নিরাপদে বিশ্লেষণ করে। এটি কখনোই আপনার পিন বা ওটিপি চায় না, ফলে আপনার অ্যাকাউন্ট সম্পূর্ণ নিরাপদ থাকে।',
     },
     {
-      qEn: 'Does the AI Financial Coach support conversational Bangla?',
-      qBn: 'এআই আর্থিক কোচ কি বাংলায় কথা বলতে পারে?',
-      aEn: 'Yes! Powered by Gemini 3.8 Flash, the AI Coach fluently understands colloquial Bangladeshi financial terms (যেমন: "টাকা জমাবো কীভাবে", "মাস শেষের টানাটানি", "ক্যাশ-আউট খরচ"). You can toggle between English and বাংলা with a single click.',
-      aBn: 'হ্যাঁ! জেমিনাই ৩.৮ ফ্ল্যাশ দ্বারা পরিচালিত কোচ স্বাভাবিক বাংলায় কথা বলে এবং ঢাকার স্থানীয় আর্থিক পরিস্থিতি বোঝে।',
+      qEn: 'Does the AI Financial Coach support conversational financial coaching?',
+      aEn: 'Yes! Powered by Gemini, the AI Coach fluently understands your financial data, spending patterns, and cash flow needs. It offers clear, actionable, and strictly data-grounded financial advice in English.',
     },
     {
       qEn: 'What makes the Financial Health Score different from a credit score?',
-      qBn: 'ফাইন্যান্সিয়াল হেলথ স্কোর সাধারণ ক্রেডিট স্কোরের চেয়ে কীভাবে আলাদা?',
       aEn: 'Unlike opaque credit scoring models, ArthoBachao AI gives you a 100% transparent, explainable 0–100 score based on Saving Consistency, Spending Control, Cash Flow Stability, and Liquidity Buffer Readiness. Every point gained is tied to actionable habits.',
-      aBn: 'এটি কোনো গোপন ব্ল্যাক-বক্স নয়। সঞ্চয়ের ধারাবাহিকতা, ব্যয়ের নিয়ন্ত্রণ এবং ক্যাশ-ফ্লো স্থিতিশীলতার ওপর ভিত্তি করে স্কোর ১০০% স্পষ্ট ব্যাখ্যাসহ দেওয়া হয়।',
     },
     {
       qEn: 'Can I simulate cash flow to avoid running out of money before month-end?',
-      qBn: 'মাস শেষের আর্থিক টানাটানি এড়াতে ক্যাশ-ফ্লো পূর্বাভাস কি সাহায্য করবে?',
       aEn: 'Absolutely. The 30-Day Cash-Flow Forecast projects your daily liquidity curve, pinpoints upcoming pressure zones (like clustered rent on the 26th and utility bills), and lets you simulate expense cuts to ensure a safe positive balance.',
-      aBn: 'অবশ্যই। ৩০ দিনের পূর্বাভাসে আগামী খরচ ও ভাড়ার চাপ আগে থেকেই চিহ্নিত হয় এবং নিরাপদ ব্যালেন্স বজায় রাখতে সাহায্য করে।',
     },
   ];
 
@@ -85,7 +77,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               onClick={() => onNavigate('dashboard')}
               className="px-4 py-2 rounded-xl bg-primary text-on-primary font-title-md text-xs sm:text-sm font-bold shadow-xs hover:opacity-95 active:scale-95 transition-all flex items-center gap-1.5"
             >
-              <span>{isBangla ? 'ড্যাশবোর্ডে যান' : 'Go to Dashboard'}</span>
+              <span>Go to Dashboard</span>
               <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
             </button>
           ) : (
@@ -94,13 +86,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 onClick={() => (onOpenLogin ? onOpenLogin() : onNavigate('login'))}
                 className="px-3.5 sm:px-4 py-2 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-title-md text-xs sm:text-sm font-semibold border border-outline-variant/30 transition-all active:scale-95"
               >
-                {isBangla ? 'লগইন' : 'Sign In'}
+                Sign In
               </button>
               <button
                 onClick={() => (onOpenSignup ? onOpenSignup() : onNavigate('signup'))}
                 className="px-3.5 sm:px-4 py-2 rounded-xl bg-primary text-on-primary font-title-md text-xs sm:text-sm font-bold shadow-xs hover:opacity-95 active:scale-95 transition-all flex items-center gap-1"
               >
-                <span>{isBangla ? 'শুরু করুন' : 'Get Started'}</span>
+                <span>Get Started</span>
                 <span className="material-symbols-outlined text-[16px] hidden sm:inline">arrow_forward</span>
               </button>
             </>
@@ -119,9 +111,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-surface-container-highest border border-outline-variant/30 shadow-xs mb-6">
             <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
             <span className="font-label-md text-label-md text-on-surface font-semibold">
-              {isBangla
-                ? 'বাংলাদেশের প্রথম ইন্টেলিজেন্ট ব্যক্তিগত সম্পদ ইঞ্জিন'
-                : 'Next-Gen AI Wealth & Savings Engine for Bangladesh'}
+              Next-Gen AI Wealth &amp; Savings Engine for Bangladesh
             </span>
             <span className="hidden sm:inline-block px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label-sm text-[11px] font-bold">
               Powered by Gemini
@@ -130,30 +120,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           {/* Main Title */}
           <h1 className="font-headline-xl text-4xl sm:text-5xl lg:text-6xl font-extrabold text-on-surface tracking-tight leading-[1.15] max-w-4xl">
-            {isBangla ? (
-              <>
-                নিজের টাকাকে বুঝুন। <br className="hidden sm:inline" />
-                <span className="bg-gradient-to-r from-secondary to-primary-container bg-clip-text text-transparent">
-                  স্মার্ট পরিকল্পনা করুন।
-                </span>{' '}
-                লক্ষ্য অর্জন করুন।
-              </>
-            ) : (
-              <>
-                Understand your money.{' '}
-                <span className="bg-gradient-to-r from-secondary to-primary-container bg-clip-text text-transparent">
-                  Plan smarter.
-                </span>{' '}
-                Reach your goals.
-              </>
-            )}
+            Understand your money.{' '}
+            <span className="bg-gradient-to-r from-secondary to-primary-container bg-clip-text text-transparent">
+              Plan smarter.
+            </span>{' '}
+            Reach your goals.
           </h1>
 
           {/* Subtitle */}
           <p className="font-body-lg text-lg sm:text-xl text-on-surface-variant max-w-2xl mt-5 leading-relaxed">
-            {isBangla
-              ? 'বিকাশ, নগদ ও ব্যাংক অ্যাকাউন্টের খরচের হিসাব রাখুন, মাস শেষের টানাটানি দূর করুন এবং জেমিনাই এআই কোচের সাথে বাংলায় আর্থিক পরামর্শ নিন।'
-              : 'AI-assisted spending analysis, 30-day cash flow forecasting, and a bilingual financial coach grounded in your real Bangladeshi financial numbers.'}
+            AI-assisted spending analysis, 30-day cash flow forecasting, and a financial coach grounded in your real Bangladeshi financial numbers.
           </p>
 
           {/* Action CTAs */}
@@ -162,7 +138,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               onClick={() => onNavigate('dashboard')}
               className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-primary text-on-primary font-title-lg text-title-lg font-bold shadow-lg hover:shadow-xl hover:opacity-95 active:scale-95 transition-all flex items-center justify-center gap-2"
             >
-              <span>{isBangla ? 'লাইভ ড্যাশবোর্ড দেখুন' : 'Explore Live Dashboard'}</span>
+              <span>Explore Live Dashboard</span>
               <span className="material-symbols-outlined text-[20px] text-secondary-container">
                 arrow_forward
               </span>
@@ -175,7 +151,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <span className="material-symbols-outlined text-[20px] text-tertiary-container">
                 auto_awesome
               </span>
-              <span>{isBangla ? 'এআই কোচের সাথে কথা বলুন' : 'Ask Gemini AI Coach'}</span>
+              <span>Ask Gemini AI Coach</span>
             </button>
           </div>
 
@@ -190,8 +166,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <span>Local Device Data Isolation</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-secondary text-[18px]">translate</span>
-              <span>Bilingual English &amp; বাংলা</span>
+              <span className="material-symbols-outlined text-secondary text-[18px]">insights</span>
+              <span>Data-Grounded Insights</span>
             </div>
           </div>
         </div>
@@ -202,7 +178,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
           <div>
             <h2 className="font-title-lg text-title-lg text-on-surface font-bold">
-              {isBangla ? 'লাইভ ডেমো প্রোফাইল প্যারামিটার' : 'Live Demo Financial Baseline'}
+              Live Demo Financial Baseline
             </h2>
             <p className="font-body-sm text-body-sm text-on-surface-variant">
               Actual values calculated for demo user Ahmed Rahman (Dhaka Metro)
@@ -317,7 +293,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </span>
               </div>
               <p className="font-body-md text-body-md text-on-surface-variant mt-2">
-                Ask in English or বাংলা: "Why do I run short before month-end?" or "How can I save ৳5,000 more?" Never invents numbers.
+                Ask in English: "Why do I run short before month-end?" or "How can I save ৳5,000 more?" Never invents numbers.
               </p>
             </div>
             <div className="pt-4 mt-4 border-t border-outline-variant/15 flex items-center justify-between text-sm font-bold text-secondary">
@@ -535,12 +511,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <section className="mt-14 max-w-4xl mx-auto w-full">
         <div className="text-center mb-8">
           <h2 className="font-headline-md text-2xl sm:text-3xl font-bold text-on-surface">
-            {isBangla ? 'সাধারণ প্রশ্নোত্তর' : 'Frequently Asked Questions'}
+            Frequently Asked Questions
           </h2>
           <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">
-            {isBangla
-              ? 'অর্থবাঁচাও এআই কীভাবে কাজ করে তা সহজে জেনে নিন'
-              : 'Common questions about data privacy, AI insights, and Bangladeshi bank sync'}
+            Common questions about data privacy, AI insights, and Bangladeshi bank sync
           </p>
         </div>
 
@@ -556,14 +530,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   onClick={() => setFaqOpenIndex(isOpen ? null : idx)}
                   className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-4 font-title-md text-on-surface font-semibold hover:bg-surface-container-low transition-colors"
                 >
-                  <span>{isBangla ? faq.qBn : faq.qEn}</span>
+                  <span>{faq.qEn}</span>
                   <span className="material-symbols-outlined text-[20px] text-outline shrink-0">
                     {isOpen ? 'expand_less' : 'expand_more'}
                   </span>
                 </button>
                 {isOpen && (
                   <div className="px-4 pb-5 sm:px-5 font-body-md text-sm text-on-surface-variant leading-relaxed border-t border-outline-variant/15 pt-3">
-                    {isBangla ? faq.aBn : faq.aEn}
+                    {faq.aEn}
                   </div>
                 )}
               </div>
@@ -575,20 +549,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* Final Action Banner */}
       <section className="mt-14 p-8 sm:p-12 rounded-3xl bg-primary text-on-primary text-center flex flex-col items-center gap-4 shadow-lg border border-outline-variant/20">
         <h2 className="font-headline-xl text-3xl sm:text-4xl font-extrabold max-w-2xl">
-          {isBangla
-            ? 'আজই আপনার আর্থিক ভবিষ্যতের নিয়ন্ত্রণ নিন'
-            : 'Take Control of Your Financial Future Today'}
+          Take Control of Your Financial Future Today
         </h2>
         <p className="font-body-lg text-primary-fixed-dim max-w-xl text-sm sm:text-base">
-          {isBangla
-            ? 'সম্পূর্ণ ডেমো ডেটা ও এআই কোচের সাথে এখনই ঘুরে দেখুন। কোনো ক্রেডিট কার্ড বা রেজিস্ট্রেশনের বাধ্যবাধকতা নেই।'
-            : 'Explore the full interactive prototype with synthetic Dhaka financial data and Gemini AI Coach.'}
+          Explore the full interactive prototype with synthetic Dhaka financial data and Gemini AI Coach.
         </p>
         <button
           onClick={() => onNavigate('dashboard')}
           className="mt-2 px-8 py-3.5 rounded-xl bg-secondary-container text-on-secondary-container font-title-lg font-bold hover:opacity-95 active:scale-95 transition-all shadow-md flex items-center gap-2"
         >
-          <span>{isBangla ? 'ড্যাশবোর্ডে প্রবেশ করুন' : 'Launch ArthoBachao AI Dashboard'}</span>
+          <span>Launch ArthoBachao AI Dashboard</span>
           <span className="material-symbols-outlined text-[20px]">rocket_launch</span>
         </button>
       </section>

@@ -41,15 +41,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     try {
       if (mode === 'signup') {
         if (!name.trim()) {
-          throw new Error(isBangla ? 'অনুগ্রহ করে আপনার পুরো নাম লিখুন।' : 'Please enter your full name.');
+          throw new Error('Please enter your full name.');
         }
         if (password !== confirmPassword) {
-          throw new Error(isBangla ? 'পাসওয়ার্ড দুটি মিলছে না।' : 'Passwords do not match.');
+          throw new Error('Passwords do not match.');
         }
         if (password.length < 6) {
-          throw new Error(isBangla ? 'পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে।' : 'Password must be at least 6 characters long.');
+          throw new Error('Password must be at least 6 characters long.');
         }
-        const session = await authService.signup(name, email, password, isBangla ? 'bn' : 'en');
+        const session = await authService.signup(name, email, password, 'en');
         onAuthenticated(session);
       } else {
         const session = await authService.login(email, password);
@@ -85,7 +85,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           className="absolute top-6 left-6 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-low hover:bg-surface-container text-on-surface-variant hover:text-on-surface text-xs font-semibold shadow-xs border border-outline-variant/30 transition-all"
         >
           <span className="material-symbols-outlined text-[16px]">arrow_back</span>
-          <span>{isBangla ? 'হোম পেজ' : 'Back to Home'}</span>
+          <span>Back to Home</span>
         </button>
       )}
 
@@ -107,9 +107,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               ArthoBachao AI
             </h1>
             <p className="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
-              {isBangla
-                ? 'আপনার বুদ্ধিমত্তা সম্পন্ন ব্যক্তিগত আর্থিক অভিভাবক'
-                : 'Intelligent Personal Wealth & Savings Engine'}
+              Intelligent Personal Wealth &amp; Savings Engine
             </p>
           </div>
         </div>
@@ -130,7 +128,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   : 'text-on-surface-variant hover:text-on-surface'
                 }`}
             >
-              {isBangla ? 'লগইন' : 'Sign In'}
+              Sign In
             </button>
             <button
               type="button"
@@ -144,7 +142,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   : 'text-on-surface-variant hover:text-on-surface'
                 }`}
             >
-              {isBangla ? 'অ্যাকাউন্ট খুলুন' : 'Create Account'}
+              Create Account
             </button>
           </div>
 
@@ -157,14 +155,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           >
             <span className="material-symbols-outlined text-[18px]">bolt</span>
             <span>
-              {isBangla ? 'আহমেদ রহমান (ডেমো অ্যাকাউন্ট) হিসেবে প্রবেশ' : 'Sign in as Demo User (Ahmed Rahman)'}
+              Sign in as Demo User (Ahmed Rahman)
             </span>
           </button>
 
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-outline-variant/20"></div>
             <span className="text-[11px] font-semibold text-outline uppercase tracking-wider">
-              {isBangla ? 'অথবা ইমেইল ব্যবহার করুন' : 'or continue with credentials'}
+              or continue with credentials
             </span>
             <div className="flex-1 h-px bg-outline-variant/20"></div>
           </div>
@@ -182,7 +180,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             {mode === 'signup' && (
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                  {isBangla ? 'পুরো নাম' : 'Full Name'}
+                  Full Name
                 </label>
                 <div className="relative flex items-center">
                   <span className="material-symbols-outlined absolute left-3 text-outline text-[18px]">
@@ -193,7 +191,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder={isBangla ? 'যেমন: আহমেদ রহমান' : 'e.g. Tanvir Hossain'}
+                    placeholder="e.g. Tanvir Hossain"
                     className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface font-body-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-container"
                   />
                 </div>
@@ -202,7 +200,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                {isBangla ? 'ইমেইল ঠিকানা' : 'Email Address'}
+                Email Address
               </label>
               <div className="relative flex items-center">
                 <span className="material-symbols-outlined absolute left-3 text-outline text-[18px]">
@@ -222,7 +220,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                  {isBangla ? 'পাসওয়ার্ড' : 'Password'}
+                  Password
                 </label>
                 {mode === 'login' && (
                   <span className="text-[11px] text-outline font-medium">
@@ -257,7 +255,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             {mode === 'signup' && (
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                  {isBangla ? 'পাসওয়ার্ড নিশ্চিত করুন' : 'Confirm Password'}
+                  Confirm Password
                 </label>
                 <div className="relative flex items-center">
                   <span className="material-symbols-outlined absolute left-3 text-outline text-[18px]">
@@ -283,18 +281,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               {isLoading ? (
                 <>
                   <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>
-                  <span>{isBangla ? 'যাচাই করা হচ্ছে...' : 'Authenticating...'}</span>
+                  <span>Authenticating...</span>
                 </>
               ) : (
                 <>
                   <span>
-                    {mode === 'login'
-                      ? isBangla
-                        ? 'লগইন করুন'
-                        : 'Sign In to Account'
-                      : isBangla
-                        ? 'অ্যাকাউন্ট তৈরি করুন'
-                        : 'Create Account'}
+                    {mode === 'login' ? 'Sign In to Account' : 'Create Account'}
                   </span>
                   <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                 </>

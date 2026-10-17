@@ -98,8 +98,8 @@ export async function askFinancialCoach(
     const requestPayload: any = {
       message: userQuery,
       prompt: userQuery,
-      language: isBn ? 'bn' : 'en',
-      isBangla: isBn,
+      language: 'en',
+      isBangla: false,
       history,
     };
 
@@ -194,7 +194,7 @@ export async function askFinancialCoach(
           sender: 'assistant',
           text: answerText,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          isBangla: isBn,
+          isBangla: false,
           isDeterministic: data.source !== 'ai',
           source: data.source,
           factsUsed: data.factsUsed,
@@ -207,11 +207,9 @@ export async function askFinancialCoach(
       return {
         id: `coach-${Date.now()}`,
         sender: 'assistant',
-        text: isBn
-          ? 'আপনার সেশনটির মেয়াদ শেষ হয়েছে। অনুগ্রহ করে আপনার অ্যাকাউন্টে পুনরায় লগইন করে এআই কোচের পরামর্শ গ্রহণ করুন।'
-          : 'Your session has expired. Please log in again to consult the AI Financial Coach with your verified records.',
+        text: 'Your session has expired. Please log in again to consult the AI Financial Coach with your verified records.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isBangla: isBn,
+        isBangla: false,
         isDeterministic: true,
       };
     }
@@ -219,17 +217,15 @@ export async function askFinancialCoach(
     console.warn('[AICoach] Network request to /api/ai/coach failed:', err);
   }
 
-  // Phase 5: Service failure / connection error without fabricating data
-  const errorText = isBn
-    ? 'সার্ভারের সাথে সংযোগ স্থাপন করা সম্ভব হয়নি। অনুগ্রহ করে আপনার ইন্টারনেট সংযোগ পরীক্ষা করুন অথবা কিছুক্ষণ পর আবার চেষ্টা করুন।'
-    : 'Unable to connect to the ArthoBachao AI Coach service. Please check your internet connection or try again in a moment.';
+  // Service failure / connection error without fabricating data
+  const errorText = 'Unable to connect to the ArthoBachao AI Coach service. Please check your internet connection or try again in a moment.';
 
   return {
     id: `coach-${Date.now()}`,
     sender: 'assistant',
     text: errorText,
     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    isBangla: isBn,
+    isBangla: false,
     isDeterministic: true,
   };
 }

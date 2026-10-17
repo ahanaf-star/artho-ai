@@ -79,13 +79,12 @@ export function parseLocalDate(dateStr: string): Date {
   return new Date(year, (month || 1) - 1, day || 1);
 }
 
-export function formatDisplayDate(dateStr: string, isBangla: boolean = false): string {
+export function formatDisplayDate(dateStr: string, _isBangla: boolean = false): string {
   if (!dateStr) return '';
   const d = parseLocalDate(dateStr);
   const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const monthsBn = ['জানু', 'ফেব্রু', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টে', 'অক্টো', 'নভে', 'ডিসে'];
   const day = d.getDate();
-  const month = isBangla ? monthsBn[d.getMonth()] : monthsEn[d.getMonth()];
+  const month = monthsEn[d.getMonth()];
   const year = d.getFullYear();
   return `${day} ${month} ${year}`;
 }
@@ -128,7 +127,7 @@ export function getAvailableMonths(transactions: Transaction[]): string[] {
   return months.length > 0 ? months : [getLocalDateString().slice(0, 7)];
 }
 
-export function formatMonthName(monthStr: string, isBangla: boolean = false): string {
+export function formatMonthName(monthStr: string, _isBangla: boolean = false): string {
   if (!monthStr) return '';
   const [yearStr, mStr] = monthStr.split('-');
   const mIdx = (parseInt(mStr, 10) || 1) - 1;
@@ -146,21 +145,7 @@ export function formatMonthName(monthStr: string, isBangla: boolean = false): st
     'November',
     'December',
   ];
-  const monthsBn = [
-    'জানুয়ারি',
-    'ফেব্রুয়ারি',
-    'মার্চ',
-    'এপ্রিল',
-    'মে',
-    'জুন',
-    'জুলাই',
-    'আগস্ট',
-    'সেপ্টেম্বর',
-    'অক্টোবর',
-    'নভেম্বর',
-    'ডিসেম্বর',
-  ];
-  const mName = isBangla ? monthsBn[mIdx] : monthsEn[mIdx];
+  const mName = monthsEn[mIdx];
   return `${mName} ${yearStr}`;
 }
 
@@ -533,7 +518,7 @@ export function calculateFinancialHealthScore(
     const emergencyGoal = goals.find((g) => {
       const cat = (g.category || '').toLowerCase();
       const title = (g.title || g.name || '').toLowerCase();
-      return cat.includes('emergency') || title.includes('emergency') || cat.includes('জরুরি') || title.includes('জরুরি');
+      return cat.includes('emergency') || title.includes('emergency');
     });
 
     if (!emergencyGoal) {

@@ -86,8 +86,7 @@ export function resolveTimeZone(preferredTimeZone?: string | null): string {
  * Convert western Arabic digits to Bengali digits
  */
 export function toBanglaDigits(val: number | string): string {
-  const banglaDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
-  return String(val).replace(/[0-9]/g, (digit) => banglaDigits[Number(digit)]);
+  return String(val);
 }
 
 /**
@@ -169,29 +168,22 @@ export function formatCalendarDate(
  * - "Updated today at 17:11"
  * - "Updated yesterday at 09:45"
  * - "Updated on Oct 14, 2026 at 16:30"
- *
- * Bangla translations:
- * - "আজ ১৭:১১-এ আপডেট"
- * - "গতকাল ০৯:৪৫-এ আপডেট"
- * - "১৪ অক্টো, ২০২৬ ১৬:৩০-এ আপডেট"
  */
 export function formatLastUpdated(
   timestamp: string | Date | null | undefined,
   options: FormatTimestampOptions = {}
 ): string {
-  const isBangla = Boolean(options.isBangla);
-
   if (!timestamp) {
-    return isBangla ? 'এখনও আপডেট হয়নি' : 'Awaiting sync';
+    return 'Awaiting sync';
   }
 
   const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
   if (!date || isNaN(date.getTime())) {
-    return isBangla ? 'তারিখ পাওয়া যায়নি' : 'Invalid date';
+    return 'Invalid date';
   }
 
   const timeZone = resolveTimeZone(options.timeZone);
-  const locale = options.locale || (isBangla ? 'bn-BD' : 'en-US');
+  const locale = options.locale || 'en-US';
   const now = options.referenceDate || new Date();
 
   // Calendar day comparison in the user's specific timezone
@@ -200,14 +192,13 @@ export function formatLastUpdated(
   // Always format time in 24-hour (HH:mm) format
   const timeFormatted = formatTimeOfDay(date, {
     timeZone,
-    locale: isBangla ? 'bn-BD' : 'en-GB',
+    locale: 'en-GB',
     hour12: false,
-    isBangla,
   });
 
   // 1. If the update occurred today: "Updated today at HH:mm"
   if (todayStr === dateStr) {
-    return isBangla ? `আজ ${timeFormatted}-এ আপডেট` : `Updated today at ${timeFormatted}`;
+    return `Updated today at ${timeFormatted}`;
   }
 
   // 2. Check if target was yesterday in the user's timezone: "Updated yesterday at HH:mm"
@@ -218,14 +209,11 @@ export function formatLastUpdated(
   const dayDifference = Math.round((utcTodayMidnight - utcDateMidnight) / (24 * 60 * 60 * 1000));
 
   if (dayDifference === 1) {
-    return isBangla ? `গতকাল ${timeFormatted}-এ আপডেট` : `Updated yesterday at ${timeFormatted}`;
+    return `Updated yesterday at ${timeFormatted}`;
   }
 
   // 3. Otherwise: "Updated on MMM DD, YYYY at HH:mm"
-  const dateFormatted = formatCalendarDate(date, { timeZone, locale, isBangla });
-  if (isBangla) {
-    return `${dateFormatted} ${timeFormatted}-এ আপডেট`;
-  }
+  const dateFormatted = formatCalendarDate(date, { timeZone, locale });
   return `Updated on ${dateFormatted} at ${timeFormatted}`;
 }
 

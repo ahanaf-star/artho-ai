@@ -121,7 +121,8 @@ export default function App() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [coachPreQuery, setCoachPreQuery] = useState<string | undefined>(undefined);
 
-  const [isBangla, setIsBangla] = useState<boolean>(false);
+  const isBangla = false;
+  const setIsBangla = (_val: boolean) => {};
   const [exchangeRates, setExchangeRates] = useState<ExchangeRatesState>(() => getLoadedRates());
 
   useEffect(() => {

@@ -41,11 +41,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
     const trimmedMerchant = merchant.trim();
     if (type === 'expense' && !trimmedMerchant) {
-      setMerchantError(
-        isBangla
-          ? 'মার্চেন্ট / প্রতিষ্ঠানের নাম দেওয়া আবশ্যক'
-          : 'Merchant / Counterparty name is required'
-      );
+      setMerchantError('Merchant / Counterparty name is required');
       return;
     }
 
@@ -83,7 +79,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-space-lg shadow-2xl border border-outline-variant/30 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between pb-2 border-b border-outline-variant/15">
           <h2 className="font-headline-md text-headline-md text-on-surface font-bold">
-            {isBangla ? 'নতুন লেনদেন যুক্ত করুন' : 'Add New Transaction'}
+            Add New Transaction
           </h2>
           <button
             onClick={() => {
@@ -104,11 +100,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               onClick={() => {
                 setType('expense');
                 if (!merchant.trim()) {
-                  setMerchantError(
-                    isBangla
-                      ? 'মার্চেন্ট / প্রতিষ্ঠানের নাম দেওয়া আবশ্যক'
-                      : 'Merchant / Counterparty name is required'
-                  );
+                  setMerchantError('Merchant / Counterparty name is required');
                 } else {
                   setMerchantError(null);
                 }
@@ -174,11 +166,11 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
           {/* Merchant */}
           <div className="flex flex-col gap-1">
             <label className="text-xs font-semibold text-outline uppercase tracking-wider flex items-center gap-1">
-              <span>{isBangla ? 'মার্চেন্ট / প্রতিষ্ঠান' : 'Merchant / Counterparty'}</span>
+              <span>Merchant / Counterparty</span>
               {type === 'expense' ? (
-                <span className="text-error font-bold" title={isBangla ? 'বাধ্যতামূলক' : 'Required'}>*</span>
+                <span className="text-error font-bold" title="Required">*</span>
               ) : (
-                <span className="text-[10px] font-normal text-outline">({isBangla ? 'ঐচ্ছিক' : 'Optional'})</span>
+                <span className="text-[10px] font-normal text-outline">(Optional)</span>
               )}
             </label>
             <input
@@ -191,11 +183,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                   if (val.trim()) {
                     setMerchantError(null);
                   } else if (merchantError) {
-                    setMerchantError(
-                      isBangla
-                        ? 'মার্চেন্ট / প্রতিষ্ঠানের নাম দেওয়া আবশ্যক'
-                        : 'Merchant / Counterparty name is required'
-                    );
+                    setMerchantError('Merchant / Counterparty name is required');
                   }
                 } else {
                   setMerchantError(null);
@@ -203,11 +191,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               }}
               placeholder={
                 type === 'expense'
-                  ? isBangla
-                    ? 'মার্চেন্ট বা প্রতিষ্ঠানের নাম লিখুন'
-                    : 'Enter merchant or counterparty name'
-                  : isBangla
-                  ? 'যেমন: প্রতিষ্ঠান, ক্লায়েন্ট, উৎস (ঐচ্ছিক)'
+                  ? 'Enter merchant or counterparty name'
                   : 'e.g. Employer, Client, Source (Optional)'
               }
               className={`w-full px-3.5 py-2.5 rounded-xl border ${
@@ -226,7 +210,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                {isBangla ? 'ক্যাটাগরি' : 'Category'}
+                Category
               </label>
               {type === 'expense' && onCreateCategory && (
                 <button
@@ -240,7 +224,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                   <span className="material-symbols-outlined text-[14px]">
                     {isQuickAddOpen ? 'close' : 'add_circle'}
                   </span>
-                  <span>{isQuickAddOpen ? (isBangla ? 'বাতিল' : 'Cancel') : (isBangla ? '+ ক্যাটাগরি যোগ করুন' : '+ Add Category')}</span>
+                  <span>{isQuickAddOpen ? 'Cancel' : '+ Add Category'}</span>
                 </button>
               )}
             </div>
@@ -249,7 +233,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             {isQuickAddOpen && type === 'expense' && (
               <div className="p-2.5 rounded-xl bg-surface-container-low border border-outline-variant/30 flex flex-col gap-2 animate-in fade-in duration-150 my-1">
                 <span className="text-[11px] font-semibold text-on-surface">
-                  {isBangla ? 'নতুন ব্যয়ের ক্যাটাগরি তৈরি করুন' : 'Create Custom Expense Category'}
+                  Create Custom Expense Category
                 </span>
                 <div className="flex items-center gap-1.5">
                   <input
@@ -259,7 +243,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                       setNewCatName(e.target.value);
                       setQuickAddError(null);
                     }}
-                    placeholder={isBangla ? 'যেমন: স্বাস্থ্যসেবা, শিক্ষা' : 'e.g. Healthcare, Education'}
+                    placeholder="e.g. Healthcare, Education"
                     maxLength={50}
                     className="flex-1 px-2.5 py-1.5 text-xs rounded-lg border border-outline-variant/40 bg-surface-container-lowest text-on-surface focus:outline-none focus:ring-1 focus:ring-secondary"
                   />
@@ -269,11 +253,11 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                     onClick={async () => {
                       const trimmed = newCatName.trim();
                       if (!trimmed) {
-                        setQuickAddError(isBangla ? 'ক্যাটাগরির নাম আবশ্যক' : 'Category name is required');
+                        setQuickAddError('Category name is required');
                         return;
                       }
                       if (trimmed.length > 50) {
-                        setQuickAddError(isBangla ? 'সর্বোচ্চ ৫০ অক্ষর হতে পারে' : 'Max 50 characters allowed');
+                        setQuickAddError('Max 50 characters allowed');
                         return;
                       }
                       const standardList = [
@@ -288,7 +272,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                         standardList.includes(trimmed.toLowerCase()) ||
                         customCategories.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())
                       ) {
-                        setQuickAddError(isBangla ? 'এই ক্যাটাগরি ইতিমধ্যে বিদ্যমান' : 'Category already exists');
+                        setQuickAddError('Category already exists');
                         return;
                       }
                       if (onCreateCategory) {
@@ -302,7 +286,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                             setIsQuickAddOpen(false);
                           }
                         } catch (err: any) {
-                          setQuickAddError(err?.message || (isBangla ? 'তৈরি করতে ব্যর্থ হয়েছে' : 'Failed to create'));
+                          setQuickAddError(err?.message || 'Failed to create');
                         } finally {
                           setIsCreatingCategory(false);
                         }
@@ -313,7 +297,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                     {isCreatingCategory && (
                       <span className="material-symbols-outlined text-[13px] animate-spin">progress_activity</span>
                     )}
-                    <span>{isCreatingCategory ? (isBangla ? 'তৈরি হচ্ছে...' : 'Saving...') : (isBangla ? 'যোগ করুন' : 'Add')}</span>
+                    <span>{isCreatingCategory ? 'Saving...' : 'Add'}</span>
                   </button>
                 </div>
                 {quickAddError && (
@@ -329,7 +313,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             >
               {type === 'expense' ? (
                 <>
-                  <optgroup label={isBangla ? 'স্ট্যান্ডার্ড ক্যাটাগরি' : 'Standard Categories'}>
+                  <optgroup label="Standard Categories">
                     <option value="Food & Groceries">Food &amp; Groceries</option>
                     <option value="Shopping & Gadgets">Shopping &amp; Gadgets</option>
                     <option value="Utility & Fixed Costs">Utility &amp; Fixed Costs</option>
@@ -338,7 +322,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                     <option value="Entertainment & Others">Entertainment &amp; Others</option>
                   </optgroup>
                   {customCategories.length > 0 && (
-                    <optgroup label={isBangla ? 'কাস্টম ক্যাটাগরি' : 'Custom Categories'}>
+                    <optgroup label="Custom Categories">
                       {customCategories.map((c) => (
                         <option key={c.id || c.name} value={c.name}>
                           {c.name}

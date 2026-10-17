@@ -30,7 +30,7 @@ export const SUPPORTED_CURRENCIES: CurrencyConfig[] = [
   {
     code: 'BDT',
     name: 'Bangladeshi Taka',
-    nameBn: 'বাংলাদেশি টাকা',
+    nameBn: 'Bangladeshi Taka',
     symbol: '৳',
     displaySymbol: '৳',
     locale: 'en-IN',
@@ -40,7 +40,7 @@ export const SUPPORTED_CURRENCIES: CurrencyConfig[] = [
   {
     code: 'USD',
     name: 'US Dollar',
-    nameBn: 'মার্কিন ডলার',
+    nameBn: 'US Dollar',
     symbol: '$',
     displaySymbol: '$',
     locale: 'en-US',
@@ -50,7 +50,7 @@ export const SUPPORTED_CURRENCIES: CurrencyConfig[] = [
   {
     code: 'EUR',
     name: 'Euro',
-    nameBn: 'ইউরো',
+    nameBn: 'Euro',
     symbol: '€',
     displaySymbol: '€',
     locale: 'de-DE',
@@ -60,7 +60,7 @@ export const SUPPORTED_CURRENCIES: CurrencyConfig[] = [
   {
     code: 'GBP',
     name: 'British Pound',
-    nameBn: 'ব্রিটিশ পাউন্ড',
+    nameBn: 'British Pound',
     symbol: '£',
     displaySymbol: '£',
     locale: 'en-GB',
@@ -70,7 +70,7 @@ export const SUPPORTED_CURRENCIES: CurrencyConfig[] = [
   {
     code: 'JPY',
     name: 'Japanese Yen',
-    nameBn: 'জাপানি ইয়েন',
+    nameBn: 'Japanese Yen',
     symbol: '¥',
     displaySymbol: '¥',
     locale: 'ja-JP',
@@ -80,7 +80,7 @@ export const SUPPORTED_CURRENCIES: CurrencyConfig[] = [
   {
     code: 'CNY',
     name: 'Chinese Yuan',
-    nameBn: 'চাইনিজ ইউয়ান',
+    nameBn: 'Chinese Yuan',
     symbol: '¥',
     displaySymbol: '¥',
     locale: 'zh-CN',
@@ -90,7 +90,7 @@ export const SUPPORTED_CURRENCIES: CurrencyConfig[] = [
   {
     code: 'CHF',
     name: 'Swiss Franc',
-    nameBn: 'সুইস ফ্রাঙ্ক',
+    nameBn: 'Swiss Franc',
     symbol: 'CHF',
     displaySymbol: 'CHF',
     locale: 'de-CH',
@@ -100,7 +100,7 @@ export const SUPPORTED_CURRENCIES: CurrencyConfig[] = [
   {
     code: 'INR',
     name: 'Indian Rupee',
-    nameBn: 'ভারতীয় রুপি',
+    nameBn: 'Indian Rupee',
     symbol: '₹',
     displaySymbol: '₹',
     locale: 'en-IN',
@@ -110,7 +110,7 @@ export const SUPPORTED_CURRENCIES: CurrencyConfig[] = [
   {
     code: 'CAD',
     name: 'Canadian Dollar',
-    nameBn: 'কানাডিয়ান ডলার',
+    nameBn: 'Canadian Dollar',
     symbol: 'C$',
     displaySymbol: 'C$',
     locale: 'en-CA',
@@ -120,7 +120,7 @@ export const SUPPORTED_CURRENCIES: CurrencyConfig[] = [
   {
     code: 'AUD',
     name: 'Australian Dollar',
-    nameBn: 'অস্ট্রেলিয়ান ডলার',
+    nameBn: 'Australian Dollar',
     symbol: 'A$',
     displaySymbol: 'A$',
     locale: 'en-AU',
@@ -130,7 +130,7 @@ export const SUPPORTED_CURRENCIES: CurrencyConfig[] = [
   {
     code: 'SAR',
     name: 'Saudi Riyal',
-    nameBn: 'সৌদি রিয়াল',
+    nameBn: 'Saudi Riyal',
     symbol: 'SAR',
     displaySymbol: 'SAR',
     locale: 'ar-SA',

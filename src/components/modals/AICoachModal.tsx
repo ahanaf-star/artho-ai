@@ -40,7 +40,7 @@ export const AICoachModal: React.FC<AICoachModalProps> = ({
               <span className="material-symbols-outlined text-secondary text-[20px]">smart_toy</span>
             </div>
             <h2 className="font-headline-md text-headline-md text-on-surface font-bold">
-              {isBangla ? 'অর্থবাঁচাও এআই কোচ' : 'ArthoBachao AI Coach'}
+              ArthoBachao AI Coach
             </h2>
           </div>
           <button
@@ -56,9 +56,7 @@ export const AICoachModal: React.FC<AICoachModalProps> = ({
         {/* Short message */}
         <div className="py-2">
           <p className="font-body-md text-body-md text-on-surface leading-relaxed">
-            {isBangla
-              ? 'আপনার এআই কোচের কাছ থেকে ব্যক্তিগত আর্থিক দিকনির্দেশনা নিন।'
-              : 'Get personalized financial guidance from your AI Coach.'}
+            Get personalized financial guidance from your AI Coach.
           </p>
         </div>
 
@@ -69,7 +67,7 @@ export const AICoachModal: React.FC<AICoachModalProps> = ({
             onClick={onClose}
             className="px-4 py-2.5 rounded-xl bg-surface-container text-on-surface font-title-md text-sm hover:bg-surface-container-high transition-colors"
           >
-            {isBangla ? 'বন্ধ করুন' : 'Close'}
+            Close
           </button>
           <button
             type="button"
@@ -80,7 +78,7 @@ export const AICoachModal: React.FC<AICoachModalProps> = ({
             className="px-5 py-2.5 rounded-xl bg-primary text-on-primary font-title-md text-sm hover:opacity-95 active:scale-95 transition-all shadow-sm flex items-center gap-2"
           >
             <span className="material-symbols-outlined text-[18px] text-secondary-container">chat</span>
-            <span>{isBangla ? 'এআই কোচ খুলুন' : 'Open AI Coach'}</span>
+            <span>Open AI Coach</span>
           </button>
         </div>
       </div>
