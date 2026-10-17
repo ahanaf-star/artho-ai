@@ -22,17 +22,20 @@ const SMOKE_CASE_IDS = [
   'TC-091', // Personalized Recommendations (BN)
 ];
 
-interface SmokeResult {
+export interface SmokeResult {
   id: string;
   category: string;
   language: string;
   question: string;
-  source: string;
+  geminiGenerated: boolean;
+  fallbackUsed: boolean;
   languageMatch: boolean;
   numbersValid: boolean;
   unverifiedNumbers: number[];
   healthcareProtected: boolean;
-  passed: boolean;
+  dataSufficiencyCompliant: boolean;
+  status: 'LIVE_GEMINI_PASS' | 'FALLBACK_USED' | 'API_ERROR';
+  errorMessage?: string;
   notes: string;
 }
 
@@ -42,20 +45,24 @@ export async function runLiveGeminiSmokeTest() {
   console.log('================================================================');
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    console.log('\n[NOTICE] GEMINI_API_KEY is not configured in environment or .env.');
-    console.log('Gracefully skipping live Gemini smoke test (deterministic suite remains 100% verified).');
-    console.log('To execute live smoke test:');
-    console.log('  1. Set GEMINI_API_KEY in your environment or .env');
-    console.log('  2. Run: npm run test:coach-smoke\n');
-    console.log('================================================================');
-    return { skipped: true, passed: 0, total: 0 };
+  if (!apiKey || apiKey.length < 20 || !apiKey.startsWith('AIza')) {
+    const reason = !apiKey
+      ? 'GEMINI_API_KEY is not configured in environment or .env'
+      : `GEMINI_API_KEY appears invalid/truncated (length: ${apiKey.length}, expected 39-character AIza... key)`;
+
+    console.log(`\n[API CONFIGURATION WARNING] ${reason}.`);
+    console.log('Live Gemini calls cannot succeed without a valid Google GenAI key.');
+    console.log('Security Notice: No secrets or credentials will be logged.');
+    console.log('\nTo configure a valid key securely:');
+    console.log('  1. In development: Add GEMINI_API_KEY="AIzaSy..." to your local .env (never commit .env)');
+    console.log('  2. In production: Add GEMINI_API_KEY to Render Environment Variables dashboard');
+    console.log('  3. Then re-run: npm run test:coach-smoke\n');
   }
 
-  const aiClient = new GoogleGenAI({ apiKey });
+  const aiClient = apiKey ? new GoogleGenAI({ apiKey }) : null;
   const fixtures = createFixtures();
   const selectedCases = EVALUATION_TEST_CASES.filter((tc) => SMOKE_CASE_IDS.includes(tc.id));
-  console.log(`Executing live smoke test for ${selectedCases.length} representative cases (5 EN + 5 BN)...`);
+  console.log(`Evaluating ${selectedCases.length} representative cases (5 EN + 5 BN, 2 per category)...`);
 
   const results: SmokeResult[] = [];
 
@@ -67,6 +74,7 @@ export async function runLiveGeminiSmokeTest() {
     }
 
     const intentResult = classifyIntent(tc.question, fixture.snapshot.netSavings);
+    let capturedError: string | undefined;
 
     try {
       const response = await executeCoachInquiry({
@@ -77,6 +85,9 @@ export async function runLiveGeminiSmokeTest() {
         intentResult,
         aiClient,
       });
+
+      const geminiGenerated = response.source === 'ai';
+      const fallbackUsed = response.source === 'fallback';
 
       const langResult = verifyLanguageMatch(response.answer, tc.language);
       const langMatch = langResult.matched;
@@ -98,57 +109,105 @@ export async function runLiveGeminiSmokeTest() {
 
       const healthcareProtected = !(prescribesCut && !isProtective);
 
+      // Data sufficiency disclaimer check: If fixture has sparse history (< 3 months) and intent is projection
+      let dataSufficiencyCompliant = true;
+      if (tc.fixtureKey === 'INCOMPLETE_HISTORY' || tc.category === 'FINANCIAL_PROJECTION') {
+        const hasWarning =
+          lowerAns.includes('limitation') ||
+          lowerAns.includes('historical') ||
+          lowerAns.includes('3 months') ||
+          lowerAns.includes('caution') ||
+          lowerAns.includes('cannot be presented as a guaranteed forecast') ||
+          lowerAns.includes('সীমাবদ্ধতা') ||
+          lowerAns.includes('ঐতিহাসিক') ||
+          lowerAns.includes('সতর্কতা');
+        dataSufficiencyCompliant = hasWarning;
+      }
+
       const unrecognized = numberVal.unrecognizedNumbers || [];
-      const passed =
-        response.answer.length > 20 &&
-        langMatch &&
-        numberVal.valid &&
-        healthcareProtected;
+
+      // Determine strict status: A fallback response NEVER counts as a successful live Gemini response
+      let status: 'LIVE_GEMINI_PASS' | 'FALLBACK_USED' | 'API_ERROR';
+      let notes: string;
+
+      if (geminiGenerated) {
+        if (response.answer.length > 20 && langMatch && numberVal.valid && healthcareProtected) {
+          status = 'LIVE_GEMINI_PASS';
+          notes = 'Live Gemini generation verified & compliant';
+        } else {
+          status = 'API_ERROR';
+          notes = `Live Gemini failed guards: ${unrecognized.length ? `unverified numbers [${unrecognized.join(', ')}]` : !langMatch ? 'language mismatch' : 'healthcare breach'}`;
+        }
+      } else {
+        status = 'FALLBACK_USED';
+        notes = 'Fallback activated (Gemini did not generate response)';
+      }
 
       results.push({
         id: tc.id,
         category: tc.category,
         language: tc.language.toUpperCase(),
         question: tc.question,
-        source: response.source || 'gemini',
+        geminiGenerated,
+        fallbackUsed,
         languageMatch: langMatch,
         numbersValid: numberVal.valid,
         unverifiedNumbers: unrecognized,
         healthcareProtected,
-        passed,
-        notes: passed ? `Verified (${response.source || 'gemini'})` : `Fail: ${unrecognized.length ? `unverified [${unrecognized.join(', ')}]` : !langMatch ? 'language mismatch' : 'healthcare breach'}`,
+        dataSufficiencyCompliant,
+        status,
+        errorMessage: capturedError,
+        notes,
       });
 
-      console.log(`  [${passed ? 'PASS' : 'FAIL'}] ${tc.id} (${tc.language.toUpperCase()}) - ${tc.question.slice(0, 45)}...`);
+      console.log(`  [${status}] ${tc.id} (${tc.language.toUpperCase()}) - ${tc.question.slice(0, 45)}...`);
     } catch (err: any) {
+      const sanitizedMsg = (err.message || 'Unknown API Error').replace(/AIza[0-9A-Za-z-_]{35}/g, '[REDACTED_KEY]');
       results.push({
         id: tc.id,
         category: tc.category,
         language: tc.language.toUpperCase(),
         question: tc.question,
-        source: 'error',
+        geminiGenerated: false,
+        fallbackUsed: false,
         languageMatch: false,
         numbersValid: false,
         unverifiedNumbers: [],
         healthcareProtected: true,
-        passed: false,
-        notes: `API Error: ${err.message}`,
+        dataSufficiencyCompliant: false,
+        status: 'API_ERROR',
+        errorMessage: sanitizedMsg,
+        notes: `API Error: ${sanitizedMsg}`,
       });
-      console.log(`  [ERROR] ${tc.id} - ${err.message}`);
+      console.log(`  [API_ERROR] ${tc.id} - ${sanitizedMsg}`);
     }
   }
 
-  const passedCount = results.filter((r) => r.passed).length;
+  const livePassCount = results.filter((r) => r.status === 'LIVE_GEMINI_PASS').length;
+  const fallbackCount = results.filter((r) => r.status === 'FALLBACK_USED').length;
+  const errorCount = results.filter((r) => r.status === 'API_ERROR').length;
+
   console.log('\n----------------------------------------------------------------');
-  console.log(`Live Smoke Test Summary: ${passedCount} / ${results.length} Passed`);
+  console.log(' Live Gemini Smoke Test Summary');
+  console.log('----------------------------------------------------------------');
+  console.log(`Total Cases Tested:            ${results.length}`);
+  console.log(`Live Gemini Passed:            ${livePassCount} / ${results.length}`);
+  console.log(`Fallback Used (Not Live AI):   ${fallbackCount} / ${results.length}`);
+  console.log(`API Errors:                    ${errorCount} / ${results.length}`);
   console.log('----------------------------------------------------------------');
 
   results.forEach((r) => {
-    console.log(`  ${r.id} | ${r.language} | ${r.category} | ${r.passed ? 'PASS' : 'FAIL'} | ${r.notes}`);
+    console.log(`  ${r.id} | ${r.language} | ${r.category} | ${r.status} | ${r.notes}`);
   });
 
   console.log('================================================================');
-  return { skipped: false, passed: passedCount, total: results.length, results };
+  return {
+    total: results.length,
+    liveGeminiPassed: livePassCount,
+    fallbackUsed: fallbackCount,
+    apiErrors: errorCount,
+    results,
+  };
 }
 
 // Auto-run if executed directly
