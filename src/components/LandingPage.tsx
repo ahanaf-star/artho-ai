@@ -6,12 +6,18 @@ interface LandingPageProps {
   onNavigate: (screen: NavScreen) => void;
   isBangla: boolean;
   onToggleBangla: (val: boolean) => void;
+  isAuthenticated?: boolean;
+  onOpenLogin?: () => void;
+  onOpenSignup?: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   onNavigate,
   isBangla,
   onToggleBangla,
+  isAuthenticated = false,
+  onOpenLogin,
+  onOpenSignup,
 }) => {
   // Interactive Calculator State
   const [calcIncome, setCalcIncome] = useState(38500);
@@ -50,7 +56,83 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   ];
 
   return (
-    <div className="flex flex-col w-full -mt-space-lg pb-space-xl">
+    <div className="flex flex-col w-full pb-space-xl">
+      {/* Public Navigation Header */}
+      <header className="w-full flex items-center justify-between py-3.5 px-4 sm:px-6 mb-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-xs">
+        <div
+          className="flex items-center gap-3 cursor-pointer"
+          onClick={() => onNavigate('landing')}
+        >
+          <div className="w-10 h-10 rounded-xl bg-primary-container flex items-center justify-center text-on-primary shadow-xs">
+            <span className="material-symbols-outlined text-[24px] text-secondary-container">
+              account_balance_wallet
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="font-title-lg text-base sm:text-lg font-bold text-on-surface tracking-tight leading-tight">
+              ArthoBachao AI
+            </span>
+            <span className="text-[10px] sm:text-[11px] text-outline font-medium">
+              Dhaka Metro • AI Wealth Engine
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Language Switch */}
+          <div className="inline-flex p-0.5 rounded-full bg-surface-container-low text-on-surface border border-outline-variant/30 text-xs">
+            <button
+              type="button"
+              onClick={() => onToggleBangla(false)}
+              className={`px-2.5 py-1 rounded-full font-label-sm font-semibold transition-all ${
+                !isBangla
+                  ? 'bg-surface-container-lowest shadow-xs text-on-surface'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              EN
+            </button>
+            <button
+              type="button"
+              onClick={() => onToggleBangla(true)}
+              className={`px-2.5 py-1 rounded-full font-label-sm font-semibold transition-all ${
+                isBangla
+                  ? 'bg-surface-container-lowest shadow-xs text-on-surface'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              বাং
+            </button>
+          </div>
+
+          {isAuthenticated ? (
+            <button
+              onClick={() => onNavigate('dashboard')}
+              className="px-4 py-2 rounded-xl bg-primary text-on-primary font-title-md text-xs sm:text-sm font-bold shadow-xs hover:opacity-95 active:scale-95 transition-all flex items-center gap-1.5"
+            >
+              <span>{isBangla ? 'ড্যাশবোর্ডে যান' : 'Go to Dashboard'}</span>
+              <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => (onOpenLogin ? onOpenLogin() : onNavigate('login'))}
+                className="px-3.5 sm:px-4 py-2 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-title-md text-xs sm:text-sm font-semibold border border-outline-variant/30 transition-all active:scale-95"
+              >
+                {isBangla ? 'লগইন' : 'Sign In'}
+              </button>
+              <button
+                onClick={() => (onOpenSignup ? onOpenSignup() : onNavigate('signup'))}
+                className="px-3.5 sm:px-4 py-2 rounded-xl bg-primary text-on-primary font-title-md text-xs sm:text-sm font-bold shadow-xs hover:opacity-95 active:scale-95 transition-all flex items-center gap-1"
+              >
+                <span>{isBangla ? 'শুরু করুন' : 'Get Started'}</span>
+                <span className="material-symbols-outlined text-[16px] hidden sm:inline">arrow_forward</span>
+              </button>
+            </>
+          )}
+        </div>
+      </header>
+
       {/* Top Hero Banner */}
       <section className="relative overflow-hidden pt-10 pb-16 lg:py-20 rounded-3xl bg-gradient-to-br from-surface-container-lowest via-surface to-surface-container-low border border-outline-variant/30 shadow-sm">
         {/* Subtle decorative glow circles */}

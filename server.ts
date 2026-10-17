@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
@@ -459,6 +460,9 @@ COACHING & FACTUAL RULES:
   // Vite middleware in dev or static files in production
   if (process.env.NODE_ENV === 'production') {
     app.use(express.static('dist'));
+    app.get('*', (_req: Request, res: Response) => {
+      res.sendFile(path.resolve('dist', 'index.html'));
+    });
   } else {
     const vite = await createViteServer({
       server: { middlewareMode: true },

@@ -2,6 +2,8 @@ import React from 'react';
 
 export type NavScreen =
   | 'landing'
+  | 'login'
+  | 'signup'
   | 'dashboard'
   | 'spending-analysis'
   | 'savings-goals'

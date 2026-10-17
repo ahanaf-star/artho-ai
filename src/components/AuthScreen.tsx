@@ -5,14 +5,20 @@ interface AuthScreenProps {
   onAuthenticated: (session: AuthSession) => void;
   isBangla: boolean;
   onToggleBangla: (bangla: boolean) => void;
+  initialMode?: 'login' | 'signup';
+  onNavigateHome?: () => void;
+  onModeChange?: (mode: 'login' | 'signup') => void;
 }
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({
   onAuthenticated,
   isBangla,
   onToggleBangla,
+  initialMode = 'login',
+  onNavigateHome,
+  onModeChange,
 }) => {
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,6 +26,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (initialMode && initialMode !== mode) {
+      setMode(initialMode);
+    }
+  }, [initialMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +76,19 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4 sm:p-6 selection:bg-[#6cf8bb] selection:text-[#005236]">
+    <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4 sm:p-6 selection:bg-[#6cf8bb] selection:text-[#005236] relative">
+      {/* Back to Home Button floating top-left */}
+      {onNavigateHome && (
+        <button
+          type="button"
+          onClick={onNavigateHome}
+          className="absolute top-6 left-6 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-low hover:bg-surface-container text-on-surface-variant hover:text-on-surface text-xs font-semibold shadow-xs border border-outline-variant/30 transition-all"
+        >
+          <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+          <span>{isBangla ? 'হোম পেজ' : 'Back to Home'}</span>
+        </button>
+      )}
+
       {/* Language Switch floating top-right */}
       <div className="absolute top-6 right-6 inline-flex p-0.5 rounded-full bg-surface-container-low text-on-surface shadow-xs border border-outline-variant/30">
         <button
@@ -91,7 +115,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
       <div className="w-full max-w-md flex flex-col gap-6">
         {/* Brand Header */}
-        <div className="flex flex-col items-center text-center gap-2">
+        <div
+          className={`flex flex-col items-center text-center gap-2 ${onNavigateHome ? 'cursor-pointer' : ''}`}
+          onClick={onNavigateHome}
+        >
           <div className="w-14 h-14 rounded-2xl bg-primary-container flex items-center justify-center text-on-primary shadow-md">
             <span className="material-symbols-outlined text-[32px] text-secondary-container">
               account_balance_wallet
@@ -118,6 +145,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               onClick={() => {
                 setMode('login');
                 setErrorMsg(null);
+                onModeChange?.('login');
               }}
               className={`py-2 rounded-lg font-title-md text-sm font-semibold transition-all ${mode === 'login'
                   ? 'bg-surface-container-lowest shadow-sm text-on-surface font-bold'
@@ -131,6 +159,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               onClick={() => {
                 setMode('signup');
                 setErrorMsg(null);
+                onModeChange?.('signup');
               }}
               className={`py-2 rounded-lg font-title-md text-sm font-semibold transition-all ${mode === 'signup'
                   ? 'bg-surface-container-lowest shadow-sm text-on-surface font-bold'

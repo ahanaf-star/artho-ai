@@ -22,30 +22,118 @@ import { apiService } from './services/apiService';
 import { financialDataService } from './services/financialDataService';
 import { calculateFinancialHealthScore, getLocalDateString } from './services/financialCalculations';
 import { Transaction, SavingsGoal, UserProfile } from './types/financial';
-import { INITIAL_USER } from './data/mockUser';
+const PRIVATE_SCREENS: NavScreen[] = [
+  'dashboard',
+  'spending-analysis',
+  'savings-goals',
+  'cash-flow-forecast',
+  'ai-coach',
+  'financial-health',
+  'insights-alerts',
+  'settings-profile',
+];
+
+function getScreenFromPathname(pathname: string): NavScreen {
+  const clean = pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
+  switch (clean) {
+    case '':
+    case 'landing':
+    case 'home':
+      return 'landing';
+    case 'login':
+    case 'signin':
+      return 'login';
+    case 'signup':
+    case 'register':
+      return 'signup';
+    case 'dashboard':
+      return 'dashboard';
+    case 'spending-analysis':
+    case 'spending':
+      return 'spending-analysis';
+    case 'savings-goals':
+    case 'goals':
+      return 'savings-goals';
+    case 'cash-flow-forecast':
+    case 'cashflow':
+      return 'cash-flow-forecast';
+    case 'ai-coach':
+    case 'coach':
+      return 'ai-coach';
+    case 'financial-health':
+    case 'health':
+      return 'financial-health';
+    case 'insights-alerts':
+    case 'insights':
+    case 'alerts':
+      return 'insights-alerts';
+    case 'settings-profile':
+    case 'settings':
+    case 'profile':
+      return 'settings-profile';
+    default:
+      return 'landing';
+  }
+}
+
+function getPathFromScreen(screen: NavScreen): string {
+  switch (screen) {
+    case 'landing':
+      return '/';
+    case 'login':
+      return '/login';
+    case 'signup':
+      return '/signup';
+    default:
+      return `/${screen}`;
+  }
+}
+
+function resolveInitialScreen(user: UserProfile | null): NavScreen {
+  if (typeof window === 'undefined') return 'landing';
+  const target = getScreenFromPathname(window.location.pathname);
+  if (!user) {
+    if (PRIVATE_SCREENS.includes(target)) {
+      return 'login';
+    }
+    return target;
+  }
+  if (target === 'landing' && (window.location.pathname === '/' || window.location.pathname === '')) {
+    return 'dashboard';
+  }
+  if (target === 'login' || target === 'signup') {
+    return 'dashboard';
+  }
+  return target;
+}
 
 export default function App() {
-  const [activeScreen, setActiveScreen] = useState<NavScreen>('dashboard');
+  // Authenticated User State - strictly source of truth from authService (null if unauthenticated)
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
+    return authService.getCurrentUser();
+  });
+
+  const [activeScreen, setActiveScreen] = useState<NavScreen>(() => {
+    const initialUser = authService.getCurrentUser();
+    return resolveInitialScreen(initialUser);
+  });
+
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [coachPreQuery, setCoachPreQuery] = useState<string | undefined>(undefined);
 
-  // Authenticated User State - Default to Ahmed Rahman demo user so app is always interactive
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(
-    () => authService.getCurrentUser() || INITIAL_USER
-  );
   const [isBangla, setIsBangla] = useState<boolean>(() => {
-    const user = authService.getCurrentUser() || INITIAL_USER;
+    const user = authService.getCurrentUser();
     return user?.preferredLanguage === 'bn';
   });
 
-  // User-scoped Financial State
+  // User-scoped Financial State (empty when unauthenticated)
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const user = authService.getCurrentUser() || INITIAL_USER;
+    const user = authService.getCurrentUser();
     return user ? financialDataService.getTransactions(user.id) : [];
   });
 
   const [goals, setGoals] = useState<SavingsGoal[]>(() => {
-    const user = authService.getCurrentUser() || INITIAL_USER;
+    const user = authService.getCurrentUser();
     return user ? financialDataService.getGoals(user.id) : [];
   });
 
@@ -55,6 +143,80 @@ export default function App() {
   const [isCreateGoalOpen, setIsCreateGoalOpen] = useState(false);
   const [isTransferOpen, setIsTransferOpen] = useState(false);
   const [isMonthlyReportOpen, setIsMonthlyReportOpen] = useState(false);
+
+  // Navigate with URL history and strict access protection
+  const navigateTo = (screen: NavScreen) => {
+    let target = screen;
+
+    if (!currentUser && PRIVATE_SCREENS.includes(screen)) {
+      target = 'login';
+    }
+
+    if (currentUser && (screen === 'login' || screen === 'signup')) {
+      target = 'dashboard';
+    }
+
+    setActiveScreen(target);
+    setCoachPreQuery(undefined);
+
+    if (typeof window !== 'undefined') {
+      const targetPath = getPathFromScreen(target);
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState(null, '', targetPath);
+      }
+    }
+  };
+
+  // Sync browser popstate (back/forward) and initial URL
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const expectedPath = getPathFromScreen(activeScreen);
+    if (window.location.pathname !== expectedPath) {
+      window.history.replaceState(null, '', expectedPath);
+    }
+
+    const handlePopState = () => {
+      const screenFromUrl = getScreenFromPathname(window.location.pathname);
+      if (!currentUser && PRIVATE_SCREENS.includes(screenFromUrl)) {
+        setActiveScreen('login');
+        window.history.replaceState(null, '', '/login');
+      } else if (currentUser && (screenFromUrl === 'login' || screenFromUrl === 'signup')) {
+        setActiveScreen('dashboard');
+        window.history.replaceState(null, '', '/dashboard');
+      } else {
+        setActiveScreen(screenFromUrl);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [currentUser]);
+
+  // Session validation with backend token verification on mount
+  useEffect(() => {
+    const session = authService.getSession();
+    if (session?.token) {
+      apiService
+        .getMe()
+        .then((remoteUser) => {
+          if (remoteUser) {
+            setCurrentUser(remoteUser);
+          } else {
+            console.warn('[Auth] Remote validation failed: token rejected. Logging out.');
+            authService.logout().then(() => {
+              setCurrentUser(null);
+              setTransactions([]);
+              setGoals([]);
+              navigateTo('login');
+            });
+          }
+        })
+        .catch((err) => {
+          console.warn('[Auth] Remote token validation skipped due to network:', err);
+        });
+    }
+  }, []);
 
   // Helper to revalidate financial data directly from MongoDB backend
   const refreshFinancialData = async (userId: string) => {
@@ -93,7 +255,7 @@ export default function App() {
     const userGoals = financialDataService.getGoals(session.user.id);
     setTransactions(userTxs);
     setGoals(userGoals);
-    setActiveScreen('dashboard');
+    navigateTo('dashboard');
     await refreshFinancialData(session.user.id);
   };
 
@@ -103,7 +265,7 @@ export default function App() {
     setCurrentUser(null);
     setTransactions([]);
     setGoals([]);
-    setActiveScreen('dashboard');
+    navigateTo('landing');
   };
 
   // Sync transactions to user-scoped storage fallback
@@ -375,14 +537,33 @@ export default function App() {
     }
   };
 
-  // Protected Route: If not logged in, render AuthScreen
+  // Protected Route Check: Unauthenticated visitors can only view Landing, Login, or Signup
   if (!currentUser) {
+    if (activeScreen === 'login' || activeScreen === 'signup') {
+      return (
+        <AuthScreen
+          initialMode={activeScreen === 'signup' ? 'signup' : 'login'}
+          onAuthenticated={handleAuthenticated}
+          isBangla={isBangla}
+          onToggleBangla={setIsBangla}
+          onNavigateHome={() => navigateTo('landing')}
+          onModeChange={(m) => navigateTo(m)}
+        />
+      );
+    }
+
+    // Default public view for unauthenticated visitors is the Landing Page
     return (
-      <AuthScreen
-        onAuthenticated={handleAuthenticated}
-        isBangla={isBangla}
-        onToggleBangla={setIsBangla}
-      />
+      <div className="min-h-screen bg-background font-body-md text-on-surface antialiased p-4 sm:p-space-lg max-w-7xl mx-auto">
+        <LandingPage
+          onNavigate={navigateTo}
+          isBangla={isBangla}
+          onToggleBangla={setIsBangla}
+          isAuthenticated={false}
+          onOpenLogin={() => navigateTo('login')}
+          onOpenSignup={() => navigateTo('signup')}
+        />
+      </div>
     );
   }
 
@@ -394,10 +575,7 @@ export default function App() {
       {/* Sidebar Navigation */}
       <Sidebar
         activeScreen={activeScreen}
-        onNavigate={(screen) => {
-          setActiveScreen(screen);
-          setCoachPreQuery(undefined);
-        }}
+        onNavigate={(screen) => navigateTo(screen)}
         isOpenMobile={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
         onLogout={handleLogout}
@@ -407,10 +585,7 @@ export default function App() {
       <div className="lg:pl-72 flex flex-col min-h-screen">
         {/* Top Header */}
         <Header
-          onNavigate={(screen) => {
-            setActiveScreen(screen);
-            setCoachPreQuery(undefined);
-          }}
+          onNavigate={(screen) => navigateTo(screen)}
           onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
           isBangla={isBangla}
           onToggleBangla={(bangla) => {
@@ -430,7 +605,7 @@ export default function App() {
         <main className="flex-1 pt-20 bg-background w-full px-4 sm:px-space-lg py-space-lg">
           {activeScreen === 'landing' && (
             <LandingPage
-              onNavigate={setActiveScreen}
+              onNavigate={navigateTo}
               isBangla={isBangla}
               onToggleBangla={(bangla) => {
                 setIsBangla(bangla);
@@ -441,6 +616,9 @@ export default function App() {
                   });
                 }
               }}
+              isAuthenticated={true}
+              onOpenLogin={() => navigateTo('login')}
+              onOpenSignup={() => navigateTo('signup')}
             />
           )}
 
@@ -449,7 +627,7 @@ export default function App() {
               transactions={transactions}
               goals={goals}
               user={currentUser}
-              onNavigate={setActiveScreen}
+              onNavigate={navigateTo}
               onOpenAddTransaction={() => setIsAddTxOpen(true)}
               onOpenTransfer={() => setIsTransferOpen(true)}
               onOpenMonthlyReport={() => setIsMonthlyReportOpen(true)}
@@ -461,12 +639,12 @@ export default function App() {
           {activeScreen === 'spending-analysis' && (
             <SpendingAnalysis
               transactions={transactions}
-              onNavigate={setActiveScreen}
+              onNavigate={navigateTo}
               onOpenAddTransaction={() => setIsAddTxOpen(true)}
               isBangla={isBangla}
               onCoachQuery={(query) => {
                 setCoachPreQuery(query);
-                setActiveScreen('ai-coach');
+                navigateTo('ai-coach');
               }}
               onSelectTransactionForEdit={(tx) => setEditingTransaction(tx)}
             />
@@ -479,7 +657,7 @@ export default function App() {
               onDeleteGoal={handleDeleteGoal}
               onDepositToGoal={handleDepositToGoal}
               onOpenCreateGoal={() => setIsCreateGoalOpen(true)}
-              onNavigate={setActiveScreen}
+              onNavigate={navigateTo}
               isBangla={isBangla}
             />
           )}
@@ -492,7 +670,7 @@ export default function App() {
               userName={currentUser.name}
               user={currentUser}
               initialQuery={coachPreQuery}
-              onNavigate={setActiveScreen}
+              onNavigate={navigateTo}
               isBanglaMode={isBangla}
               onToggleBangla={setIsBangla}
             />
@@ -504,7 +682,7 @@ export default function App() {
               transactions={transactions}
               goals={goals}
               onUpdateUser={handleUpdateUser}
-              onNavigate={setActiveScreen}
+              onNavigate={navigateTo}
               isBangla={isBangla}
             />
           )}
@@ -515,13 +693,13 @@ export default function App() {
               goals={goals}
               transactions={transactions}
               user={currentUser}
-              onNavigate={setActiveScreen}
+              onNavigate={navigateTo}
               isBangla={isBangla}
             />
           )}
 
           {activeScreen === 'insights-alerts' && (
-            <InsightsAlertsView onNavigate={setActiveScreen} isBangla={isBangla} />
+            <InsightsAlertsView onNavigate={navigateTo} isBangla={isBangla} />
           )}
 
           {activeScreen === 'settings-profile' && (
