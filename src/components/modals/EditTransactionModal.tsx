@@ -63,7 +63,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
       type,
       category,
       amount: parsedAmount,
-      merchant: merchant.trim() || (type === 'income' ? 'Client / Employer' : 'Retailer'),
+      merchant: merchant.trim(),
       description: description.trim() || `${category} transaction`,
       account,
       paymentMethod: `${account} Direct`,
@@ -71,8 +71,8 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
         category === 'Food & Groceries' || category === 'Shopping & Gadgets'
           ? 'discretionary'
           : category === 'Cash-out & Bank Fees'
-          ? 'anomalies'
-          : 'essential',
+            ? 'anomalies'
+            : 'essential',
       isAnomaly: category === 'Cash-out & Bank Fees',
     };
 
@@ -168,11 +168,10 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
               <button
                 type="button"
                 onClick={() => setType('expense')}
-                className={`py-2 rounded-lg font-title-md text-sm font-semibold transition-all ${
-                  type === 'expense'
-                    ? 'bg-surface-container-lowest shadow-sm text-error font-bold'
-                    : 'text-on-surface-variant hover:text-on-surface'
-                }`}
+                className={`py-2 rounded-lg font-title-md text-sm font-semibold transition-all ${type === 'expense'
+                  ? 'bg-surface-container-lowest shadow-sm text-error font-bold'
+                  : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
               >
                 {isBangla ? 'ব্যয় (-)' : 'Expense (-)'}
               </button>
@@ -184,11 +183,10 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
                     setCategory('Salary & Inflow');
                   }
                 }}
-                className={`py-2 rounded-lg font-title-md text-sm font-semibold transition-all ${
-                  type === 'income'
-                    ? 'bg-surface-container-lowest shadow-sm text-secondary font-bold'
-                    : 'text-on-surface-variant hover:text-on-surface'
-                }`}
+                className={`py-2 rounded-lg font-title-md text-sm font-semibold transition-all ${type === 'income'
+                  ? 'bg-surface-container-lowest shadow-sm text-secondary font-bold'
+                  : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
               >
                 {isBangla ? 'আয় (+)' : 'Income (+)'}
               </button>
@@ -230,14 +228,21 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
             {/* Merchant */}
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                {isBangla ? 'মার্চেন্ট / গ্রহীতা' : 'Merchant / Counterparty'}
+                {isBangla ? 'মার্চেন্ট / প্রতিষ্ঠান (ঐচ্ছিক)' : 'Merchant / Counterparty (Optional)'}
               </label>
               <input
                 type="text"
-                required
                 value={merchant}
                 onChange={(e) => setMerchant(e.target.value)}
-                placeholder="e.g. Shwapno, Pathao, DESCO"
+                placeholder={
+                  type === 'income'
+                    ? isBangla
+                      ? 'যেমন: প্রতিষ্ঠান, ক্লায়েন্ট, উৎস (ঐচ্ছিক)'
+                      : 'e.g. Employer, Client, Source (Optional)'
+                    : isBangla
+                      ? 'যেমন: স্বপ্ন, পাঠাও, ডেসকো (ঐচ্ছিক)'
+                      : 'e.g. Shwapno, Pathao, DESCO (Optional)'
+                }
                 className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant/40 bg-surface-container-lowest text-on-surface font-body-md focus:outline-none focus:ring-2 focus:ring-primary-container"
               />
             </div>

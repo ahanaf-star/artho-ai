@@ -28,7 +28,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
   const [profileImage, setProfileImage] = useState(user.profileImage || '');
   const [preferredLanguage, setPreferredLanguage] = useState<'en' | 'bn'>(user.preferredLanguage || 'en');
   const [currency, setCurrency] = useState(user.currency || '৳');
-  const [monthlyIncome, setMonthlyIncome] = useState(user.monthlyIncome.toString());
+  const [monthlyIncome, setMonthlyIncome] = useState(user.monthlyIncome ? user.monthlyIncome.toString() : '');
   const [riskTolerance, setRiskTolerance] = useState(user.riskTolerance);
   const [savedMsg, setSavedMsg] = useState(false);
   const [validationExpanded, setValidationExpanded] = useState(true);
@@ -46,6 +46,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    const parsedIncome = monthlyIncome.trim() ? parseInt(monthlyIncome, 10) : 0;
     const updated: UserProfile = {
       ...user,
       name,
@@ -53,7 +54,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
       profileImage: profileImage.trim() || undefined,
       preferredLanguage,
       currency,
-      monthlyIncome: parseInt(monthlyIncome, 10) || 38500,
+      monthlyIncome: isNaN(parsedIncome) ? 0 : parsedIncome,
       riskTolerance,
     };
     onUpdateUser(updated);
@@ -240,6 +241,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
               type="number"
               value={monthlyIncome}
               onChange={(e) => setMonthlyIncome(e.target.value)}
+              placeholder={isBangla ? 'ঐচ্ছিক নিয়মিত আয় (যেমন: ৩৫০০০)' : 'e.g. 35000 (Optional baseline)'}
               className="p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-body-md text-sm"
             />
           </div>

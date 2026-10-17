@@ -12,6 +12,9 @@ import {
   getAuthoritativeUserHealthScore,
   getOrGenerateHealthExplanation,
 } from './server/services/healthScoreService';
+import { buildCoachContext } from './server/services/coachContextBuilder';
+import { classifyIntent } from './server/services/intentClassifier';
+import { executeCoachInquiry } from './server/services/coachGeminiService';
 
 dotenv.config();
 
@@ -61,6 +64,21 @@ async function startServer() {
       if (!targetUserId) {
         return res.status(400).json({ error: 'User ID is required' });
       }
+
+      // Enforce strict user isolation: prevent cross-user financial data access
+      const authUser = (req as any).user;
+      if (authUser) {
+        const isOwner =
+          authUser.customId === targetUserId ||
+          authUser.id === targetUserId ||
+          authUser._id?.toString() === targetUserId;
+        if (!isOwner) {
+          return res.status(403).json({ error: "Access forbidden: You cannot access another user's financial health" });
+        }
+      } else if (targetUserId !== 'usr-ahmed-01') {
+        return res.status(401).json({ error: 'Authentication required to view financial health' });
+      }
+
       const healthResult = await getAuthoritativeUserHealthScore(targetUserId);
       return res.json(healthResult);
     } catch (error: any) {
@@ -152,15 +170,9 @@ async function startServer() {
     const categories = Array.isArray(ctx?.categories) ? ctx.categories : [];
     const topCat = categories.length > 0
       ? [...categories].sort((a: any, b: any) => b.amount - a.amount)[0]
-      : { category: 'Food & Groceries', amount: spending, percentage: 100 };
+      : { category: spending > 0 ? 'General Outflows' : 'No spending recorded', amount: spending, percentage: spending > 0 ? 100 : 0 };
     const goals = Array.isArray(ctx?.goals) ? ctx.goals : [];
-    const primaryGoal = goals[0] || {
-      title: 'General Savings',
-      targetAmount: 50000,
-      currentAmount: 15000,
-      progressPercentage: 30,
-      remainingAmount: 35000,
-    };
+    const primaryGoal = goals[0] || null;
     const projectedBalance = balance + netSavings;
 
     // 1. Why run short before month end / cash flow pressure
@@ -172,6 +184,12 @@ async function startServer() {
       norm.includes('টাকা শেষ') ||
       norm.includes('pressure')
     ) {
+      if (spending === 0 && income === 0) {
+        if (inBangla) {
+          return `${greetingBn} আপনার অ্যাকাউন্টে এখনও পর্যাপ্ত লেনদেন বা খরচের তথ্য যুক্ত করা হয়নি। আয় ও ব্যয়ের তথ্য যোগ করলে মাস শেষের ক্যাশ-ফ্লো পরিস্থিতি নির্ভুলভাবে বিশ্লেষণ করা সম্ভব হবে।`;
+        }
+        return `${greetingEn} You haven't recorded any income or transactions yet. Once you add your transactions, I will analyze your month-end cash flow pressure accurately.`;
+      }
       if (inBangla) {
         return `আপনার আর্থিক হিসাব অনুযায়ী, এ মাসে আপনার মোট আয় ৳${income.toLocaleString()} এবং মোট ব্যয় ৳${spending.toLocaleString()}। আপনার সবচেয়ে বড় খরচের খাত হলো **${topCat.category}** (৳${topCat.amount.toLocaleString()}, যা মোট খরচের ${topCat.percentage}%)।\n\nমাসের শেষভাগে বড় বড় খরচ ও নিয়মিত বিলের কারণে হাতে উদ্বৃত্ত কমে আসে (বর্তমান নিট সঞ্চয় ৳${netSavings.toLocaleString()})। মাসের শুরুতেই বড় খরচের খাতের জন্য একটি নির্দিষ্ট বাফার আলাদা রাখলে মাস শেষে আর্থিক টানাপোড়েন তৈরি হবে না।`;
       }
@@ -186,6 +204,12 @@ async function startServer() {
       norm.includes('কোন খাত') ||
       norm.includes('কোথায় খরচ কমাব')
     ) {
+      if (spending === 0) {
+        if (inBangla) {
+          return `${greetingBn} আপনার এখনও কোনো ব্যয়ের রেকর্ড নেই। খরচ কমানোর পরামর্শ পেতে অনুগ্রহ করে আপনার দৈনন্দিন খরচের লেনদেনগুলো যুক্ত করুন।`;
+        }
+        return `${greetingEn} You have no spending recorded yet. Once you log your expenses, I can pinpoint which specific category offers the highest savings potential.`;
+      }
       if (inBangla) {
         return `আপনার বর্তমান ব্যয়ের বিশ্লেষণে খরচ কমানোর সবচেয়ে বড় সুযোগ রয়েছে **${topCat.category}** খাতে, যেখানে বর্তমানে ৳${topCat.amount.toLocaleString()} (${topCat.percentage}%) ব্যয় হচ্ছে।\n\nএই খাত থেকে ১০-১৫% সাশ্রয় করতে পারলে প্রতি মাসে অতিরিক্ত প্রায় ৳${Math.round(topCat.amount * 0.12).toLocaleString()} সাশ্রয় করা সম্ভব, যা আপনার সঞ্চয়ের গতি বৃদ্ধি করবে।`;
       }
@@ -199,10 +223,16 @@ async function startServer() {
       norm.includes('বেশি সঞ্চয়') ||
       norm.includes('সঞ্চয় বাড়াব')
     ) {
-      if (inBangla) {
-        return `বর্তমানে আপনার মাসিক সঞ্চয় ৳${netSavings.toLocaleString()} (সঞ্চয়ের হার: ${savingsRate}%)।\n\nআরও বেশি সঞ্চয় করার বাস্তবসম্মত পদক্ষেপ:\n১. **${topCat.category}** খাতের খরচ (বর্তমান ৳${topCat.amount.toLocaleString()}) থেকে সামান্য কমিয়ে মাসে অতিরিক্ত ৳${Math.round(topCat.amount * 0.1).toLocaleString()} জমানো।\n২. অপ্রয়োজনীয় লেনদেন ফি এবং অতিরিক্ত চার্জ এড়িয়ে চলা।\n৩. এই অতিরিক্ত টাকা সরাসরি আপনার **${primaryGoal.title}** সঞ্চয় লক্ষ্যে যুক্ত করা।`;
+      if (primaryGoal) {
+        if (inBangla) {
+          return `বর্তমানে আপনার মাসিক সঞ্চয় ৳${netSavings.toLocaleString()} (সঞ্চয়ের হার: ${savingsRate}%)।\n\nআরও বেশি সঞ্চয় করার বাস্তবসম্মত পদক্ষেপ:\n১. **${topCat.category}** খাতের খরচ (বর্তমান ৳${topCat.amount.toLocaleString()}) থেকে সামান্য কমিয়ে মাসে অতিরিক্ত ৳${Math.round(topCat.amount * 0.1).toLocaleString()} জমানো।\n২. অপ্রয়োজনীয় লেনদেন ফি এবং অতিরিক্ত চার্জ এড়িয়ে চলা।\n৩. এই অতিরিক্ত টাকা সরাসরি আপনার **${primaryGoal.title}** সঞ্চয় লক্ষ্যে যুক্ত করা।`;
+        }
+        return `Your current monthly savings is ৳${netSavings.toLocaleString()} (${savingsRate}% savings rate).\n\nActionable steps to increase your savings:\n1. Moderate spending in your top category **${topCat.category}** (currently ৳${topCat.amount.toLocaleString()}) to free up ~৳${Math.round(topCat.amount * 0.1).toLocaleString()}/month.\n2. Minimize small transactional tariffs and discretionary leaks.\n3. Automatically route this surplus into your **${primaryGoal.title}** goal (target: ৳${primaryGoal.targetAmount.toLocaleString()}).`;
       }
-      return `Your current monthly savings is ৳${netSavings.toLocaleString()} (${savingsRate}% savings rate).\n\nActionable steps to increase your savings:\n1. Moderate spending in your top category **${topCat.category}** (currently ৳${topCat.amount.toLocaleString()}) to free up ~৳${Math.round(topCat.amount * 0.1).toLocaleString()}/month.\n2. Minimize small transactional tariffs and discretionary leaks.\n3. Automatically route this surplus into your **${primaryGoal.title}** goal (target: ৳${primaryGoal.targetAmount.toLocaleString()}).`;
+      if (inBangla) {
+        return `বর্তমানে আপনার মাসিক সঞ্চয় ৳${netSavings.toLocaleString()} (সঞ্চয়ের হার: ${savingsRate}%)।\n\nআরও বেশি সঞ্চয় করার জন্য একটি নির্দিষ্ট সঞ্চয় লক্ষ্য নির্ধারণ করুন এবং অপ্রয়োজনীয় ব্যয় নিয়ন্ত্রণ করুন।`;
+      }
+      return `Your current monthly savings is ৳${netSavings.toLocaleString()} (${savingsRate}% savings rate).\n\nActionable steps to increase your savings:\n1. Create a dedicated savings goal to stay motivated and track progress.\n2. Review your discretionary spending and set automated daily or weekly savings rules.`;
     }
 
     // 4. Savings goal on track
@@ -213,6 +243,12 @@ async function startServer() {
       norm.includes('লক্ষ্যমাত্রা') ||
       norm.includes('টার্গেট')
     ) {
+      if (!primaryGoal) {
+        if (inBangla) {
+          return `${greetingBn} আপনার এখনও কোনো সঞ্চয় লক্ষ্য তৈরি করা হয়নি। 'Savings Goals' ট্যাব থেকে একটি লক্ষ্য তৈরি করুন যেন আপনি সঞ্চয়ের অগ্রগতি ট্র্যাক করতে পারেন।`;
+        }
+        return `${greetingEn} You haven't created any savings goals yet. Navigate to the Savings Goals section to create a goal and start tracking your target.`;
+      }
       const remaining = primaryGoal.remainingAmount ?? Math.max(0, primaryGoal.targetAmount - primaryGoal.currentAmount);
       const progress = primaryGoal.progressPercentage ?? Math.round((primaryGoal.currentAmount / primaryGoal.targetAmount) * 100);
       if (inBangla) {
@@ -228,6 +264,12 @@ async function startServer() {
       norm.includes('spending the most') ||
       norm.includes('expense high')
     ) {
+      if (spending === 0) {
+        if (inBangla) {
+          return `${greetingBn} চলতি মাসে আপনার কোনো খরচের রেকর্ড পাওয়া যায়নি।`;
+        }
+        return `${greetingEn} You have no spending recorded for this month.`;
+      }
       if (inBangla) {
         return `এই মাসে আপনার মোট খরচ ৳${spending.toLocaleString()}। আপনার সবচেয়ে বেশি খরচ হচ্ছে **${topCat.category}** খাতে (৳${topCat.amount.toLocaleString()}, যা মোট ব্যয়ের ${topCat.percentage}%)।\n\nএই প্রধান খরচের খাতটি নিয়ন্ত্রণ করাই সামগ্রিক মাসিক ব্যয় কমিয়ে আনার সবচেয়ে দ্রুততম উপায়।`;
       }
@@ -249,29 +291,69 @@ async function startServer() {
 
     // General response
     if (inBangla) {
-      return `${greetingBn} আপনার আর্থিক তথ্য অনুযায়ী: চলতি মাসের আয় ৳${income.toLocaleString()}, ব্যয় ৳${spending.toLocaleString()}, সঞ্চয় ৳${netSavings.toLocaleString()} এবং উপলব্ধ ব্যালেন্স ৳${balance.toLocaleString()}। আপনার সবচেয়ে বড় খরচের খাত **${topCat.category}** (৳${topCat.amount.toLocaleString()})। আপনার বাজেট বা সঞ্চয় নিয়ে নির্দিষ্ট কোনো পরামর্শ চাইলে জানান!`;
+      return `${greetingBn} আপনার আর্থিক তথ্য অনুযায়ী: চলতি মাসের আয় ৳${income.toLocaleString()}, ব্যয় ৳${spending.toLocaleString()}, সঞ্চয় ৳${netSavings.toLocaleString()} এবং উপলব্ধ ব্যালেন্স ৳${balance.toLocaleString()}। আপনার প্রধান খরচের খাত **${topCat.category}** (৳${topCat.amount.toLocaleString()})। আপনার বাজেট বা সঞ্চয় নিয়ে নির্দিষ্ট কোনো পরামর্শ চাইলে জানান!`;
     }
     return `${greetingEn} Based on your authentic financial ledger: Monthly Income is ৳${income.toLocaleString()}, Spending is ৳${spending.toLocaleString()}, Net Savings is ৳${netSavings.toLocaleString()}, and Available Balance is ৳${balance.toLocaleString()}. Your largest expense category is **${topCat.category}** (৳${topCat.amount.toLocaleString()}). Please let me know how I can help with your budgeting or savings goals!`;
   }
 
   // AI Coach query endpoint
   app.post('/api/ai/coach', optionalAuth, async (req: AuthenticatedRequest, res: Response) => {
-    const { prompt, isBangla, financialContext } = req.body;
+    const prompt = (req.body.prompt || req.body.message || req.body.question || '').trim();
+    const isBangla = req.body.language === 'bn' || Boolean(req.body.isBangla);
 
-    if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+    if (!prompt) {
       return res.status(400).json({ error: 'Prompt is required' });
     }
 
-    const ctx = financialContext || {};
     const authUser = req.user;
-    const effectiveRawName = authUser?.name || ctx.userName;
+    const ctx = req.body.financialContext;
+
+    // Security check: Unauthenticated query without financial context requires authentication
+    if (!authUser && !ctx) {
+      return res.status(401).json({ error: 'Authentication required to query personal finance data' });
+    }
+
+    // 1. If user is authenticated and no client financialContext override is provided (or explicit message is sent)
+    if (authUser && (!ctx || req.body.message)) {
+      try {
+        const userId = authUser.customId || authUser._id?.toString() || authUser.id;
+        const coachContext = await buildCoachContext(userId);
+        const netSavings = coachContext.snapshot.netSavings || 0;
+        const intentResult = classifyIntent(prompt, netSavings);
+        const coachResponse = await executeCoachInquiry({
+          userId,
+          query: prompt,
+          language: isBangla ? 'bn' : 'en',
+          history: req.body.history || [],
+          fullContext: coachContext,
+          intentResult,
+          aiClient: ai,
+        });
+
+        return res.json({
+          answer: coachResponse.answer,
+          text: coachResponse.answer,
+          source: coachResponse.source,
+          factsUsed: coachResponse.factsUsed,
+          followUps: coachResponse.followUps,
+          dataGaps: coachResponse.dataGaps,
+          dataWindow: coachContext.metadata?.dataWindow,
+        });
+      } catch (err: any) {
+        console.warn('Error in executeCoachInquiry, falling back:', err?.message);
+      }
+    }
+
+    // 2. Client-provided context or unauthenticated fallback
+    const effectiveContext = ctx || {};
+    const effectiveRawName = authUser?.name || effectiveContext.userName;
     const trimmedName = typeof effectiveRawName === 'string' ? effectiveRawName.trim() : '';
     const firstName = trimmedName ? trimmedName.split(' ')[0] : null;
 
     if (ai) {
       try {
-        const categoriesList = Array.isArray(ctx.categories)
-          ? ctx.categories
+        const categoriesList = Array.isArray(effectiveContext.categories) && effectiveContext.categories.length > 0
+          ? effectiveContext.categories
               .map(
                 (c: any) =>
                   `  • ${c.category}: ৳${c.amount} (${c.percentage}% of spending, MoM change: ${
@@ -281,20 +363,20 @@ async function startServer() {
                   }`
               )
               .join('\n')
-          : '  • Food & Groceries: ৳8,200 (28.1%, +14% surge)\n  • Shopping & Gadgets: ৳5,800 (19.9%, -6%)\n  • Utility & Fixed Costs: ৳4,600 (15.8%)\n  • Transportation: ৳4,400 (15.1%)\n  • Entertainment & Others: ৳3,400 (11.6%)\n  • Cash-out & Bank Fees: ৳2,800 (9.6%, +12% fee leak)';
+          : '  • No categorized transactions recorded yet.';
 
-        const goalsList = Array.isArray(ctx.goals)
-          ? ctx.goals
+        const goalsList = Array.isArray(effectiveContext.goals) && effectiveContext.goals.length > 0
+          ? effectiveContext.goals
               .map(
                 (g: any) =>
                   `  • ${g.title}: Target ৳${g.targetAmount}, Saved ৳${g.currentAmount} (${g.progressPercentage}%), Remaining ৳${g.remainingAmount}, Required Monthly: ৳${g.requiredMonthlySavings}/mo, Current Average: ৳${g.currentAverageMonthlySaving}/mo, Monthly Savings Gap: ৳${g.monthlySavingsGap}/mo, Deadline: ${g.deadline}, Projected Completion: ${g.projectedCompletionDate}`
               )
               .join('\n')
-          : '  • Emergency Fund: Target ৳30,000, Saved ৳18,500 (61.7%), Remaining ৳11,500, Required Monthly: ৳5,000/mo, Current Average: ৳3,200/mo, Gap: ৳1,800/mo, Deadline: 2024-12-14, Projected: Dec 2024';
+          : '  • No savings goals created yet.';
 
-        const healthPillars = ctx.healthScore?.factors
-          ? `Saving Consistency: ${ctx.healthScore.factors.savingConsistency}%, Spending Control: ${ctx.healthScore.factors.spendingControl}%, Cash Flow Stability: ${ctx.healthScore.factors.cashFlowStability}%, Goal Progress: ${ctx.healthScore.factors.goalProgress}%`
-          : 'Saving Consistency: 82%, Spending Control: 71%, Cash Flow Stability: 79%, Goal Progress: 84%';
+        const healthPillars = effectiveContext.healthScore?.factors
+          ? `Saving Consistency: ${effectiveContext.healthScore.factors.savingConsistency}%, Spending Control: ${effectiveContext.healthScore.factors.spendingControl}%, Cash Flow Stability: ${effectiveContext.healthScore.factors.cashFlowStability}%, Goal Progress: ${effectiveContext.healthScore.factors.goalProgress}%`
+          : 'Saving Consistency: 0%, Spending Control: 0%, Cash Flow Stability: 0%, Goal Progress: 0% (Insufficient data)';
 
         const systemInstruction = `You are ArthoBachao AI Personal Financial Coach, an expert digital wealth engine built specifically for Bangladesh (Dhaka lifestyle, bKash, Nagad, City Bank, Dhaka Metro MRT, Pathao, Shwapno). You provide explainable, empathetic, non-judgmental, and mathematically sound coaching grounded strictly in the user's authentic ledger data.
 
@@ -317,11 +399,11 @@ LANGUAGE: ${
 ==================================================
 AUTHENTIC USER FINANCIAL LEDGER DATA:
 ==================================================
-- Monthly Income: ৳${ctx.monthlyIncome ?? 38500}
-- Total Monthly Spending: ৳${ctx.monthlySpending ?? 29200}
-- Net Monthly Savings: ৳${ctx.netSavings ?? 9300}
-- Current Savings Rate: ${ctx.savingsRate ?? 24.2}%
-- Total Available Balance: ৳${ctx.cashFlow?.startingBalance ?? 24850}
+- Monthly Income: ৳${effectiveContext.monthlyIncome ?? 0}
+- Total Monthly Spending: ৳${effectiveContext.monthlySpending ?? 0}
+- Net Monthly Savings: ৳${effectiveContext.netSavings ?? 0}
+- Current Savings Rate: ${effectiveContext.savingsRate ?? 0}%
+- Total Available Balance: ৳${effectiveContext.cashFlow?.startingBalance ?? 0}
 
 CATEGORICAL EXPENDITURE BREAKDOWN:
 ${categoriesList}
@@ -330,15 +412,13 @@ SAVINGS GOALS STATUS:
 ${goalsList}
 
 ARTHOBACHAO AI FINANCIAL HEALTH SCORE:
-• Score: ${ctx.healthScore?.score ?? 79} / 100 (${ctx.healthScore?.status ?? 'Very Good'}, outperforms ${
-          ctx.healthScore?.percentile ?? 74
-        }% of peer profiles)
+• Score: ${effectiveContext.healthScore?.score ?? 0} / 100 (${effectiveContext.healthScore?.status ?? 'Insufficient Data'})
 • Diagnostic Factors: ${healthPillars}
 
 30-DAY CASH-FLOW FORECAST:
-• Starting Balance: ৳${ctx.cashFlow?.startingBalance ?? 24850}
-• Projected Month-End Close: ৳${ctx.cashFlow?.projectedMonthEnd ?? 7450}
-• Recommended Buffer: ৳${ctx.cashFlow?.recommendedBuffer ?? 18000}
+• Starting Balance: ৳${effectiveContext.cashFlow?.startingBalance ?? 0}
+• Projected Month-End Close: ৳${effectiveContext.cashFlow?.projectedMonthEnd ?? 0}
+• Recommended Buffer: ৳${effectiveContext.cashFlow?.recommendedBuffer ?? 0}
 
 ==================================================
 COACHING & FACTUAL RULES:
@@ -356,8 +436,9 @@ COACHING & FACTUAL RULES:
         const generatedText = response?.text || '';
         if (generatedText) {
           return res.json({
-            source: 'gemini',
+            answer: generatedText,
             text: generatedText,
+            source: 'gemini',
           });
         }
       } catch (geminiError: any) {
@@ -366,10 +447,11 @@ COACHING & FACTUAL RULES:
     }
 
     // Dynamic deterministic fallback using the user's actual financial context
-    const dynamicText = generateDynamicDeterministicAnswer(prompt, Boolean(isBangla), ctx, authUser);
+    const dynamicText = generateDynamicDeterministicAnswer(prompt, Boolean(isBangla), effectiveContext, authUser);
     return res.json({
-      source: 'deterministic_fallback',
+      answer: dynamicText,
       text: dynamicText,
+      source: 'deterministic_fallback',
       message: 'Using built-in deterministic financial intelligence',
     });
   });
@@ -385,8 +467,8 @@ COACHING & FACTUAL RULES:
     app.use(vite.middlewares);
   }
 
-  app.listen(port, '0.0.0.0', () => {
-    console.log(`ArthoBachao AI server listening on http://0.0.0.0:${port}`);
+  app.listen(port, () => {
+    console.log(`ArthoBachao AI server listening on http://localhost:${port} and http://127.0.0.1:${port}`);
   });
 }
 

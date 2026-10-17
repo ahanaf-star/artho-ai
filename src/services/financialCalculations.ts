@@ -2,6 +2,10 @@ import {
   Transaction,
   SavingsGoal,
   FinancialHealthMetrics,
+  FinancialHealthResult,
+  FinancialHealthInput,
+  FinancialHealthFactorBreakdown,
+  HealthScoreComponent,
   CashFlowPoint,
   CategoryName,
   ScenarioPlan,
@@ -25,9 +29,10 @@ export interface MonthlyOverview {
   savingsRate: number;
   dailyAverageSpend: number;
   largestCategory: {
-    category: CategoryName;
+    category: CategoryName | string;
     amount: number;
     percentage: number;
+    topMerchants?: string[];
   };
   expenseSplit: {
     essential: number;
@@ -224,12 +229,17 @@ export function calculateMonthlyOverview(
         : 0;
 
     let status: CategorySummary['status'] = 'stable';
-    if (catName === 'Food & Groceries') status = 'surging';
-    else if (catName === 'Shopping & Gadgets') status = 'under_control';
-    else if (catName === 'Utility & Fixed Costs') status = 'stable';
-    else if (catName === 'Transportation') status = 'stable';
-    else if (catName === 'Cash-out & Bank Fees') status = 'high_friction';
-    else if (catName === 'Entertainment & Others') status = 'efficient';
+    if (entry.amount === 0) {
+      status = 'stable';
+    } else if (catName === 'Cash-out & Bank Fees' && entry.amount > 200) {
+      status = 'high_friction';
+    } else if (momChange > 20) {
+      status = 'surging';
+    } else if (momChange < -10) {
+      status = 'under_control';
+    } else {
+      status = 'stable';
+    }
 
     return {
       category: catName,
@@ -243,17 +253,24 @@ export function calculateMonthlyOverview(
   });
 
   // Sort to find largest
-  const sorted = [...categories].sort((a, b) => b.amount - a.amount);
-  const largestCategory = sorted[0] || {
-    category: 'Food & Groceries',
-    amount: 8200,
-    percentage: 28.1,
-  };
+  const sorted = [...categories].filter((c) => c.amount > 0).sort((a, b) => b.amount - a.amount);
+  const largestCategory =
+    sorted.length > 0
+      ? sorted[0]
+      : {
+          category: '' as CategoryName,
+          amount: 0,
+          percentage: 0,
+          count: 0,
+          momChangePercentage: 0,
+          status: 'stable' as const,
+          topMerchants: [] as string[],
+        };
 
   const essentialPct =
-    totalExpenses > 0 ? Number(((essentialExpenses / totalExpenses) * 100).toFixed(1)) : 62;
+    totalExpenses > 0 ? Number(((essentialExpenses / totalExpenses) * 100).toFixed(1)) : 0;
   const discretionaryPct =
-    totalExpenses > 0 ? Number(((discretionaryExpenses / totalExpenses) * 100).toFixed(1)) : 38;
+    totalExpenses > 0 ? Number(((discretionaryExpenses / totalExpenses) * 100).toFixed(1)) : 0;
 
   return {
     monthKey: activeMonth,
@@ -266,139 +283,449 @@ export function calculateMonthlyOverview(
       category: largestCategory.category,
       amount: largestCategory.amount,
       percentage: largestCategory.percentage,
+      topMerchants: largestCategory.topMerchants,
     },
     expenseSplit: {
-      essential: essentialExpenses || 18104,
+      essential: essentialExpenses,
       essentialPercentage: essentialPct,
-      discretionary: discretionaryExpenses || 11096,
+      discretionary: discretionaryExpenses,
       discretionaryPercentage: discretionaryPct,
     },
     categories,
   };
 }
 
+export const DEFAULT_FINANCIAL_HEALTH_CONFIG = {
+  weights: {
+    savingsRate: 0.25,
+    expenseControl: 0.25,
+    emergencyFund: 0.20,
+    savingsGoals: 0.20,
+    cashFlowHealth: 0.10,
+  },
+  anchors: {
+    savingsRate: [
+      { x: 0.0, y: 0 },
+      { x: 0.05, y: 35 },
+      { x: 0.10, y: 50 },
+      { x: 0.15, y: 65 },
+      { x: 0.20, y: 80 },
+      { x: 0.30, y: 95 },
+      { x: 0.40, y: 100 },
+    ],
+    expenseControl: [
+      { x: 0.40, y: 100 },
+      { x: 0.50, y: 95 },
+      { x: 0.60, y: 85 },
+      { x: 0.70, y: 75 },
+      { x: 0.80, y: 60 },
+      { x: 0.90, y: 40 },
+      { x: 1.00, y: 20 },
+      { x: 1.20, y: 0 },
+    ],
+    emergencyFund: [
+      { x: 0, y: 0 },
+      { x: 1, y: 40 },
+      { x: 2, y: 60 },
+      { x: 3, y: 75 },
+      { x: 6, y: 95 },
+      { x: 12, y: 100 },
+    ],
+    savingsGoals: [
+      { x: 0, y: 0 },
+      { x: 25, y: 45 },
+      { x: 50, y: 65 },
+      { x: 75, y: 85 },
+      { x: 100, y: 100 },
+    ],
+    cashFlowHealth: [
+      { x: 0, y: 0 },
+      { x: 0.5, y: 45 },
+      { x: 1.0, y: 75 },
+      { x: 2.0, y: 95 },
+      { x: 3.0, y: 100 },
+    ],
+  },
+};
+
+export function interpolatePiecewiseLinear(
+  x: number,
+  anchors: Array<{ x: number; y: number }>
+): number {
+  if (!anchors || anchors.length === 0) return 0;
+  if (x <= anchors[0].x) return anchors[0].y;
+  if (x >= anchors[anchors.length - 1].x) return anchors[anchors.length - 1].y;
+
+  for (let i = 0; i < anchors.length - 1; i++) {
+    const p1 = anchors[i];
+    const p2 = anchors[i + 1];
+    if (x >= p1.x && x <= p2.x) {
+      if (p2.x === p1.x) return p1.y;
+      const t = (x - p1.x) / (p2.x - p1.x);
+      return Math.round(p1.y + t * (p2.y - p1.y));
+    }
+  }
+  return anchors[anchors.length - 1].y;
+}
+
 // Calculate the ArthoBachao AI Financial Health Score with explainability
+export function calculateFinancialHealthScore(
+  input: FinancialHealthInput
+): FinancialHealthResult;
 export function calculateFinancialHealthScore(
   transactions: Transaction[],
   goals: SavingsGoal[],
-  monthlyIncome: number = 38500,
+  monthlyIncome?: number,
   targetMonth?: string
-): FinancialHealthMetrics {
-  const activeMonth = targetMonth || getLatestTransactionMonth(transactions);
-  const currentMonthTxs = filterTransactionsByMonth(transactions, activeMonth);
+): FinancialHealthMetrics;
+export function calculateFinancialHealthScore(
+  arg1: Transaction[] | FinancialHealthInput,
+  arg2?: SavingsGoal[],
+  arg3?: number,
+  arg4?: string
+): FinancialHealthResult | FinancialHealthMetrics {
+  const isInputObject = typeof arg1 === 'object' && !Array.isArray(arg1) && 'transactions' in arg1;
 
-  let currentExpenses = 0;
-  let discretionaryCount = 0;
-  let totalCount = 0;
-  let anomalyCount = 0;
+  if (isInputObject) {
+    const input = arg1 as FinancialHealthInput;
+    const transactions = input.transactions || [];
+    const goals = input.goals || [];
+    const monthlyIncome = input.monthlyIncome || 0;
+    const startingBalance = input.startingBalance;
+    const asOfDate = input.asOfDate;
+    const config = input.config || DEFAULT_FINANCIAL_HEALTH_CONFIG;
 
-  for (const t of currentMonthTxs) {
-    if (t.type === 'expense') {
-      currentExpenses += t.amount;
-      totalCount++;
-      if (t.classification === 'discretionary') discretionaryCount++;
-      if (t.isAnomaly || t.classification === 'anomalies') anomalyCount++;
+    const activeMonth = asOfDate ? asOfDate.slice(0, 7) : getLatestTransactionMonth(transactions);
+    const availableMonths = getAvailableMonths(transactions);
+    const monthsOfData = availableMonths.filter((m) => m <= activeMonth).length || (transactions.length > 0 ? 1 : 0);
+    const currentMonthTxs = filterTransactionsByMonth(transactions, activeMonth);
+
+    // Sanitize transactions: ignore negative or invalid amounts
+    const validMonthTxs = (currentMonthTxs || []).filter(
+      (t) => t && typeof t.amount === 'number' && !isNaN(t.amount) && t.amount > 0
+    );
+
+    let currentExpenses = 0;
+    let currentIncome = 0;
+    for (const t of validMonthTxs) {
+      if (t.type === 'expense') currentExpenses += t.amount;
+      else if (t.type === 'income') currentIncome += t.amount;
     }
+    const effectiveIncome =
+      typeof monthlyIncome === 'number' && !isNaN(monthlyIncome) && monthlyIncome > 0
+        ? monthlyIncome
+        : currentIncome;
+
+    const components: HealthScoreComponent[] = [];
+
+    // 1. savings_rate (weight 0.25)
+    if (effectiveIncome <= 0) {
+      components.push({
+        key: 'savings_rate',
+        name: 'Savings Rate',
+        label: 'Savings Rate',
+        score: null,
+        weight: config.weights.savingsRate,
+        available: false,
+        rawValue: null,
+        rawUnit: '%',
+        unit: '%',
+        status: 'zero_income',
+      });
+    } else {
+      const netSavings = Math.max(0, effectiveIncome - currentExpenses);
+      const rate = netSavings / effectiveIncome;
+      const rawValue = Math.round(rate * 100);
+      const score = interpolatePiecewiseLinear(rate, config.anchors.savingsRate);
+      components.push({
+        key: 'savings_rate',
+        name: 'Savings Rate',
+        label: 'Savings Rate',
+        score,
+        weight: config.weights.savingsRate,
+        available: true,
+        rawValue,
+        rawUnit: '%',
+        unit: '%',
+        status: 'ok',
+      });
+    }
+
+    // 2. expense_control (weight 0.25) - requires both income and expense data
+    const expenseTxs = validMonthTxs.filter((t) => t.type === 'expense');
+    if (effectiveIncome <= 0) {
+      components.push({
+        key: 'expense_control',
+        name: 'Expense Control',
+        label: 'Expense Control',
+        score: null,
+        weight: config.weights.expenseControl,
+        available: false,
+        rawValue: null,
+        rawUnit: '%',
+        unit: '%',
+        status: 'zero_income',
+      });
+    } else if (expenseTxs.length === 0 && currentExpenses === 0) {
+      components.push({
+        key: 'expense_control',
+        name: 'Expense Control',
+        label: 'Expense Control',
+        score: null,
+        weight: config.weights.expenseControl,
+        available: false,
+        rawValue: null,
+        rawUnit: '%',
+        unit: '%',
+        status: 'no_expense_data',
+      });
+    } else {
+      const ratio = currentExpenses / effectiveIncome;
+      const rawValue = Math.round(ratio * 100);
+      const score = interpolatePiecewiseLinear(ratio, config.anchors.expenseControl);
+      components.push({
+        key: 'expense_control',
+        name: 'Expense Control',
+        label: 'Expense Control',
+        score,
+        weight: config.weights.expenseControl,
+        available: true,
+        rawValue,
+        rawUnit: '%',
+        unit: '%',
+        status: 'ok',
+      });
+    }
+
+    // 3. emergency_fund (weight 0.20)
+    const emergencyGoal = goals.find((g) => {
+      const cat = (g.category || '').toLowerCase();
+      const title = (g.title || g.name || '').toLowerCase();
+      return cat.includes('emergency') || title.includes('emergency') || cat.includes('জরুরি') || title.includes('জরুরি');
+    });
+
+    if (!emergencyGoal) {
+      components.push({
+        key: 'emergency_fund',
+        name: 'Emergency Fund',
+        label: 'Emergency Fund',
+        score: null,
+        weight: config.weights.emergencyFund,
+        available: false,
+        rawValue: null,
+        rawUnit: 'months',
+        unit: 'months',
+        status: 'missing_goal',
+      });
+    } else {
+      const monthlyBurn = currentExpenses > 0 ? currentExpenses : (effectiveIncome > 0 ? effectiveIncome * 0.6 : 20000);
+      const coverageMonths = monthlyBurn > 0 ? Number((emergencyGoal.currentAmount / monthlyBurn).toFixed(1)) : 0;
+      const score = interpolatePiecewiseLinear(coverageMonths, config.anchors.emergencyFund);
+      components.push({
+        key: 'emergency_fund',
+        name: 'Emergency Fund',
+        label: 'Emergency Fund',
+        score,
+        weight: config.weights.emergencyFund,
+        available: true,
+        rawValue: coverageMonths,
+        rawUnit: 'months',
+        unit: 'months',
+        status: 'ok',
+      });
+    }
+
+    // 4. savings_goals (weight 0.20)
+    const validGoals = (goals || []).filter(
+      (g) => g && typeof g.targetAmount === 'number' && g.targetAmount > 0
+    );
+
+    if (validGoals.length === 0) {
+      components.push({
+        key: 'savings_goals',
+        name: 'Savings Goals',
+        label: 'Savings Goals',
+        score: null,
+        weight: config.weights.savingsGoals,
+        available: false,
+        rawValue: null,
+        rawUnit: '%',
+        unit: '%',
+        status: (goals || []).length === 0 ? 'no_goals' : 'invalid_goals',
+      });
+    } else {
+      const avgProgress = Math.round(
+        validGoals.reduce((acc, g) => {
+          const current =
+            typeof g.currentAmount === 'number' && !isNaN(g.currentAmount)
+              ? Math.max(0, g.currentAmount)
+              : 0;
+          return acc + Math.min(100, (current / g.targetAmount) * 100);
+        }, 0) / validGoals.length
+      );
+      const score = interpolatePiecewiseLinear(avgProgress, config.anchors.savingsGoals);
+      components.push({
+        key: 'savings_goals',
+        name: 'Savings Goals',
+        label: 'Savings Goals',
+        score,
+        weight: config.weights.savingsGoals,
+        available: true,
+        rawValue: avgProgress,
+        rawUnit: '%',
+        unit: '%',
+        status: 'ok',
+      });
+    }
+
+    // 5. cash_flow_health (weight 0.10)
+    if (currentExpenses === 0 && effectiveIncome === 0 && (!startingBalance || startingBalance <= 0)) {
+      components.push({
+        key: 'cash_flow_health',
+        name: 'Cash Flow Health',
+        label: 'Cash Flow Health',
+        score: null,
+        weight: config.weights.cashFlowHealth,
+        available: false,
+        rawValue: null,
+        rawUnit: 'ratio',
+        unit: 'ratio',
+        status: 'insufficient_data',
+      });
+    } else {
+      const liquid = startingBalance !== undefined ? startingBalance : Math.max(0, effectiveIncome - currentExpenses);
+      let cashBuffer = 0;
+      if (currentExpenses > 0) {
+        cashBuffer = Number((liquid / currentExpenses).toFixed(1));
+      } else if (effectiveIncome > 0) {
+        cashBuffer = Number((liquid / (effectiveIncome * 0.7)).toFixed(1));
+      } else if (startingBalance !== undefined && startingBalance > 0) {
+        cashBuffer = Number((startingBalance / 10000).toFixed(1));
+      }
+      const cashFlowScore = interpolatePiecewiseLinear(cashBuffer, config.anchors.cashFlowHealth);
+      components.push({
+        key: 'cash_flow_health',
+        name: 'Cash Flow Health',
+        label: 'Cash Flow Health',
+        score: cashFlowScore,
+        weight: config.weights.cashFlowHealth,
+        available: true,
+        rawValue: cashBuffer,
+        rawUnit: 'ratio',
+        unit: 'ratio',
+        status: 'ok',
+      });
+    }
+
+    // Check available weight sum
+    const availableWeight = components.reduce((acc, c) => acc + (c.available ? c.weight : 0), 0);
+
+    const factors: FinancialHealthFactorBreakdown = {
+      savingConsistency: components.find((c) => c.key === 'savings_rate')?.score ?? null,
+      spendingControl: components.find((c) => c.key === 'expense_control')?.score ?? null,
+      cashFlowStability: components.find((c) => c.key === 'cash_flow_health')?.score ?? null,
+      goalProgress: components.find((c) => c.key === 'savings_goals')?.score ?? null,
+    };
+
+    if (availableWeight < 0.50) {
+      return {
+        score: null,
+        status: 'insufficient_data',
+        category: null,
+        confidence: 'low',
+        components,
+        dataWindow: {
+          monthsOfData,
+          transactionCount: transactions.length,
+          asOfDate,
+        },
+        strengths: [],
+        attentionAreas: [],
+        factors,
+        percentile: null,
+        explanation: 'Insufficient transaction data to compute overall health score.',
+      };
+    }
+
+    const weightedScore = Math.round(
+      components.reduce((acc, c) => acc + (c.available && c.score !== null ? c.score * c.weight : 0), 0) / availableWeight
+    );
+
+    let category: 'Excellent' | 'Good' | 'Fair' | 'Poor' | 'Needs Attention' = 'Good';
+    if (weightedScore >= 80) category = 'Excellent';
+    else if (weightedScore >= 70) category = 'Good';
+    else if (weightedScore >= 55) category = 'Fair';
+    else category = 'Needs Attention';
+
+    const confidence: 'high' | 'medium' | 'low' =
+      monthsOfData >= 3 ? 'high' : monthsOfData === 2 ? 'medium' : 'low';
+
+    const strengths: string[] = [];
+    const attentionAreas: string[] = [];
+    for (const comp of components) {
+      if (comp.available && comp.score !== null) {
+        if (comp.score >= 70) {
+          strengths.push(`${comp.name} is performing well (${comp.score}/100)`);
+        } else {
+          attentionAreas.push(`${comp.name} needs improvement (${comp.score}/100)`);
+        }
+      }
+    }
+
+    return {
+      score: weightedScore,
+      status: 'ok',
+      category,
+      confidence,
+      components,
+      dataWindow: {
+        monthsOfData,
+        transactionCount: transactions.length,
+        asOfDate,
+      },
+      strengths,
+      attentionAreas,
+      percentile: Math.min(99, Math.max(25, Math.round(weightedScore * 0.95))),
+      factors,
+      explanation: `Overall Financial Health Score is ${weightedScore}/100 (${category}). Evaluated with ${confidence} confidence.`,
+    };
   }
 
-  // 1. Saving Consistency (82 baseline)
-  // Evaluates monthly net savings vs target 20%
-  const netSavings = Math.max(0, monthlyIncome - currentExpenses);
-  const savingsRatio = monthlyIncome > 0 ? netSavings / (monthlyIncome * 0.2) : 1;
-  const savingConsistency = Math.min(100, Math.max(50, Math.round(82 * Math.min(1.2, savingsRatio))));
+  // Positional fallback for (transactions, goals, monthlyIncome, targetMonth)
+  const transactions = (arg1 as Transaction[]) || [];
+  const goals = arg2 || [];
+  const monthlyIncome = arg3 !== undefined ? arg3 : 0;
+  const targetMonth = arg4;
 
-  // 2. Spending Control (71 baseline)
-  // Penalized for high discretionary frequency and anomalies (e.g. MFS cash-out fees)
-  let spendingControl = 71;
-  if (anomalyCount > 1) spendingControl -= 4;
-  if (discretionaryCount / Math.max(1, totalCount) > 0.45) spendingControl -= 3;
-  spendingControl = Math.min(100, Math.max(40, spendingControl));
+  const result = calculateFinancialHealthScore({
+    transactions,
+    goals,
+    monthlyIncome,
+    asOfDate: targetMonth ? `${targetMonth}-01` : undefined,
+  });
 
-  // 3. Cash Flow Stability (79 baseline)
-  const cashFlowStability = 79;
-
-  // 4. Goal Progress (84 baseline)
-  let goalProgressSum = 0;
-  if (goals.length > 0) {
-    for (const g of goals) {
-      goalProgressSum += Math.min(100, (g.currentAmount / Math.max(1, g.targetAmount)) * 100);
-    }
-    goalProgressSum = Math.round(goalProgressSum / goals.length);
-  } else {
-    goalProgressSum = 84;
-  }
-  const goalProgress = Math.min(100, Math.max(50, goalProgressSum || 84));
-
-  // Composite calculation
-  const compositeScore = Math.round(
-    savingConsistency * 0.3 +
-    spendingControl * 0.25 +
-    cashFlowStability * 0.25 +
-    goalProgress * 0.2
-  );
-
-  let status: FinancialHealthMetrics['status'] = 'Very Good';
-  if (compositeScore >= 85) status = 'Optimal';
-  else if (compositeScore >= 75) status = 'Very Good';
-  else if (compositeScore >= 60) status = 'Good';
-  else status = 'Needs Attention';
+  const scoreVal = result.score;
+  const statusVal =
+    result.score === null
+      ? 'Insufficient Data'
+      : (result.category || 'Good');
 
   return {
-    score: compositeScore,
-    status,
-    percentile: 74,
+    score: scoreVal,
+    status: statusVal as any,
+    percentile: result.percentile ?? null,
     factors: {
-      savingConsistency,
-      spendingControl,
-      cashFlowStability,
-      goalProgress,
+      savingConsistency: result.components?.find((c) => c.key === 'savings_rate')?.score ?? null,
+      spendingControl: result.components?.find((c) => c.key === 'expense_control')?.score ?? null,
+      cashFlowStability: result.components?.find((c) => c.key === 'cash_flow_health')?.score ?? null,
+      goalProgress: result.components?.find((c) => c.key === 'savings_goals')?.score ?? null,
     },
     explanation:
-      'Score calculated from saving consistency (82%), spending control (71%), cash flow stability (79%), and savings goal pace (84%). Consistently outperforming 74% of peers in Dhaka with active digital MFS accounts.',
+      result.explanation ||
+      (result.status === 'insufficient_data'
+        ? 'Insufficient transaction data to compute health score.'
+        : `Overall Financial Health Score is ${scoreVal}/100.`),
   };
-}
-
-// Generate 30-Day Cash Flow projection data
-export function generateCashFlowForecast(
-  startingBalance: number = 24850,
-  simulateExpenseCut: boolean = false
-): CashFlowPoint[] {
-  const points: CashFlowPoint[] = [];
-  let balance = startingBalance;
-  const dailyBurn = simulateExpenseCut ? 620 : 920; // ৳300/day saved if simulated
-
-  for (let day = 1; day <= 30; day++) {
-    let outflows = dailyBurn;
-
-    // Day 7: Freelance settlement inflow (+ ৳6,000)
-    if (day === 7) {
-      balance += 6000;
-    }
-
-    // Day 26: Rent & Utilities outflow (- ৳17,200)
-    if (day === 26) {
-      outflows += 16000 + 1200; // Rent ৳16k + utilities
-    }
-
-    balance -= dailyBurn;
-    if (day === 26) balance -= 17200;
-
-    points.push({
-      day,
-      dateLabel: `Day ${day} (Oct ${day})`,
-      projectedBalance: Math.max(1200, Math.round(balance)),
-      expectedIncome: day === 7 ? 6000 : 0,
-      expectedExpense: outflows,
-      expectedOutflows: outflows,
-      isPressureZone: day >= 24 && day <= 28,
-      notes:
-        day === 26
-          ? 'Rent (৳16,000) & utility dues. Minimum projected margin: ৳3,200.'
-          : undefined,
-    });
-  }
-
-  return points;
 }
 
 // Calculate AI Scenario plans for a goal (Conservative, Balanced, Accelerated)
@@ -535,6 +862,7 @@ export {
 } from './savingsService';
 
 export {
+  generateCashFlowForecast,
   getDetailedForecast,
 } from './forecastService';
 

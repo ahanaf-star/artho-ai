@@ -5,23 +5,24 @@ import {
   calculateCompleteGoalAnalysis,
   getDetailedForecast,
   generateSpendingInsights,
+  getLocalDateString,
 } from './financialCalculations';
 
 export interface FinancialContext {
   userName?: string;
-  monthlyIncome: number;
+  monthlyIncome?: number;
   monthlySpending: number;
   netSavings: number;
   savingsRate: number;
   healthScore: {
-    score: number;
+    score: number | null;
     status: string;
-    percentile: number;
+    percentile?: number | null;
     factors: {
-      savingConsistency: number;
-      spendingControl: number;
-      cashFlowStability: number;
-      goalProgress: number;
+      savingConsistency: number | null;
+      spendingControl: number | null;
+      cashFlowStability: number | null;
+      goalProgress: number | null;
     };
   };
   categories: Array<{
@@ -65,19 +66,25 @@ export async function askFinancialCoach(
   userQuery: string,
   transactions: Transaction[],
   goals: SavingsGoal[],
-  monthlyIncome: number = 38500,
+  monthlyIncome?: number,
   isBangla: boolean = false,
-  userName?: string
+  userName?: string,
+  startingBalance: number = 0
 ): Promise<CoachMessage> {
-  const overview = calculateMonthlyOverview(transactions, '2024-10');
-  const health = calculateFinancialHealthScore(transactions, goals, monthlyIncome);
-  const insights = generateSpendingInsights(transactions, '2024-10', '2024-09');
-  const forecast = getDetailedForecast(24850, false, transactions);
+  const currentMonth = getLocalDateString().slice(0, 7);
+  const overview = calculateMonthlyOverview(transactions, currentMonth);
+  const health = calculateFinancialHealthScore({
+    transactions,
+    goals,
+    monthlyIncome: monthlyIncome || 0,
+  });
+  const insights = generateSpendingInsights(transactions, currentMonth);
+  const forecast = getDetailedForecast(startingBalance, false, transactions);
   const goalAnalyses = goals.map((g) => calculateCompleteGoalAnalysis(g, transactions));
 
   const financialContext: FinancialContext = {
     userName,
-    monthlyIncome,
+    monthlyIncome: monthlyIncome !== undefined ? monthlyIncome : (overview.totalIncome > 0 ? overview.totalIncome : 0),
     monthlySpending: overview.totalExpenses,
     netSavings: overview.netSavings,
     savingsRate: overview.savingsRate,
@@ -85,7 +92,12 @@ export async function askFinancialCoach(
       score: health.score,
       status: health.status,
       percentile: health.percentile,
-      factors: health.factors,
+      factors: health.factors || {
+        savingConsistency: null,
+        spendingControl: null,
+        cashFlowStability: null,
+        goalProgress: null,
+      },
     },
     categories: overview.categories.map((c) => ({
       category: c.category,
@@ -145,7 +157,6 @@ export async function askFinancialCoach(
 
     const endpoint =
       typeof window !== 'undefined' ? '/api/ai/coach' : 'http://localhost:3000/api/ai/coach';
-
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -303,36 +314,47 @@ export async function askFinancialCoach(
       normalized.includes('on track') ||
       normalized.includes('ইমার্জেন্সি ফান্ড')
     ) {
+      const emergencyGoal = goals.find((g) => g.title.toLowerCase().includes('emergency')) || goals[0];
+      const target = emergencyGoal?.targetAmount || 30000;
+      const current = emergencyGoal?.currentAmount || 18500;
+      const progress = Math.round((current / Math.max(1, target)) * 100);
+      const remaining = Math.max(0, target - current);
       finalText = isBangla
-        ? `${yesBn} আপনি আপনার জরুরি ফান্ডের জন্য সঠিক ট্র্যাকে আছেন।\n\n• লক্ষ্য: ৳৩০,০০০\n• বর্তমান জমার পরিমাণ: ৳১৮,৫০০ (৬১.৭% অর্জিত)\n• বাকি ঘাটতি: ৳১১,৫০০\n• বর্তমান মাসিক গতি: ৳৩,২০০/মাস\n• ডিসেম্বর ২০২৪ এর মধ্যে শেষ করতে প্রয়োজনীয় গতি: ৳৫,০০০/মাস\n\nআপনি ঢাকায় আপনার সমবয়সী পেশাদারদের ৭৪% এর চেয়ে এগিয়ে আছেন। পরিকল্পিত ৳৫,০০০/মাস ধরে রাখলে ডিসেম্বর ২০২৪ এর মধ্যে সম্পূর্ণ লক্ষ্য অর্জিত হবে।`
-        : `${yesEn} You are solidly on track for your Emergency Fund.\n\n• Target: ৳30,000\n• Current Balance: ৳18,500 (61.7% achieved)\n• Remaining Gap: ৳11,500\n• Current Average Pace: ৳3,200/month\n• Required Pace to hit Dec 2024 deadline: ৳5,000/month\n\nYou are outperforming 74% of peers in Dhaka. Continuing your ৳5,000/mo balanced plan projects full completion by December 2024.`;
+        ? `${yesBn} আপনি আপনার জরুরি ফান্ডের জন্য সঠিক ট্র্যাকে আছেন।\n\n• লক্ষ্য: ৳${target.toLocaleString()}\n• বর্তমান জমা: ৳${current.toLocaleString()} (${progress}% সম্পন্ন)\n• বাকি ঘাটতি: ৳${remaining.toLocaleString()}`
+        : `${yesEn} You are solidly on track for your Emergency Fund.\n\n• Target: ৳${target.toLocaleString()}\n• Current Balance: ৳${current.toLocaleString()} (${progress}% achieved)\n• Remaining Gap: ৳${remaining.toLocaleString()}`;
     } else if (
       normalized.includes('increasing') ||
       normalized.includes('spending the most') ||
       normalized.includes('খরচ বাড়ছে')
     ) {
+      const topCat = overview.largestCategory;
       finalText = isBangla
-        ? `যে খাতে আপনার খরচ সবচেয়ে বেশি বাড়ছে তা হলো **খাবার ও গ্রোসারি** (Food & Groceries)।\n\n• অক্টোবর মাসের খরচ: ৳৮,২০০ (মোট খরচের ২৮.১%)\n• গত মাসের তুলনায় বৃদ্ধি: +১৪% (সেপ্টেম্বরের চেয়ে +৳১,৪০০ বেশি)\n• প্রধান কারণ: পাঠাও ফুড ও ফুডপান্ডায় উইকেন্ডে ঘন ঘন দেরিতে খাবার অর্ডার করা।`
-        : `The category increasing your spending the most is **Food & Groceries**.\n\n• October Spend: ৳8,200 (28.1% of all outflows)\n• MoM Increase: +14% surge (+৳1,400 vs September)\n• Primary Driver: Frequent weekend late-night food deliveries on Pathao Food and Foodpanda.`;
+        ? `যে খাতে আপনার খরচ সবচেয়ে বেশি তা হলো **${topCat.category || 'অনির্ধারিত'}**।\n\n• বর্তমান খরচ: ৳${topCat.amount.toLocaleString()} (মোট খরচের ${topCat.percentage}%)\n• প্রধান খরচের খাত নিয়ন্ত্রণ করাই মাসিক ব্যয় কমিয়ে আনার সবচেয়ে দ্রুততম উপায়।`
+        : `The category accounting for your highest outflows is **${topCat.category || 'General'}**.\n\n• Outflow: ৳${topCat.amount.toLocaleString()} (${topCat.percentage}% of all expenditures)\n• Moderating this category is the most effective way to protect your monthly savings rate.`;
     } else if (
       normalized.includes('health score') ||
       normalized.includes('স্কোর')
     ) {
       finalText = isBangla
-        ? `আপনার অর্থবাঁচাও এআই আর্থিক স্বাস্থ্য স্কোর বর্তমানে **৭৯ / ১০০** ("খুব ভালো"), যা ঢাকার ৭৪% সমমানের প্রোফাইলের চেয়ে ভালো।\n\nস্কোর নির্ধারণকারী ৪টি মূল স্তম্ভ:\n১. সঞ্চয়ের ধারাবাহিকতা: **৮২%** (৳৯,৩০০ নিট সঞ্চয় ২০% লক্ষ্যের চেয়ে বেশি)\n২. খরচ নিয়ন্ত্রণ: **৭১%** (+১৪% ফুড ডেলিভারি বৃদ্ধি এবং ৳২,৮০০ ক্যাশ-আউট ফি এর কারণে স্কোর কমেছে)\n৩. ক্যাশ-ফ্লো স্থিতিশীলতা: **৭৯%** (২৬ তারিখের বাসা ভাড়ার প্রভাব)\n৪. লক্ষ্যমাত্রা অগ্রগতি: **৮৪%** (ইমার্জেন্সি ফান্ডের ৬১.৭% সম্পন্ন)\n\nউইকেন্ড ডেলিভারি ও এটিএম ফি নিয়ন্ত্রণ করলে খরচ নিয়ন্ত্রণ ৮০% ছাড়িয়ে যাবে এবং সামগ্রিক স্কোর ৮৫+ ("অনুকূল") এ পৌঁছাবে।`
-        : `Your ArthoBachao AI Financial Health Score is currently **79 / 100** ("Very Good"), outperforming 74% of peer digital profiles in Dhaka.\n\nThe 4 components affecting your score:\n1. Saving Consistency: **82%** (Net savings of ৳9,300 exceeds 20% target)\n2. Spending Control: **71%** (Lowered by the +14% food delivery surge and ৳2,800 in MFS cash-out tariffs)\n3. Cash Flow Stability: **79%** (Reflects Day 24-28 rent concentration)\n4. Savings Goal Progress: **84%** (Solid progress on Emergency Fund and MacBook)\n\nTrimming discretionary delivery orders and MFS tariffs will lift your Spending Control to 80%+, moving your overall score to 85+ ("Optimal").`;
+        ? `আপনার অর্থবাঁচাও এআই আর্থিক স্বাস্থ্য স্কোর **${health.score} / ১০০** ("${health.status}")।\n\nএটি আপনার সঞ্চয়ের হার, ব্যয় নিয়ন্ত্রণ এবং ক্যাশ-ফ্লো স্থিতিশীলতার ওপর ভিত্তি করে সম্পূর্ণ ব্যাখ্যাযোগ্যভাবে পরিমাপ করা হয়েছে।`
+        : `Your ArthoBachao AI Financial Health Score is currently **${health.score} / 100** ("${health.status}").\n\nThis score is evaluated transparently from your verified savings consistency, spending control, and cash-flow health.`;
     } else if (
       normalized.includes('balance look like') ||
       normalized.includes('next month') ||
       normalized.includes('টাকা কত থাকতে পারে')
     ) {
+      const monthEnd = forecast.projectedMonthEnd;
       finalText = isBangla
-        ? `আপনার নির্ধারিত আয় ও নিয়মিত খরচের পূর্বাভাস অনুযায়ী মাস শেষে আপনার সম্ভাব্য ব্যালেন্স দাঁড়াবে প্রায় **৳৭,৪৫০** (AI-assisted forecast)।\n\n• সম্ভাব্য মোট আয়: ৳৩৮,৫০০ (বেতন ৳৩২,৫০০ + ফ্রিল্যান্সিং ৳৬,০০০)\n• সম্ভাব্য মোট খরচ: ~৳৩১,০৫০ (২৬ তারিখের বাসা ভাড়া ৳১৬,০০০ ও ইউটিলিটি ৳১,২০০ সহ)\n• নিরাপদ মার্জিন: ২৬ তারিখে ব্যালেন্স ৳৩,২০০ পর্যন্ত নেমে মাস শেষে ৳৭,৪৫০ এ দাঁড়াবে।\n• যদি আপনি প্রতিদিন ৳৩০০ খরচ কমান, তবে মাস শেষে ব্যালেন্স ৳১১,২৫০ পর্যন্ত বৃদ্ধি পেতে পারে।\n*(নোট: এটি একটি নির্দেশনামূলক এআই পূর্বাভাস, কোনো নিশ্চয়তা নয়)।*`
-        : `Based on your scheduled inflows and obligations, your projected month-end balance will be approximately **৳7,450** (AI-assisted forecast).\n\n• Expected Inflows: ৳38,500 (Salary ৳32,500 + Freelance ৳6,000)\n• Expected Outflows: ~৳31,050 (including Day 26 rent of ৳16,000 & utilities of ৳1,200)\n• Safe Margin: Dips to ৳3,200 on Day 26, then closes safely at ৳7,450.\n• With simulated ৳300/day expense cuts, your month-end cushion rises to ৳11,250.\n*(Note: This is an indicative AI-assisted forecast, not a guaranteed outcome).*`;
+        ? `আপনার নির্ধারিত আয় ও খরচের পূর্বাভাস অনুযায়ী মাস শেষে আপনার সম্ভাব্য ব্যালেন্স দাঁড়াবে প্রায় **৳${monthEnd.toLocaleString()}** (AI-assisted forecast)।\n*(নোট: এটি একটি নির্দেশনামূলক এআই পূর্বাভাস, কোনো নিশ্চয়তা নয়)।*`
+        : `Based on your scheduled inflows and obligations, your projected month-end balance will be approximately **৳${monthEnd.toLocaleString()}** (AI-assisted forecast).\n*(Note: This is an indicative AI-assisted forecast, not a guaranteed outcome).*`;
     } else {
+      const inc = overview.totalIncome || monthlyIncome || 0;
+      const sp = overview.totalExpenses || 0;
+      const sv = overview.netSavings || 0;
+      const bal = forecast.startingBalance || 0;
       finalText = isBangla
-        ? `${greetingBn} আমি আপনার আর্থিক হিসাব বিশ্লেষণ করেছি (আয়: ৳৩৮,৫০০, ব্যয়: ৳২৯,২০০, সঞ্চয়: ৳৯,৩০০, বর্তমান মোট ব্যালেন্স: ৳২৪,৮৫০)। আপনার আর্থিক স্বাস্থ্য স্কোর ৭৯/১০০ (খুব ভালো)। আপনার বাজেট বা সঞ্চয় নিয়ে যেকোনো প্রশ্ন থাকলে আমাকে জানান!`
-        : `${greetingEn} I have analyzed your live financial ledger (Income: ৳38,500, Spending: ৳29,200, Net Savings: ৳9,300, Available Liquid Balance: ৳24,850). Your financial health score is rated 79/100 (Very Good). Please let me know how I can help optimize your budget or accelerate your savings goals!`;
+        ? `${greetingBn} আপনার চলতি মাসের হিসাব: আয় ৳${inc.toLocaleString()}, ব্যয় ৳${sp.toLocaleString()}, নিট সঞ্চয় ৳${sv.toLocaleString()}, বর্তমান ব্যালেন্স ৳${bal.toLocaleString()}। আপনার বাজেট বা সঞ্চয় নিয়ে যেকোনো প্রশ্ন থাকলে জানান!`
+        : `${greetingEn} Based on your verified ledger: Monthly Income is ৳${inc.toLocaleString()}, Spending is ৳${sp.toLocaleString()}, Net Savings is ৳${sv.toLocaleString()}, and Available Balance is ৳${bal.toLocaleString()}. Please let me know how I can help with your budgeting or savings goals!`;
     }
   }
 

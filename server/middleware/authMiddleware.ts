@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import { UserModel, IUser } from '../models/User';
 import { isDbConnected } from '../config/database';
 import { INITIAL_USER } from '../../src/data/mockUser';
@@ -23,26 +24,35 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; customId?: string; email: string };
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; customId?: string; email: string; name?: string };
 
     if (!isDbConnected()) {
       // In offline fallback mode, mock authenticated user
       req.user = {
         ...INITIAL_USER,
         id: decoded.customId || decoded.id || INITIAL_USER.id,
+        name: decoded.name || INITIAL_USER.name,
       };
       req.userId = req.user.id;
       return next();
     }
 
     // Look up user in MongoDB by _id or customId
-    const user = await UserModel.findOne({
-      $or: [
-        ...(decoded.id ? [{ _id: decoded.id }] : []),
-        ...(decoded.customId ? [{ customId: decoded.customId }] : []),
-        ...(decoded.email ? [{ email: decoded.email.toLowerCase() }] : []),
-      ],
-    });
+    const orConditions: any[] = [];
+    if (decoded.id && mongoose.isValidObjectId(decoded.id)) {
+      orConditions.push({ _id: decoded.id });
+    }
+    if (decoded.customId) {
+      orConditions.push({ customId: decoded.customId });
+    }
+    if (decoded.id) {
+      orConditions.push({ customId: decoded.id });
+    }
+    if (decoded.email) {
+      orConditions.push({ email: decoded.email.toLowerCase() });
+    }
+
+    const user = orConditions.length > 0 ? await UserModel.findOne({ $or: orConditions }) : null;
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid authentication session. User not found.' });
@@ -69,20 +79,40 @@ export async function optionalAuth(req: AuthenticatedRequest, res: Response, nex
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; customId?: string; email: string };
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; customId?: string; email: string; name?: string };
 
     if (isDbConnected()) {
-      const user = await UserModel.findOne({
-        $or: [
-          ...(decoded.id ? [{ _id: decoded.id }] : []),
-          ...(decoded.customId ? [{ customId: decoded.customId }] : []),
-          ...(decoded.email ? [{ email: decoded.email.toLowerCase() }] : []),
-        ],
-      });
-      if (user) {
-        req.user = user;
-        req.userId = user.customId || user._id.toString();
+      const orConditions: any[] = [];
+      if (decoded.id && mongoose.isValidObjectId(decoded.id)) {
+        orConditions.push({ _id: decoded.id });
       }
+      if (decoded.customId) {
+        orConditions.push({ customId: decoded.customId });
+      }
+      if (decoded.id) {
+        orConditions.push({ customId: decoded.id });
+      }
+      if (decoded.email) {
+        orConditions.push({ email: decoded.email.toLowerCase() });
+      }
+
+      if (orConditions.length > 0) {
+        const user = await UserModel.findOne({ $or: orConditions });
+        if (user) {
+          req.user = user;
+          req.userId = user.customId || user._id.toString();
+        } else if (decoded.name) {
+          req.user = { name: decoded.name, email: decoded.email, id: decoded.customId || decoded.id };
+          req.userId = decoded.customId || decoded.id;
+        }
+      }
+    } else {
+      req.user = {
+        ...INITIAL_USER,
+        id: decoded.customId || decoded.id || INITIAL_USER.id,
+        name: decoded.name || INITIAL_USER.name,
+      };
+      req.userId = req.user.id;
     }
   } catch (e) {
     // Ignore invalid tokens in optional auth

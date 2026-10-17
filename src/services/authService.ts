@@ -136,14 +136,14 @@ export const authService = {
       tagline: 'Standard Member',
       memberStatus: 'Standard Member',
       city: 'Dhaka',
-      monthlyIncome: 35000,
+      monthlyIncome: 0,
       riskTolerance: 'Moderate',
       primaryGoalId: 'goal-emergency-fund',
       privacyStatus: 'E2E Encrypted',
       linkedAccounts: [
-        { name: 'bKash', balance: 5000, accountNumber: '017****0000', type: 'MFS' },
-        { name: 'City Bank', balance: 10000, accountNumber: '210****0000', type: 'Bank Account' },
-        { name: 'Nagad', balance: 3000, accountNumber: '018****0000', type: 'MFS' },
+        { name: 'bKash', balance: 0, accountNumber: '', type: 'MFS' },
+        { name: 'City Bank', balance: 0, accountNumber: '', type: 'Bank Account' },
+        { name: 'Nagad', balance: 0, accountNumber: '', type: 'MFS' },
       ],
     };
 

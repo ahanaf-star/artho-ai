@@ -97,12 +97,12 @@ export function extractAllowedNumbers(ctx: CoachContext, additionalAllowed: numb
   allowed.add(ctx.cashFlow.recommendedBuffer);
 
   // 5. Health numbers
-  allowed.add(ctx.health.score);
-  allowed.add(ctx.health.percentile);
-  allowed.add(ctx.health.savingConsistency);
-  allowed.add(ctx.health.spendingControl);
-  allowed.add(ctx.health.cashFlowStability);
-  allowed.add(ctx.health.goalProgress);
+  if (ctx.health.score !== null) allowed.add(ctx.health.score);
+  if (ctx.health.percentile !== null) allowed.add(ctx.health.percentile);
+  if (ctx.health.savingConsistency !== null) allowed.add(ctx.health.savingConsistency);
+  if (ctx.health.spendingControl !== null) allowed.add(ctx.health.spendingControl);
+  if (ctx.health.cashFlowStability !== null) allowed.add(ctx.health.cashFlowStability);
+  if (ctx.health.goalProgress !== null) allowed.add(ctx.health.goalProgress);
 
   // 6. Cash-Out numbers
   allowed.add(ctx.cashOut.totalAmount);

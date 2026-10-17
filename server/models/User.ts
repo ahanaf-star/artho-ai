@@ -19,6 +19,15 @@ export interface IUser extends Document {
     accountNumber: string;
     type: string;
   }>;
+  recurringObligations?: Array<{
+    id: string;
+    name: string;
+    amount: number;
+    dueDay: number;
+    category?: string;
+    recurrenceRule: 'monthly' | 'weekly' | 'custom';
+    isEnabled: boolean;
+  }>;
   passwordHash?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -61,16 +70,16 @@ const UserSchema = new Schema<IUser>(
     },
     monthlyIncome: {
       type: Number,
-      default: 38500,
+      required: false,
     },
     riskTolerance: {
       type: String,
       enum: ['Low', 'Moderate', 'Aggressive'],
-      default: 'Moderate',
+      required: false,
     },
     tagline: {
       type: String,
-      default: 'Pro Member',
+      default: 'Standard Member',
     },
     city: {
       type: String,
@@ -78,11 +87,11 @@ const UserSchema = new Schema<IUser>(
     },
     memberStatus: {
       type: String,
-      default: 'Pro Member',
+      default: 'Standard Member',
     },
     primaryGoalId: {
       type: String,
-      default: 'goal-emergency-fund',
+      required: false,
     },
     passwordHash: {
       type: String,
@@ -94,6 +103,17 @@ const UserSchema = new Schema<IUser>(
         balance: { type: Number, default: 0 },
         accountNumber: { type: String, default: '' },
         type: { type: String, default: 'MFS' },
+      },
+    ],
+    recurringObligations: [
+      {
+        id: { type: String, required: true },
+        name: { type: String, required: true },
+        amount: { type: Number, required: true },
+        dueDay: { type: Number, required: true },
+        category: { type: String, default: 'Utility & Fixed Costs' },
+        recurrenceRule: { type: String, default: 'monthly' },
+        isEnabled: { type: Boolean, default: true },
       },
     ],
   },

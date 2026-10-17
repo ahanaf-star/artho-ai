@@ -15,6 +15,20 @@ export async function getUser(req: Request, res: Response) {
     return res.status(400).json({ error: 'Valid user ID is required' });
   }
 
+  const authUser = (req as any).user;
+  if (authUser) {
+    const isOwner =
+      authUser.customId === id ||
+      authUser.id === id ||
+      authUser._id?.toString() === id ||
+      authUser.email?.toLowerCase() === id.toLowerCase();
+    if (!isOwner) {
+      return res.status(403).json({ error: "Access forbidden: You cannot access another user's profile" });
+    }
+  } else if (id !== 'usr-ahmed-01' && id !== INITIAL_USER.email) {
+    return res.status(401).json({ error: 'Authentication required to view user profile' });
+  }
+
   if (!isDbConnected()) {
     // If DB is offline, return demo user if requested
     if (id === 'usr-ahmed-01' || id === INITIAL_USER.email) {
@@ -83,6 +97,20 @@ export async function updateUser(req: Request, res: Response) {
   // Prevent modifying sensitive or internal fields
   delete updates._id;
   delete updates.createdAt;
+
+  const authUser = (req as any).user;
+  if (authUser) {
+    const isOwner =
+      authUser.customId === id ||
+      authUser.id === id ||
+      authUser._id?.toString() === id ||
+      authUser.email?.toLowerCase() === id.toLowerCase();
+    if (!isOwner) {
+      return res.status(403).json({ error: "Access forbidden: You cannot modify another user's profile" });
+    }
+  } else if (id !== 'usr-ahmed-01' && id !== INITIAL_USER.email) {
+    return res.status(401).json({ error: 'Authentication required to update user profile' });
+  }
 
   if (!isDbConnected()) {
     // If DB is offline, return synthetic updated object for demo
@@ -170,9 +198,9 @@ export async function createUser(req: Request, res: Response) {
       profileImage: profileImage || '',
       preferredLanguage: preferredLanguage || 'en',
       currency: currency || '৳',
-      monthlyIncome: monthlyIncome ? Number(monthlyIncome) : 38500,
-      riskTolerance: riskTolerance || 'Moderate',
-      tagline: tagline || 'Pro Member',
+      monthlyIncome: monthlyIncome ? Number(monthlyIncome) : undefined,
+      riskTolerance: riskTolerance || undefined,
+      tagline: tagline || 'Standard Member',
       city: city || 'Dhaka',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -194,13 +222,14 @@ export async function createUser(req: Request, res: Response) {
       profileImage: profileImage || '',
       preferredLanguage: preferredLanguage || 'en',
       currency: currency || '৳',
-      monthlyIncome: monthlyIncome ? Number(monthlyIncome) : 38500,
-      riskTolerance: riskTolerance || 'Moderate',
-      tagline: tagline || 'Pro Member',
+      monthlyIncome: monthlyIncome ? Number(monthlyIncome) : undefined,
+      riskTolerance: riskTolerance || undefined,
+      tagline: tagline || 'Standard Member',
       city: city || 'Dhaka',
       linkedAccounts: linkedAccounts || [
-        { name: 'bKash', balance: 5000, accountNumber: '017****0000', type: 'MFS' },
-        { name: 'City Bank', balance: 10000, accountNumber: '210****0000', type: 'Bank Account' },
+        { name: 'bKash', balance: 0, accountNumber: '', type: 'MFS' },
+        { name: 'City Bank', balance: 0, accountNumber: '', type: 'Bank Account' },
+        { name: 'Nagad', balance: 0, accountNumber: '', type: 'MFS' },
       ],
     });
 

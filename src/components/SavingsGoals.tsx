@@ -772,24 +772,65 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
           </div>
 
           {/* Visual Travel Vault Inspiration */}
-          <div className="relative bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm group border border-outline-variant/20">
-            <div
-              className="bg-cover bg-center w-full h-44 transition-transform duration-500 group-hover:scale-105"
-              style={{
-                backgroundImage:
-                  "url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80')",
-              }}
-            ></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-primary/95 via-primary/40 to-transparent flex flex-col justify-end p-space-md text-on-primary">
-              <span className="font-label-sm text-label-sm text-secondary-container uppercase tracking-wider font-bold">
-                Dream Destination
-              </span>
-              <h4 className="font-title-lg text-title-lg font-bold">Sajek Cloud Camp 2025</h4>
-              <p className="font-body-sm text-body-sm text-primary-fixed-dim mt-0.5">
-                ৳12,500 needed to unlock advance bookings
-              </p>
-            </div>
-          </div>
+          {(() => {
+            const travelGoal = goals.find((g) =>
+              g.category?.toLowerCase().includes('travel') ||
+              g.title?.toLowerCase().includes('travel') ||
+              g.title?.toLowerCase().includes('trip') ||
+              g.title?.toLowerCase().includes('vacation')
+            );
+
+            if (travelGoal) {
+              const remaining = Math.max(0, travelGoal.targetAmount - travelGoal.currentAmount);
+              return (
+                <div className="relative bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm group border border-outline-variant/20">
+                  <div
+                    className="bg-cover bg-center w-full h-44 transition-transform duration-500 group-hover:scale-105"
+                    style={{
+                      backgroundImage:
+                        "url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80')",
+                    }}
+                  ></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-primary/95 via-primary/40 to-transparent flex flex-col justify-end p-space-md text-on-primary">
+                    <span className="font-label-sm text-label-sm text-secondary-container uppercase tracking-wider font-bold">
+                      {isBangla ? 'ভ্রমণ লক্ষ্য' : 'Travel Goal'}
+                    </span>
+                    <h4 className="font-title-lg text-title-lg font-bold">{travelGoal.title}</h4>
+                    <p className="font-body-sm text-body-sm text-primary-fixed-dim mt-0.5">
+                      {isBangla
+                        ? `লক্ষ্য পূরণে ৳${remaining.toLocaleString()} বাকি`
+                        : `৳${remaining.toLocaleString()} needed to complete goal`}
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="relative bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm group border border-outline-variant/20">
+                <div
+                  className="bg-cover bg-center w-full h-44 transition-transform duration-500 group-hover:scale-105"
+                  style={{
+                    backgroundImage:
+                      "url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=600&q=80')",
+                  }}
+                ></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-primary/95 via-primary/40 to-transparent flex flex-col justify-end p-space-md text-on-primary">
+                  <span className="font-label-sm text-label-sm text-secondary-container uppercase tracking-wider font-bold">
+                    {isBangla ? 'সঞ্চয়ের অনুপ্রেরণা' : 'Savings Inspiration'}
+                  </span>
+                  <h4 className="font-title-lg text-title-lg font-bold">
+                    {isBangla ? 'আপনার ভবিষ্যৎ গড়ুন' : 'Build Your Future Wealth'}
+                  </h4>
+                  <p className="font-body-sm text-body-sm text-primary-fixed-dim mt-0.5">
+                    {isBangla
+                      ? 'নতুন লক্ষ্য যোগ করে ধারাবাহিক সঞ্চয় শুরু করুন'
+                      : 'Create a new goal to start your automated savings journey'}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
 

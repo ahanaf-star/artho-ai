@@ -18,6 +18,7 @@ function generateToken(user: any): string {
       id: userId,
       customId: user.customId || user.id,
       email: user.email,
+      name: user.name,
     },
     JWT_SECRET,
     { expiresIn: '7d' }
@@ -29,36 +30,36 @@ function generateToken(user: any): string {
  * Register a new user
  */
 export async function signup(req: Request, res: Response) {
-  const { name, email, password, preferredLanguage } = req.body;
+    const { name, email, password, preferredLanguage, monthlyIncome } = req.body;
 
-  // Validate required fields
-  if (!name || typeof name !== 'string' || !name.trim()) {
-    return res.status(400).json({ error: 'Name is required' });
-  }
+    // Validate required fields
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
 
-  if (!email || typeof email !== 'string' || !email.trim()) {
-    return res.status(400).json({ error: 'Email is required' });
-  }
+    if (!email || typeof email !== 'string' || !email.trim()) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const cleanEmail = email.trim().toLowerCase();
-  if (!emailRegex.test(cleanEmail)) {
-    return res.status(400).json({ error: 'Please enter a valid email address' });
-  }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const cleanEmail = email.trim().toLowerCase();
+    if (!emailRegex.test(cleanEmail)) {
+      return res.status(400).json({ error: 'Please enter a valid email address' });
+    }
 
-  if (!password || typeof password !== 'string' || password.length < 6) {
-    return res.status(400).json({ error: 'Password must be at least 6 characters long' });
-  }
+    if (!password || typeof password !== 'string' || password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    }
 
-  if (!isDbConnected()) {
-    return res.status(503).json({
-      error: 'Database is currently offline. Please ensure MongoDB is running.',
-    });
-  }
+    if (!isDbConnected()) {
+      return res.status(503).json({
+        error: 'Database is currently offline. Please ensure MongoDB is running.',
+      });
+    }
 
-  try {
-    // Check for existing user
-    const existing = await UserModel.findOne({ email: cleanEmail });
+    try {
+      // Check for existing user
+      const existing = await UserModel.findOne({ email: cleanEmail });
     if (existing) {
       return res.status(409).json({ error: 'An account with this email address already exists' });
     }
@@ -67,6 +68,13 @@ export async function signup(req: Request, res: Response) {
     const passwordHash = await bcrypt.hash(password, 10);
     const customId = `usr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
+    const parsedIncome =
+      typeof monthlyIncome === 'number' && monthlyIncome > 0
+        ? monthlyIncome
+        : typeof monthlyIncome === 'string' && parseFloat(monthlyIncome) > 0
+          ? parseFloat(monthlyIncome)
+          : undefined;
+
     const newUser = await UserModel.create({
       customId,
       name: name.trim(),
@@ -74,17 +82,18 @@ export async function signup(req: Request, res: Response) {
       passwordHash,
       preferredLanguage: preferredLanguage === 'bn' ? 'bn' : 'en',
       currency: '৳',
-      monthlyIncome: 35000,
-      riskTolerance: 'Moderate',
+      monthlyIncome: parsedIncome,
+      riskTolerance: undefined,
       tagline: 'Standard Member',
       city: 'Dhaka',
       memberStatus: 'Standard Member',
-      primaryGoalId: 'goal-emergency-fund',
+      primaryGoalId: undefined,
       linkedAccounts: [
-        { name: 'bKash', balance: 5000, accountNumber: '017****0000', type: 'MFS' },
-        { name: 'City Bank', balance: 10000, accountNumber: '210****0000', type: 'Bank Account' },
-        { name: 'Nagad', balance: 3000, accountNumber: '018****0000', type: 'MFS' },
+        { name: 'bKash', balance: 0, accountNumber: '', type: 'MFS' },
+        { name: 'City Bank', balance: 0, accountNumber: '', type: 'Bank Account' },
+        { name: 'Nagad', balance: 0, accountNumber: '', type: 'MFS' },
       ],
+      recurringObligations: [],
     });
 
     const token = generateToken(newUser);

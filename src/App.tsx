@@ -490,6 +490,7 @@ export default function App() {
               goals={goals}
               monthlyIncome={currentUser.monthlyIncome}
               userName={currentUser.name}
+              user={currentUser}
               initialQuery={coachPreQuery}
               onNavigate={setActiveScreen}
               isBanglaMode={isBangla}
@@ -498,12 +499,22 @@ export default function App() {
           )}
 
           {activeScreen === 'cash-flow-forecast' && (
-            <CashFlowView onNavigate={setActiveScreen} isBangla={isBangla} />
+            <CashFlowView
+              user={currentUser}
+              transactions={transactions}
+              goals={goals}
+              onUpdateUser={handleUpdateUser}
+              onNavigate={setActiveScreen}
+              isBangla={isBangla}
+            />
           )}
 
           {activeScreen === 'financial-health' && (
             <FinancialHealthView
               metrics={healthMetrics}
+              goals={goals}
+              transactions={transactions}
+              user={currentUser}
               onNavigate={setActiveScreen}
               isBangla={isBangla}
             />
@@ -533,6 +544,7 @@ export default function App() {
         isOpen={isAddTxOpen}
         onClose={() => setIsAddTxOpen(false)}
         onAddTransaction={handleAddTransaction}
+        isBangla={isBangla}
       />
       <EditTransactionModal
         isOpen={!!editingTransaction}

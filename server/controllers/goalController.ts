@@ -9,10 +9,28 @@ import { INITIAL_SAVINGS_GOALS } from '../../src/data/mockGoals';
  * Retrieve all savings goals for a user
  */
 export async function getGoals(req: Request, res: Response) {
-  const { userId } = req.params;
+  const authUser = (req as any).user;
+  const userId =
+    req.params.userId ||
+    (req.query?.userId as string) ||
+    authUser?.customId ||
+    authUser?.id ||
+    authUser?._id?.toString();
 
   if (!userId || typeof userId !== 'string') {
     return res.status(400).json({ error: 'Valid user ID is required' });
+  }
+
+  if (authUser) {
+    const isOwner =
+      authUser.customId === userId ||
+      authUser.id === userId ||
+      authUser._id?.toString() === userId;
+    if (!isOwner) {
+      return res.status(403).json({ error: "Access forbidden: You cannot access another user's goals" });
+    }
+  } else if (userId !== 'usr-ahmed-01') {
+    return res.status(401).json({ error: 'Authentication required to view goals' });
   }
 
   if (!isDbConnected()) {
@@ -63,7 +81,14 @@ export async function getGoals(req: Request, res: Response) {
  * Create a new savings goal for a user
  */
 export async function createGoal(req: Request, res: Response) {
-  const { userId } = req.params;
+  const authUser = (req as any).user;
+  const userId =
+    req.params.userId ||
+    req.body.userId ||
+    authUser?.customId ||
+    authUser?.id ||
+    authUser?._id?.toString();
+
   const {
     id,
     name,
@@ -83,6 +108,18 @@ export async function createGoal(req: Request, res: Response) {
 
   if (!userId || typeof userId !== 'string') {
     return res.status(400).json({ error: 'Valid user ID is required' });
+  }
+
+  if (authUser) {
+    const isOwner =
+      authUser.customId === userId ||
+      authUser.id === userId ||
+      authUser._id?.toString() === userId;
+    if (!isOwner) {
+      return res.status(403).json({ error: "Access forbidden: You cannot create goals for another user" });
+    }
+  } else if (userId !== 'usr-ahmed-01') {
+    return res.status(401).json({ error: 'Authentication required to create goals' });
   }
 
   const goalName = (name || title || '').trim();
@@ -193,11 +230,26 @@ export async function updateGoal(req: Request, res: Response) {
       ],
     };
 
-    const updatedGoal = await SavingsGoalModel.findOneAndUpdate(query, { $set: updates }, { new: true, runValidators: true });
-
-    if (!updatedGoal) {
+    const existingGoal = await SavingsGoalModel.findOne(query);
+    if (!existingGoal) {
       return res.status(404).json({ error: 'Savings goal not found' });
     }
+
+    const authUser = (req as any).user;
+    if (authUser) {
+      const isOwner =
+        authUser.customId === existingGoal.userId ||
+        authUser.id === existingGoal.userId ||
+        authUser._id?.toString() === existingGoal.userId;
+      if (!isOwner) {
+        return res.status(403).json({ error: "Access forbidden: You cannot modify another user's goal" });
+      }
+    } else if (existingGoal.userId !== 'usr-ahmed-01') {
+      return res.status(401).json({ error: 'Authentication required to update this goal' });
+    }
+
+    Object.assign(existingGoal, updates);
+    const updatedGoal = await existingGoal.save();
 
     return res.json(updatedGoal);
   } catch (error: any) {
@@ -230,11 +282,25 @@ export async function deleteGoal(req: Request, res: Response) {
       ],
     };
 
-    const deleted = await SavingsGoalModel.findOneAndDelete(query);
-    if (!deleted) {
+    const existingGoal = await SavingsGoalModel.findOne(query);
+    if (!existingGoal) {
       return res.status(404).json({ error: 'Savings goal not found' });
     }
 
+    const authUser = (req as any).user;
+    if (authUser) {
+      const isOwner =
+        authUser.customId === existingGoal.userId ||
+        authUser.id === existingGoal.userId ||
+        authUser._id?.toString() === existingGoal.userId;
+      if (!isOwner) {
+        return res.status(403).json({ error: "Access forbidden: You cannot delete another user's goal" });
+      }
+    } else if (existingGoal.userId !== 'usr-ahmed-01') {
+      return res.status(401).json({ error: 'Authentication required to delete this goal' });
+    }
+
+    await existingGoal.deleteOne();
     return res.json({ message: 'Goal deleted successfully', id });
   } catch (error: any) {
     console.error('Error deleting savings goal:', error.message);

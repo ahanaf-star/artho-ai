@@ -1,33 +1,103 @@
 import React from 'react';
-import { FinancialHealthMetrics } from '../types/financial';
+import { FinancialHealthMetrics, SavingsGoal, Transaction, UserProfile } from '../types/financial';
 import { NavScreen } from './Sidebar';
 
 interface FinancialHealthViewProps {
   metrics: FinancialHealthMetrics;
   onNavigate: (screen: NavScreen) => void;
   isBangla: boolean;
+  goals?: SavingsGoal[];
+  transactions?: Transaction[];
+  user?: UserProfile;
 }
 
 export const FinancialHealthView: React.FC<FinancialHealthViewProps> = ({
   metrics,
   onNavigate,
-  isBangla: _isBangla,
+  isBangla,
+  goals = [],
+  transactions = [],
+  user: _user,
 }) => {
+  const isInsufficient = metrics.score === null || metrics.status === 'Insufficient Data';
+  const scoreDisplay = isInsufficient ? '--' : metrics.score;
+  const statusDisplay = isInsufficient
+    ? isBangla ? 'পর্যাপ্ত তথ্য নেই' : 'Insufficient Data'
+    : metrics.status;
+
+  const explanationDisplay = isInsufficient
+    ? isBangla
+      ? 'আপনার ফাইন্যান্সিয়াল হেলথ স্কোর সঠিকভাবে হিসাব করতে অনুগ্রহ করে আপনার নিয়মিত লেনদেন এবং সঞ্চয়ের লক্ষ্য যুক্ত করুন।'
+      : 'Log your transactions and create savings goals to calculate your personalized ArthoAI Financial Health Score.'
+    : metrics.explanation;
+
+  const benchmarkSubtext = isInsufficient || metrics.percentile === null || metrics.percentile === undefined
+    ? isBangla
+      ? 'তুলনামূলক বেঞ্চমার্ক তৈরি করতে অন্তত ১ মাসের লেনদেন তথ্য প্রয়োজন।'
+      : 'Requires at least 1 month of transaction records for peer benchmarking.'
+    : isBangla
+      ? `ঢাকার প্রায় ${metrics.percentile}% সমপর্যায়ের ব্যবহারকারীর চেয়ে এগিয়ে।`
+      : `Consistently outperforming ${metrics.percentile}% of peers in Dhaka`;
+
+  // Factor 1: Saving Consistency
+  const isSavingConsistencyAvailable = metrics.factors.savingConsistency !== null;
+  const savingConsistencyDesc = !isSavingConsistencyAvailable
+    ? isBangla
+      ? 'আয় ও সঞ্চয়ের লেনদেন তথ্য না থাকায় এই ফ্যাক্টরটি হিসাব করা সম্ভব হয়নি। লেনদেন যোগ করে এই মেট্রিক সক্রিয় করুন।'
+      : 'Add transactions to calculate this metric.'
+    : isBangla
+      ? `সঞ্চয় স্থানান্তর ও উদ্বৃত্ত তারল্যের ধারাবাহিকতা মূল্যায়ন। বর্তমান ফ্যাক্টর রেটিং ${metrics.factors.savingConsistency}%।`
+      : `Evaluates regularity of savings transfers and cash retention. Current factor rating is ${metrics.factors.savingConsistency}%.`;
+
+  // Factor 2: Spending Control
+  const isSpendingControlAvailable = metrics.factors.spendingControl !== null;
+  const spendingControlDesc = !isSpendingControlAvailable
+    ? isBangla
+      ? 'ব্যয়ের তথ্য না থাকায় বাজেট নিয়ন্ত্রণ বিশ্লেষণ করা সম্ভব হয়নি। খরচ যোগ করে এই মেট্রিক সক্রিয় করুন।'
+      : 'Add transactions to calculate this metric.'
+    : isBangla
+      ? `দৈনন্দিন বাজেট শৃঙ্খলা ও অপ্রয়োজনীয় খরচের প্রবণতা পর্যবেক্ষণ। বর্তমান ফ্যাক্টর রেটিং ${metrics.factors.spendingControl}%।`
+      : `Monitors daily budget discipline and discretionary burn. Current factor rating is ${metrics.factors.spendingControl}%.`;
+
+  // Factor 3: Cash Flow Stability
+  const isCashFlowAvailable = metrics.factors.cashFlowStability !== null;
+  const cashFlowStabilityDesc = !isCashFlowAvailable
+    ? isBangla
+      ? 'ক্যাশ-ফ্লো বিশ্লেষণ করতে পর্যাপ্ত ব্যালেন্স ও লেনদেন তথ্য নেই। লেনদেন যোগ করে এই মেট্রিক সক্রিয় করুন।'
+      : 'Add transactions to calculate this metric.'
+    : isBangla
+      ? `মাস শেষে নগদ অর্থ থাকার নিশ্চয়তা এবং লিকুইড বাফার পরিমাপ। বর্তমান ফ্যাক্টর রেটিং ${metrics.factors.cashFlowStability}%।`
+      : `Evaluates month-end cash flow cushion and liquidity security. Current factor rating is ${metrics.factors.cashFlowStability}%.`;
+
+  // Factor 4: Goal Progress
+  const isGoalProgressAvailable = metrics.factors.goalProgress !== null;
+  const goalProgressDesc = !isGoalProgressAvailable
+    ? isBangla
+      ? 'কোনো সক্রিয় সঞ্চয় লক্ষ্য নেই। সঞ্চয় লক্ষ্য যুক্ত করে এই মেট্রিক সক্রিয় করুন।'
+      : 'Create a savings goal to calculate this metric.'
+    : isBangla
+      ? `আপনার মোট ${goals.length}টি সঞ্চয় লক্ষ্যের সামগ্রিক অর্জনের হার (${goals.map((g) => `${g.title}: ${Math.round((g.currentAmount / (g.targetAmount || 1)) * 100)}%`).slice(0, 3).join(', ')} )।`
+      : `Average milestone attainment across your active savings goals (${goals.map((g) => `${g.title}: ${Math.round((g.currentAmount / (g.targetAmount || 1)) * 100)}%`).slice(0, 3).join(', ')}).`;
+
   return (
     <div className="flex flex-col w-full gap-space-lg pb-space-xl">
       {/* Header */}
       <div className="flex flex-col">
         <div className="flex items-center gap-2 mb-1">
           <span className="px-2.5 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-bold">
-            TRANSPARENT PROTOTYPE SCORING
+            {isBangla ? 'স্বচ্ছ গাণিতিক স্কোরিং' : 'TRANSPARENT DETERMINISTIC SCORING'}
           </span>
-          <span className="font-label-sm text-label-sm text-outline">Dhaka Digital Wallet Model</span>
+          <span className="font-label-sm text-label-sm text-outline">
+            {isBangla ? 'বাংলাদেশ ডিজিটাল ওয়ালেট মডেল' : 'Bangladesh Digital Ledger Model'}
+          </span>
         </div>
         <h1 className="font-headline-xl text-headline-xl text-on-surface tracking-tight font-bold">
-          ArthoBachao AI Financial Health Score Breakdown
+          {isBangla ? 'অর্থবাঁচাও এআই ফাইন্যান্সিয়াল হেলথ স্কোর' : 'ArthoAI Financial Health Score Breakdown'}
         </h1>
         <p className="font-body-md text-body-md text-on-surface-variant max-w-2xl mt-1">
-          Unlike traditional black-box credit scores, ArthoBachao AI's score is 100% explainable, deterministic, and under your control.
+          {isBangla
+            ? 'সনাতন ব্ল্যাক-বক্স ক্রেডিট স্কোরের বিপরীতে, অর্থবাঁচাও এআই-এর স্কোর ১০০% ব্যাখ্যাযোগ্য, নিয়মতান্ত্রিক এবং আপনার নিয়ন্ত্রণে।'
+            : "Unlike traditional black-box credit scores, ArthoAI's score is 100% explainable, deterministic, and grounded in your authentic ledger."}
         </p>
       </div>
 
@@ -42,15 +112,15 @@ export const FinancialHealthView: React.FC<FinancialHealthViewProps> = ({
                 cy="60"
                 fill="transparent"
                 r="48"
-                stroke="#006c49"
-                strokeDasharray={`${(metrics.score / 100) * 301.6} 301.6`}
+                stroke={!isInsufficient && metrics.score !== null ? (metrics.score >= 75 ? '#006c49' : metrics.score >= 50 ? '#0284c7' : '#94a3b8') : '#cbd5e1'}
+                strokeDasharray={`${!isInsufficient && metrics.score !== null ? (metrics.score / 100) * 301.6 : 0} 301.6`}
                 strokeLinecap="round"
                 strokeWidth="10"
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
               <span className="font-headline-xl text-headline-xl text-on-surface font-bold">
-                {metrics.score}
+                {scoreDisplay}
               </span>
               <span className="text-xs text-outline uppercase font-semibold">/ 100</span>
             </div>
@@ -58,14 +128,14 @@ export const FinancialHealthView: React.FC<FinancialHealthViewProps> = ({
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
               <h2 className="font-headline-md text-headline-md text-on-surface font-bold">
-                Overall Financial Health: {metrics.status}
+                {isBangla ? `সামগ্রিক আর্থিক অবস্থা: ${statusDisplay}` : `Overall Financial Health: ${statusDisplay}`}
               </h2>
             </div>
             <p className="font-body-md text-body-md text-on-surface-variant max-w-xl">
-              {metrics.explanation}
+              {explanationDisplay}
             </p>
             <span className="text-xs font-semibold text-secondary mt-1">
-              Top 26th percentile among tech professionals in Gulshan, Banani, &amp; Uttara.
+              {benchmarkSubtext}
             </span>
           </div>
         </div>
@@ -77,7 +147,7 @@ export const FinancialHealthView: React.FC<FinancialHealthViewProps> = ({
           <span className="material-symbols-outlined text-[18px] text-secondary-container">
             auto_awesome
           </span>
-          <span>Ask Coach How to Reach 85+</span>
+          <span>{isBangla ? 'কোচকে স্কোর বাড়ানোর উপায় জিজ্ঞেস করুন' : 'Ask Coach How to Improve Score'}</span>
         </button>
       </div>
 
@@ -88,20 +158,20 @@ export const FinancialHealthView: React.FC<FinancialHealthViewProps> = ({
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="font-title-md text-title-md text-on-surface font-bold">
-                1. Saving Consistency
+                {isBangla ? '১. সঞ্চয়ের ধারাবাহিকতা (Saving Consistency)' : '1. Saving Consistency'}
               </span>
-              <span className="font-headline-md text-headline-md text-secondary font-bold">
-                {metrics.factors.savingConsistency}%
+              <span className="font-headline-md text-headline-md text-secondary font-bold text-sm sm:text-base">
+                {isSavingConsistencyAvailable ? `${metrics.factors.savingConsistency}%` : (isBangla ? 'পর্যাপ্ত তথ্য নেই' : 'Insufficient Data')}
               </span>
             </div>
             <p className="font-body-sm text-body-sm text-on-surface-variant">
-              Measures regular transfers to your Emergency Fund and liquid vaults. You achieved a 24.1% savings rate this month, outpacing the 20% national benchmark.
+              {savingConsistencyDesc}
             </p>
           </div>
           <div className="w-full bg-surface-container-low h-2 rounded-full mt-4 overflow-hidden">
             <div
-              className="bg-secondary h-full rounded-full"
-              style={{ width: `${metrics.factors.savingConsistency}%` }}
+              className="bg-secondary h-full rounded-full transition-all duration-500"
+              style={{ width: `${isSavingConsistencyAvailable && metrics.factors.savingConsistency !== null ? metrics.factors.savingConsistency : 0}%` }}
             ></div>
           </div>
         </div>
@@ -111,20 +181,20 @@ export const FinancialHealthView: React.FC<FinancialHealthViewProps> = ({
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="font-title-md text-title-md text-on-surface font-bold">
-                2. Spending Control
+                {isBangla ? '২. ব্যয় নিয়ন্ত্রণ (Spending Control)' : '2. Spending Control'}
               </span>
-              <span className="font-headline-md text-headline-md text-on-surface font-bold">
-                {metrics.factors.spendingControl}%
+              <span className="font-headline-md text-headline-md text-on-surface font-bold text-sm sm:text-base">
+                {isSpendingControlAvailable ? `${metrics.factors.spendingControl}%` : (isBangla ? 'পর্যাপ্ত তথ্য নেই' : 'Insufficient Data')}
               </span>
             </div>
             <p className="font-body-sm text-body-sm text-on-surface-variant">
-              Evaluates discretionary burn vs essential commitments. Slight friction detected from late-night weekend deliveries (৳8,200) and avoidable MFS fees.
+              {spendingControlDesc}
             </p>
           </div>
           <div className="w-full bg-surface-container-low h-2 rounded-full mt-4 overflow-hidden">
             <div
-              className="bg-secondary-fixed-dim h-full rounded-full"
-              style={{ width: `${metrics.factors.spendingControl}%` }}
+              className="bg-secondary-fixed-dim h-full rounded-full transition-all duration-500"
+              style={{ width: `${isSpendingControlAvailable && metrics.factors.spendingControl !== null ? metrics.factors.spendingControl : 0}%` }}
             ></div>
           </div>
         </div>
@@ -134,20 +204,20 @@ export const FinancialHealthView: React.FC<FinancialHealthViewProps> = ({
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="font-title-md text-title-md text-on-surface font-bold">
-                3. Cash Flow Stability
+                {isBangla ? '৩. ক্যাশ-ফ্লো স্থিতিশীলতা (Cash Flow Stability)' : '3. Cash Flow Stability'}
               </span>
-              <span className="font-headline-md text-headline-md text-on-surface font-bold">
-                {metrics.factors.cashFlowStability}%
+              <span className="font-headline-md text-headline-md text-on-surface font-bold text-sm sm:text-base">
+                {isCashFlowAvailable ? `${metrics.factors.cashFlowStability}%` : (isBangla ? 'পর্যাপ্ত তথ্য নেই' : 'Insufficient Data')}
               </span>
             </div>
             <p className="font-body-sm text-body-sm text-on-surface-variant">
-              Monitors projected month-end cushion. Your minimum margin before Rent on Oct 27 is ৳3,200, which qualifies as moderate risk.
+              {cashFlowStabilityDesc}
             </p>
           </div>
           <div className="w-full bg-surface-container-low h-2 rounded-full mt-4 overflow-hidden">
             <div
-              className="bg-secondary h-full rounded-full"
-              style={{ width: `${metrics.factors.cashFlowStability}%` }}
+              className="bg-secondary h-full rounded-full transition-all duration-500"
+              style={{ width: `${isCashFlowAvailable && metrics.factors.cashFlowStability !== null ? metrics.factors.cashFlowStability : 0}%` }}
             ></div>
           </div>
         </div>
@@ -157,20 +227,20 @@ export const FinancialHealthView: React.FC<FinancialHealthViewProps> = ({
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="font-title-md text-title-md text-on-surface font-bold">
-                4. Goal Progress
+                {isBangla ? '৪. সঞ্চয় লক্ষ্যের অগ্রগতি (Goal Progress)' : '4. Goal Progress'}
               </span>
-              <span className="font-headline-md text-headline-md text-secondary font-bold">
-                {metrics.factors.goalProgress}%
+              <span className="font-headline-md text-headline-md text-secondary font-bold text-sm sm:text-base">
+                {isGoalProgressAvailable ? `${metrics.factors.goalProgress}%` : (isBangla ? 'পর্যাপ্ত তথ্য নেই' : 'Insufficient Data')}
               </span>
             </div>
             <p className="font-body-sm text-body-sm text-on-surface-variant">
-              Average milestone attainment across your Emergency Fund (61.7%), MacBook (40%), and Sajek trip (50%). You are on track for Dec 2024 completion.
+              {goalProgressDesc}
             </p>
           </div>
           <div className="w-full bg-surface-container-low h-2 rounded-full mt-4 overflow-hidden">
             <div
-              className="bg-secondary h-full rounded-full"
-              style={{ width: `${metrics.factors.goalProgress}%` }}
+              className="bg-secondary h-full rounded-full transition-all duration-500"
+              style={{ width: `${isGoalProgressAvailable && metrics.factors.goalProgress !== null ? metrics.factors.goalProgress : 0}%` }}
             ></div>
           </div>
         </div>

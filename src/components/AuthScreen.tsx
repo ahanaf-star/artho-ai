@@ -70,22 +70,20 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         <button
           type="button"
           onClick={() => onToggleBangla(false)}
-          className={`px-3 py-1 rounded-full font-label-sm text-label-sm font-semibold transition-all ${
-            !isBangla
+          className={`px-3 py-1 rounded-full font-label-sm text-label-sm font-semibold transition-all ${!isBangla
               ? 'bg-surface-container-lowest shadow-sm text-on-surface'
               : 'text-on-surface-variant hover:text-on-surface'
-          }`}
+            }`}
         >
           EN
         </button>
         <button
           type="button"
           onClick={() => onToggleBangla(true)}
-          className={`px-3 py-1 rounded-full font-label-sm text-label-sm font-semibold transition-all ${
-            isBangla
+          className={`px-3 py-1 rounded-full font-label-sm text-label-sm font-semibold transition-all ${isBangla
               ? 'bg-surface-container-lowest shadow-sm text-on-surface'
               : 'text-on-surface-variant hover:text-on-surface'
-          }`}
+            }`}
         >
           বাং
         </button>
@@ -121,11 +119,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 setMode('login');
                 setErrorMsg(null);
               }}
-              className={`py-2 rounded-lg font-title-md text-sm font-semibold transition-all ${
-                mode === 'login'
+              className={`py-2 rounded-lg font-title-md text-sm font-semibold transition-all ${mode === 'login'
                   ? 'bg-surface-container-lowest shadow-sm text-on-surface font-bold'
                   : 'text-on-surface-variant hover:text-on-surface'
-              }`}
+                }`}
             >
               {isBangla ? 'লগইন' : 'Sign In'}
             </button>
@@ -135,11 +132,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 setMode('signup');
                 setErrorMsg(null);
               }}
-              className={`py-2 rounded-lg font-title-md text-sm font-semibold transition-all ${
-                mode === 'signup'
+              className={`py-2 rounded-lg font-title-md text-sm font-semibold transition-all ${mode === 'signup'
                   ? 'bg-surface-container-lowest shadow-sm text-on-surface font-bold'
                   : 'text-on-surface-variant hover:text-on-surface'
-              }`}
+                }`}
             >
               {isBangla ? 'অ্যাকাউন্ট খুলুন' : 'Create Account'}
             </button>
@@ -290,8 +286,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                         ? 'লগইন করুন'
                         : 'Sign In to Account'
                       : isBangla
-                      ? 'অ্যাকাউন্ট তৈরি করুন'
-                      : 'Create Account'}
+                        ? 'অ্যাকাউন্ট তৈরি করুন'
+                        : 'Create Account'}
                   </span>
                   <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                 </>

@@ -4,7 +4,9 @@ import {
   calculateMonthlyOverview,
   formatBDT,
   getLatestTransactionMonth,
+  getPreviousMonth,
 } from '../services/financialCalculations';
+import { detectSpendingAnomalies } from '../services/spendingService';
 import { NavScreen } from './Sidebar';
 
 interface SpendingAnalysisProps {
@@ -71,6 +73,48 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
   const overview = useMemo(() => {
     return calculateMonthlyOverview(transactions, selectedMonth);
   }, [transactions, selectedMonth]);
+
+  // Dynamic previous month comparison for Monthly Spending Card
+  const prevMonth = useMemo(() => getPreviousMonth(selectedMonth), [selectedMonth]);
+  const prevMonthExpenses = useMemo(() => {
+    return transactions
+      .filter((t) => t.date && t.date.startsWith(prevMonth) && t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+  }, [transactions, prevMonth]);
+
+  const momSpendingDiff = useMemo(() => {
+    if (prevMonthExpenses <= 0) return null;
+    return Math.round(((overview.totalExpenses - prevMonthExpenses) / prevMonthExpenses) * 100);
+  }, [overview.totalExpenses, prevMonthExpenses]);
+
+  // Outlier detection dynamically derived from actual transaction records for selected month
+  const monthAnomalies = useMemo(() => {
+    return detectSpendingAnomalies(transactions, selectedMonth);
+  }, [transactions, selectedMonth]);
+
+  const hasLargestCategory =
+    overview.totalExpenses > 0 &&
+    !!overview.largestCategory?.category &&
+    overview.largestCategory.amount > 0;
+
+  const categoryAnomalies = useMemo(() => {
+    if (!hasLargestCategory) return [];
+    return monthAnomalies.filter((a) => a.category === overview.largestCategory.category);
+  }, [monthAnomalies, hasLargestCategory, overview.largestCategory]);
+
+  const isLargestOutlier = categoryAnomalies.length > 0;
+
+  const keyDriverText = useMemo(() => {
+    if (!hasLargestCategory) return '';
+    if (categoryAnomalies.length > 0 && categoryAnomalies[0].anomalyReason) {
+      return categoryAnomalies[0].anomalyReason;
+    }
+    const topM = overview.largestCategory.topMerchants;
+    if (topM && topM.length > 0) {
+      return `Key merchant: ${topM[0]}`;
+    }
+    return isBangla ? 'শীর্ষ নিয়মিত ব্যয়' : 'Primary recurring expenditure';
+  }, [hasLargestCategory, categoryAnomalies, overview.largestCategory, isBangla]);
 
   // Filter transactions for table
   const filteredTransactions = useMemo(() => {
@@ -169,11 +213,22 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
           <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-primary/5 pointer-events-none"></div>
           <div className="flex items-center justify-between">
             <span className="font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">
-              Monthly Spending
+              {isBangla ? 'মাসিক মোট ব্যয়' : 'Monthly Spending'}
             </span>
-            <span className="flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-label-sm text-label-sm font-semibold">
-              <span className="material-symbols-outlined text-[14px]">arrow_upward</span> 8%
-            </span>
+            {momSpendingDiff !== null && (
+              <span
+                className={`flex items-center gap-0.5 px-2 py-0.5 rounded-full font-label-sm text-label-sm font-semibold ${
+                  momSpendingDiff > 0
+                    ? 'bg-error-container text-on-error-container'
+                    : 'bg-secondary-container text-on-secondary-container'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[14px]">
+                  {momSpendingDiff > 0 ? 'arrow_upward' : 'arrow_downward'}
+                </span>
+                {Math.abs(momSpendingDiff)}%
+              </span>
+            )}
           </div>
           <div className="mt-space-md">
             <div className="flex items-baseline gap-1">
@@ -182,10 +237,24 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
               </span>
               <span className="font-body-sm text-body-sm text-on-surface-variant">BDT</span>
             </div>
-            <p className="font-body-sm text-body-sm text-outline mt-1">vs ৳27,030 last month</p>
+            <p className="font-body-sm text-body-sm text-outline mt-1">
+              {prevMonthExpenses > 0
+                ? `vs ${formatBDT(prevMonthExpenses)} last month`
+                : (isBangla ? 'পূর্ববর্তী মাসের রেকর্ড নেই' : 'No prior month record')}
+            </p>
           </div>
           <div className="mt-space-md h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
-            <div className="h-full bg-primary-container rounded-full" style={{ width: '74%' }}></div>
+            <div
+              className="h-full bg-primary-container rounded-full transition-all duration-500"
+              style={{
+                width:
+                  overview.totalIncome > 0
+                    ? `${Math.min(100, Math.round((overview.totalExpenses / overview.totalIncome) * 100))}%`
+                    : overview.totalExpenses > 0
+                    ? '100%'
+                    : '0%',
+              }}
+            ></div>
           </div>
         </div>
 
@@ -207,7 +276,9 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
               <span className="font-title-md text-title-md text-on-surface-variant">/day</span>
             </div>
             <p className="font-body-sm text-body-sm text-secondary font-medium mt-1">
-              Target ceiling: ৳1,050/day
+              {overview.totalExpenses > 0
+                ? (isBangla ? 'চলতি মাসের দৈনিক গড়' : 'Target ceiling: ৳1,050/day')
+                : (isBangla ? 'কোন ব্যয় রেকর্ড নেই' : 'No expenses recorded')}
             </p>
           </div>
           {/* Mini Sparkline inline */}
@@ -224,32 +295,62 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
 
         {/* Card 3: Largest Category */}
         <div className="flex flex-col justify-between p-space-lg rounded-xl bg-surface-container-lowest shadow-sm border border-outline-variant/20">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <span className="font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">
-              Largest Category
+              {isBangla ? 'সর্বোচ্চ ব্যয় খাত' : 'Largest Category'}
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-surface-container-highest text-tertiary-container font-label-sm text-label-sm font-semibold">
-              {overview.largestCategory.percentage}% of total
-            </span>
+            {hasLargestCategory && (
+              <span className="px-2 py-0.5 rounded-full bg-surface-container-highest text-tertiary-container font-label-sm text-label-sm font-semibold shrink-0">
+                {overview.largestCategory.percentage}% {isBangla ? 'মোট ব্যয়ের' : 'of total'}
+              </span>
+            )}
           </div>
           <div className="mt-space-md">
-            <span className="font-headline-lg text-headline-lg text-on-surface truncate block font-bold">
-              {overview.largestCategory.category}
-            </span>
-            <div className="flex items-center gap-space-xs mt-1">
-              <span className="font-title-md text-title-md text-on-surface font-semibold">
-                {formatBDT(overview.largestCategory.amount)}
-              </span>
-              <span className="font-body-sm text-body-sm text-error font-medium">
-                (Outlier flagged)
-              </span>
-            </div>
+            {hasLargestCategory ? (
+              <>
+                <span
+                  title={overview.largestCategory.category}
+                  className="font-headline-lg text-base sm:text-lg xl:text-headline-lg text-on-surface font-bold break-words leading-snug line-clamp-2"
+                >
+                  {overview.largestCategory.category}
+                </span>
+                <div className="flex items-center gap-space-xs mt-1.5 flex-wrap">
+                  <span className="font-title-md text-title-md text-on-surface font-semibold">
+                    {formatBDT(overview.largestCategory.amount)}
+                  </span>
+                  {isLargestOutlier && (
+                    <span className="font-body-sm text-xs px-1.5 py-0.5 rounded bg-error-container text-on-error-container font-medium">
+                      {isBangla ? 'অস্বাভাবিক ব্যয় চিহ্নিত' : 'Outlier flagged'}
+                    </span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="py-2">
+                <span className="text-on-surface-variant font-body-md text-sm font-medium italic block">
+                  {isBangla ? 'কোন ব্যয়ের তথ্য নেই' : 'No spending data available'}
+                </span>
+                <p className="font-body-sm text-xs text-outline mt-1">
+                  {isBangla ? 'নির্বাচিত মাসে কোনো ব্যয় পাওয়া যায়নি' : 'No expenses recorded in selected month'}
+                </p>
+              </div>
+            )}
           </div>
           <div className="mt-space-md flex items-center gap-space-xs text-on-surface-variant font-body-sm text-body-sm">
-            <span className="material-symbols-outlined text-[16px] text-tertiary-container">
-              store
-            </span>
-            <span className="truncate">Key driver: Late-night delivery apps</span>
+            {hasLargestCategory ? (
+              <>
+                <span className="material-symbols-outlined text-[16px] text-tertiary-container shrink-0">
+                  store
+                </span>
+                <span className="truncate text-xs text-on-surface-variant" title={keyDriverText}>
+                  {keyDriverText}
+                </span>
+              </>
+            ) : (
+              <span className="text-xs text-outline italic">
+                {isBangla ? 'লেনদেন যুক্ত করলে বিশ্লেষণ দৃশ্যমান হবে' : 'Add transactions to populate analysis'}
+              </span>
+            )}
           </div>
         </div>
 

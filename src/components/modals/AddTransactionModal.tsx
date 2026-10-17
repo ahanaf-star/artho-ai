@@ -6,12 +6,14 @@ interface AddTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddTransaction: (transaction: Transaction) => void;
+  isBangla?: boolean;
 }
 
 export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   isOpen,
   onClose,
   onAddTransaction,
+  isBangla = false,
 }) => {
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
@@ -34,7 +36,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       type,
       category,
       amount: parsedAmount,
-      merchant: merchant.trim() || (type === 'income' ? 'Client / Employer' : 'Retailer'),
+      merchant: merchant.trim(),
       description: description.trim() || `${category} transaction`,
       account,
       paymentMethod: `${account} Direct`,
@@ -58,10 +60,10 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-primary/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-      <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-space-lg shadow-2xl border border-outline-variant/30 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-space-lg shadow-2xl border border-outline-variant/30 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between pb-2 border-b border-outline-variant/15">
           <h2 className="font-headline-md text-headline-md text-on-surface font-bold">
-            Add New Transaction
+            {isBangla ? 'নতুন লেনদেন যুক্ত করুন' : 'Add New Transaction'}
           </h2>
           <button
             onClick={onClose}
@@ -137,14 +139,21 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
           {/* Merchant */}
           <div className="flex flex-col gap-1">
             <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-              Merchant / Counterparty
+              {isBangla ? 'মার্চেন্ট / প্রতিষ্ঠান (ঐচ্ছিক)' : 'Merchant / Counterparty (Optional)'}
             </label>
             <input
               type="text"
-              required
               value={merchant}
               onChange={(e) => setMerchant(e.target.value)}
-              placeholder="e.g. Shwapno, Pathao Food, DESCO"
+              placeholder={
+                type === 'income'
+                  ? isBangla
+                    ? 'যেমন: প্রতিষ্ঠান, ক্লায়েন্ট, উৎস (ঐচ্ছিক)'
+                    : 'e.g. Employer, Client, Source (Optional)'
+                  : isBangla
+                  ? 'যেমন: স্বপ্ন, পাঠাও, ডেসকো (ঐচ্ছিক)'
+                  : 'e.g. Shwapno, Pathao Food, DESCO (Optional)'
+              }
               className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant/40 bg-surface-container-lowest text-on-surface font-body-md focus:outline-none focus:ring-2 focus:ring-primary-container"
             />
           </div>

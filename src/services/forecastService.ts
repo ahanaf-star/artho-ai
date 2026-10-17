@@ -1,4 +1,4 @@
-import { CashFlowPoint, Transaction } from '../types/financial';
+import { CashFlowPoint, Transaction, RecurringObligation } from '../types/financial';
 
 export interface ForecastDayItem {
   date: string;
@@ -29,45 +29,64 @@ export interface DetailedForecastResult {
 /**
  * 30-day Cash Flow Forecast Engine
  * Calculates expected daily inflows, daily burn, scheduled obligations, and detects pressure periods.
+ * Strictly uses authentic inputs: zero mock obligations, zero hardcoded rent/bills.
  */
 export function generateCashFlowForecast(
-  startingBalance: number = 24850,
+  startingBalance: number = 0,
   simulateExpenseCut: boolean = false,
-  _historicalTransactions?: Transaction[]
+  transactions: Transaction[] = [],
+  recurringObligations: RecurringObligation[] = [],
+  horizonDays: number = 30
 ): CashFlowPoint[] {
   const points: CashFlowPoint[] = [];
   let balance = startingBalance;
-  const dailyBurn = simulateExpenseCut ? 620 : 920; // ৳300/day savings if simulated
 
-  for (let day = 1; day <= 30; day++) {
-    let income = 0;
-    let expense = dailyBurn;
+  // Calculate authentic daily burn rate from past 30-day non-recurring expenses
+  const nonRecurringExpenses = transactions.filter(
+    (t) => t.type === 'expense' && !t.isRecurring
+  );
+  const totalNonRecurring = nonRecurringExpenses.reduce((sum, t) => sum + t.amount, 0);
+  const dailyBurn = nonRecurringExpenses.length > 0 ? Math.round(totalNonRecurring / 30) : 0;
 
-    // Day 7: Freelance UI/UX settlement inflow (+ ৳6,000)
-    if (day === 7) {
-      income = 6000;
-      balance += income;
-    }
+  // Hypothetical simulation: 15% discretionary trim (max ৳300/day) applied only to projected curve
+  const simulationSaving = simulateExpenseCut ? Math.min(300, Math.round(dailyBurn * 0.15)) : 0;
+  const effectiveDailyBurn = Math.max(0, dailyBurn - simulationSaving);
 
-    // Day 26: Apartment Rent (৳16,000) + DESCO/WASA utility bills (৳1,200)
-    if (day === 26) {
-      expense += 17200;
-    }
+  // Active recurring obligations
+  const activeObligations = recurringObligations.filter((o) => o.isEnabled);
+  const upcomingBills = activeObligations.reduce((sum, o) => sum + o.amount, 0);
+  const recommendedBuffer =
+    upcomingBills > 0 ? Math.round(upcomingBills + dailyBurn * 7) : Math.round(startingBalance * 0.15);
 
-    balance -= expense;
-    const isPressure = day >= 24 && day <= 28;
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+
+  for (let day = 1; day <= horizonDays; day++) {
+    // Check if any verified obligations are due on this day
+    const dayObligations = activeObligations.filter((o) => o.dueDay === day);
+    const dayOutflow = dayObligations.reduce((sum, o) => sum + o.amount, 0);
+    const expense = effectiveDailyBurn + dayOutflow;
+
+    // Check if any recurring income arrives on this day
+    const dayIncomeTxs = transactions.filter(
+      (t) => t.type === 'income' && t.isRecurring && parseInt(t.date?.split('-')[2] || '0', 10) === day
+    );
+    const dayIncome = dayIncomeTxs.reduce((sum, t) => sum + t.amount, 0);
+
+    balance = balance + dayIncome - expense;
+
+    const isPressure = dayOutflow > 0 && balance < recommendedBuffer;
     const notes =
-      day === 26
-        ? 'Rent (৳16,000) & utility dues. Minimum projected margin: ৳3,200.'
-        : day === 7
-        ? 'Freelance milestone payout (+ ৳6,000 to bKash)'
+      dayObligations.length > 0
+        ? dayObligations.map((o) => `${o.name} (৳${o.amount.toLocaleString()})`).join(', ')
         : undefined;
 
     points.push({
       day,
-      dateLabel: `Day ${day} (Oct ${day})`,
-      projectedBalance: Math.max(1200, Math.round(balance)),
-      expectedIncome: income,
+      dateLabel: `Day ${day} (${month}/${day})`,
+      projectedBalance: Math.round(balance),
+      expectedIncome: dayIncome,
       expectedExpense: expense,
       expectedOutflows: expense,
       isPressureZone: isPressure,
@@ -79,17 +98,46 @@ export function generateCashFlowForecast(
 }
 
 /**
- * Complete Detailed Forecast Object with Pressure Zone Analysis & Prototype Disclaimer
+ * Complete Detailed Forecast Object with Pressure Zone Analysis & Authenticity
  */
 export function getDetailedForecast(
-  startingBalance: number = 24850,
+  startingBalance: number = 0,
   simulateExpenseCut: boolean = false,
-  transactions?: Transaction[]
+  transactions: Transaction[] = [],
+  recurringObligations: RecurringObligation[] = []
 ): DetailedForecastResult {
-  const curve = generateCashFlowForecast(startingBalance, simulateExpenseCut, transactions);
-  const monthEndBalance = curve[curve.length - 1]?.projectedBalance || 7450;
+  const curve = generateCashFlowForecast(
+    startingBalance,
+    simulateExpenseCut,
+    transactions,
+    recurringObligations,
+    30
+  );
+  const monthEndBalance = curve.length > 0 ? curve[curve.length - 1].projectedBalance : startingBalance;
+
+  const now = new Date();
+  const monthName = now.toLocaleString('en-US', { month: 'short' });
+  const year = now.getFullYear();
+
+  const activeObligations = recurringObligations.filter((o) => o.isEnabled);
+  const upcomingBills = activeObligations.reduce((sum, o) => sum + o.amount, 0);
+
+  const recurringInflows = transactions.filter((t) => t.type === 'income' && t.isRecurring);
+  const expectedInflows = recurringInflows.reduce((sum, t) => sum + t.amount, 0);
+
+  const nonRecurringExpenses = transactions.filter(
+    (t) => t.type === 'expense' && !t.isRecurring
+  );
+  const totalNonRecurring = nonRecurringExpenses.reduce((sum, t) => sum + t.amount, 0);
+  const dailyBurn = nonRecurringExpenses.length > 0 ? Math.round(totalNonRecurring / 30) : 0;
+
+  const recommendedBuffer =
+    upcomingBills > 0 ? Math.round(upcomingBills + dailyBurn * 7) : Math.round(startingBalance * 0.15);
+
+  const pressureDays = curve.filter((p) => p.isPressureZone).map((p) => p.day);
+
   const dailyForecast: ForecastDayItem[] = curve.map((p) => ({
-    date: `2024-10-${String(p.day).padStart(2, '0')}`,
+    date: `${year}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`,
     dayNumber: p.day,
     expectedIncome: p.expectedIncome,
     expectedExpense: p.expectedExpense,
@@ -98,22 +146,33 @@ export function getDetailedForecast(
     notes: p.notes,
   }));
 
+  let aiAdvice = '';
+  if (upcomingBills === 0 && startingBalance === 0 && transactions.length === 0) {
+    aiAdvice =
+      'No transactions or recurring obligations configured yet. Add your verified accounts and regular bills to generate an authentic cash-flow forecast.';
+  } else if (upcomingBills > 0 && pressureDays.length > 0) {
+    aiAdvice = `Maintain at least ৳${recommendedBuffer.toLocaleString()} in liquid reserves before Day ${pressureDays[0]} to cover scheduled obligations smoothly.`;
+  } else if (simulateExpenseCut) {
+    aiAdvice =
+      'Hypothetical expense trim active: Projected month-end reserve expands without affecting your live ledger transactions.';
+  } else {
+    aiAdvice = `Your projected month-end balance is approximately ৳${monthEndBalance.toLocaleString()}. Current burn rate remains within available liquidity.`;
+  }
+
   return {
     engineLabel: 'AI-assisted forecast',
-    period: 'Oct 1 - Oct 30, 2024',
+    period: `${monthName} 1 - ${monthName} 30, ${year}`,
     disclaimer:
-      'This is an AI-assisted forecast based on historical daily burn rates and scheduled recurring commitments. Projections are indicative and not guaranteed.',
+      'This is an AI-assisted forecast calculated strictly from verified starting balances, historical burn rates, and scheduled commitments.',
     startingBalance,
     projectedMonthEnd: monthEndBalance,
-    upcomingBills: 17200,
-    expectedInflows: 6000,
-    riskLevel: monthEndBalance < 5000 ? 'Moderate' : 'Low',
-    pressureDays: [24, 25, 26, 27, 28],
-    recommendedBuffer: 18000,
+    upcomingBills,
+    expectedInflows,
+    riskLevel: monthEndBalance < 0 ? 'High' : monthEndBalance < recommendedBuffer ? 'Moderate' : 'Low',
+    pressureDays,
+    recommendedBuffer,
     dailyForecast,
     forecastCurve: curve,
-    aiAdvice: simulateExpenseCut
-      ? 'Expense cut active (+ ৳300/day saved): Projected month-end cushion rises to ৳11,250. Rent pressure zone in safe territory.'
-      : 'Maintain at least ৳18,000 in your City Bank checking account by October 24 to clear apartment rent (৳16,000) and utilities (৳1,200) without overdraft.',
+    aiAdvice,
   };
 }

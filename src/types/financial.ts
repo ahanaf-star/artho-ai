@@ -15,6 +15,7 @@ export type TransactionClassification = 'essential' | 'discretionary' | 'anomali
 
 export interface Transaction {
   id: string;
+  userId?: string;
   date: string; // ISO format: YYYY-MM-DD
   type: TransactionType;
   category: CategoryName;
@@ -31,6 +32,17 @@ export interface Transaction {
   isRecurring?: boolean;
 }
 
+export interface RecurringObligation {
+  id: string;
+  userId?: string;
+  name: string;
+  amount: number;
+  dueDay: number; // Day of month: 1 - 31
+  category?: CategoryName | string;
+  recurrenceRule: 'monthly' | 'weekly' | 'custom';
+  isEnabled: boolean;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -42,22 +54,25 @@ export interface User {
   tagline?: string;
   memberStatus?: string;
   city?: string;
-  monthlyIncome: number;
-  riskTolerance: 'Low' | 'Moderate' | 'Aggressive';
-  primaryGoalId: string;
-  privacyStatus: string;
+  monthlyIncome?: number;
+  riskTolerance?: 'Low' | 'Moderate' | 'Aggressive';
+  primaryGoalId?: string;
+  privacyStatus?: string;
   linkedAccounts: Array<{
-    name: 'bKash' | 'Nagad' | 'City Bank' | 'Dhaka Bank';
+    name: 'bKash' | 'Nagad' | 'City Bank' | 'Dhaka Bank' | string;
     balance: number;
     accountNumber: string;
-    type: 'MFS' | 'Bank Account' | 'Credit Card';
+    type: 'MFS' | 'Bank Account' | 'Credit Card' | string;
   }>;
+  recurringObligations?: RecurringObligation[];
 }
 
 export type UserProfile = User; // Alias for backward-compatibility
 
 export interface SavingsGoal {
   id: string;
+  userId?: string;
+  name?: string;
   title: string;
   category: string;
   icon: string;
@@ -96,9 +111,10 @@ export interface FinancialSummary {
   averageMonthlySpending: number;
   averageMonthlySavings: number;
   largestCategory: {
-    category: CategoryName;
+    category: CategoryName | string;
     amount: number;
     percentage: number;
+    topMerchants?: string[];
   };
   expenseSplit: {
     essential: number;
@@ -115,21 +131,61 @@ export interface FinancialSummary {
 }
 
 export interface FinancialHealthFactorBreakdown {
-  savingConsistency: number; // 0-100
-  spendingControl: number;    // 0-100
-  cashFlowStability: number;  // 0-100
-  goalProgress: number;       // 0-100
+  savingConsistency: number | null; // 0-100 or null if insufficient data
+  spendingControl: number | null;    // 0-100 or null if insufficient data
+  cashFlowStability: number | null;  // 0-100 or null if insufficient data
+  goalProgress: number | null;       // 0-100 or null if insufficient data
 }
 
 export interface FinancialHealth {
-  score: number; // 0-100
-  status: 'Optimal' | 'Very Good' | 'Good' | 'Needs Attention';
-  percentile: number;
+  score: number | null; // 0-100 or null if insufficient data
+  status: 'Optimal' | 'Very Good' | 'Good' | 'Fair' | 'Needs Attention' | 'Insufficient Data';
+  percentile: number | null;
   factors: FinancialHealthFactorBreakdown;
   explanation: string;
 }
 
 export type FinancialHealthMetrics = FinancialHealth; // Alias for backward compatibility
+
+export interface HealthScoreComponent {
+  key: string;
+  name: string;
+  label?: string;
+  score: number | null;
+  weight: number;
+  available: boolean;
+  rawValue: number | null;
+  unit?: string;
+  rawUnit?: string;
+  status: string;
+}
+
+export interface FinancialHealthResult {
+  score: number | null;
+  status: 'ok' | 'insufficient_data';
+  category: 'Excellent' | 'Good' | 'Fair' | 'Poor' | 'Needs Attention' | null;
+  confidence: 'high' | 'medium' | 'low';
+  components: HealthScoreComponent[];
+  dataWindow: {
+    monthsOfData: number;
+    transactionCount: number;
+    asOfDate?: string;
+  };
+  strengths?: string[];
+  attentionAreas?: string[];
+  percentile?: number | null;
+  factors?: FinancialHealthFactorBreakdown;
+  explanation?: string;
+}
+
+export interface FinancialHealthInput {
+  transactions: Transaction[];
+  goals: SavingsGoal[];
+  monthlyIncome?: number;
+  startingBalance?: number;
+  asOfDate?: string;
+  config?: any;
+}
 
 export interface CashFlowPoint {
   day: number;

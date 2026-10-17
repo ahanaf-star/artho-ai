@@ -20,7 +20,7 @@ import { Transaction, SavingsGoal } from '../../src/types/financial';
 
 export const MFS_FEE_RATE = 0.0185; // 1.85% standard Bangladesh MFS cash-out tariff
 
-export interface FactItem<T = number | string | boolean> {
+export interface FactItem<T = number | string | boolean | null> {
   key: string;
   value: T;
   available: boolean;
@@ -102,14 +102,14 @@ export interface CoachContext {
   };
   health: {
     available: boolean;
-    score: number;
+    score: number | null;
     band: string;
-    percentile: number;
+    percentile: number | null;
     confidence: 'High' | 'Medium' | 'Low';
-    savingConsistency: number;
-    spendingControl: number;
-    cashFlowStability: number;
-    goalProgress: number;
+    savingConsistency: number | null;
+    spendingControl: number | null;
+    cashFlowStability: number | null;
+    goalProgress: number | null;
     facts: Record<string, FactItem>;
   };
   cashOut: {
@@ -469,13 +469,13 @@ export async function buildCoachContext(
 
   // 4. Cash Flow Fact Group
   // Run deterministic forecast engine
-  const forecast = getDetailedForecast(currentBalance, false, eligibleTransactions);
+  const recurringObligations = (user?.recurringObligations || []) as any;
+  const forecast = getDetailedForecast(currentBalance, false, eligibleTransactions, recurringObligations);
   const forecastMonthEndBalance = forecast.projectedMonthEnd;
-  const recommendedBuffer = forecast.recommendedBuffer; // ৳18,000
+  const recommendedBuffer = forecast.recommendedBuffer;
   const shortfall = Math.max(0, recommendedBuffer - forecastMonthEndBalance);
   // Deterministic recommended weekly reduction from forecast:
-  // If shortfall exists: Math.round(shortfall / 4), else standard ৳2,100/wk (৳300/day * 7) if spending can be optimized
-  const recommendedWeeklyReduction = shortfall > 0 ? Math.round(shortfall / 4) : 2100;
+  const recommendedWeeklyReduction = shortfall > 0 ? Math.round(shortfall / 4) : 0;
 
   const cashFlowFacts: Record<string, FactItem> = {
     'cashFlow.startingBalance': {
@@ -519,7 +519,7 @@ export async function buildCoachContext(
   const healthMetrics = calculateFinancialHealthScore(
     eligibleTransactions,
     goals,
-    monthlyIncome || 38500,
+    monthlyIncome || user?.monthlyIncome || 0,
     activeMonth
   );
 
@@ -527,7 +527,7 @@ export async function buildCoachContext(
     'health.score': {
       key: 'health.score',
       value: healthMetrics.score,
-      available: true,
+      available: healthMetrics.score !== null,
       labelEn: 'Financial Health Score (0-100)',
       labelBn: 'আর্থিক স্বাস্থ্য স্কোর (০-১০০)',
     },
@@ -541,35 +541,35 @@ export async function buildCoachContext(
     'health.percentile': {
       key: 'health.percentile',
       value: healthMetrics.percentile,
-      available: true,
+      available: healthMetrics.percentile !== null,
       labelEn: 'Dhaka Peer Percentile',
       labelBn: 'সমকক্ষ ব্যবহারকারীদের চেয়ে শতকরা এগিয়ে',
     },
     'health.savingConsistency': {
       key: 'health.savingConsistency',
       value: healthMetrics.factors.savingConsistency,
-      available: true,
+      available: healthMetrics.factors.savingConsistency !== null,
       labelEn: 'Saving Consistency Factor',
       labelBn: 'ধারাবাহিক সঞ্চয় গুণক',
     },
     'health.spendingControl': {
       key: 'health.spendingControl',
       value: healthMetrics.factors.spendingControl,
-      available: true,
+      available: healthMetrics.factors.spendingControl !== null,
       labelEn: 'Spending Control Factor',
       labelBn: 'ব্যয় নিয়ন্ত্রণ গুণক',
     },
     'health.cashFlowStability': {
       key: 'health.cashFlowStability',
       value: healthMetrics.factors.cashFlowStability,
-      available: true,
+      available: healthMetrics.factors.cashFlowStability !== null,
       labelEn: 'Cash Flow Stability Factor',
       labelBn: 'ক্যাশ-ফ্লো স্থায়িত্ব গুণক',
     },
     'health.goalProgress': {
       key: 'health.goalProgress',
       value: healthMetrics.factors.goalProgress,
-      available: true,
+      available: healthMetrics.factors.goalProgress !== null,
       labelEn: 'Goal Progress Factor',
       labelBn: 'লক্ষ্য অর্জনের গুণক',
     },
@@ -686,7 +686,7 @@ export async function buildCoachContext(
       facts: cashFlowFacts,
     },
     health: {
-      available: true,
+      available: healthMetrics.score !== null,
       score: healthMetrics.score,
       band: healthMetrics.status,
       percentile: healthMetrics.percentile,

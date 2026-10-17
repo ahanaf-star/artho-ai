@@ -5,6 +5,7 @@ import {
   calculateFinancialHealthScore,
   formatBDT,
   getLatestTransactionMonth,
+  formatMonthName,
 } from '../services/financialCalculations';
 import { NavScreen } from './Sidebar';
 
@@ -31,17 +32,36 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenCreateGoal,
   isBangla,
 }) => {
-  const [isSimulated, setIsSimulated] = useState(false);
   const [budgetApplied, setBudgetApplied] = useState(false);
-  const [bufferLocked, setBufferLocked] = useState(false);
 
   // Dynamic calculations based on live synthetic state
   const activeMonth = getLatestTransactionMonth(transactions);
   const overview = calculateMonthlyOverview(transactions, activeMonth);
   const healthMetrics = calculateFinancialHealthScore(transactions, goals, user.monthlyIncome, activeMonth);
 
-  // Total balance sum
-  const totalBalance = user.linkedAccounts.reduce((acc, a) => acc + a.balance, 0);
+  // User accounts & Total balance sum
+  const accounts = user?.linkedAccounts || [];
+  const totalBalance =
+    accounts.length > 0
+      ? accounts.reduce((acc, a) => acc + (a.balance || 0), 0)
+      : Math.max(
+          0,
+          transactions.reduce((acc, t) => {
+            if (t.type === 'income') return acc + t.amount;
+            if (t.type === 'expense') return acc - t.amount;
+            return acc;
+          }, 0)
+        );
+
+  // Calculate 7-day net cash flow from transactions
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const recent7DayTxs = transactions.filter((t) => t.date && t.date >= sevenDaysAgo);
+  const net7Days = recent7DayTxs.reduce((sum, t) => {
+    if (t.type === 'income') return sum + t.amount;
+    if (t.type === 'expense') return sum - t.amount;
+    return sum;
+  }, 0);
 
   // Primary goal (Hero)
   const heroGoal = goals[0];
@@ -74,7 +94,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <h1 className="font-headline-xl text-headline-xl text-on-surface tracking-tight font-bold">
               {isBangla
                 ? (firstName ? `শুভ সকাল, ${firstName}` : 'শুভ সকাল')
-                : (firstName ? `Good morning, ${firstName} 👋` : 'Good morning 👋')}
+                : (firstName ? `Good morning, ${firstName}` : 'Good morning')}
             </h1>
           </div>
           <p className="font-body-md text-body-md text-on-surface-variant mt-1 flex items-center gap-2">
@@ -137,21 +157,42 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
           <div className="mt-4 pt-3 border-t border-outline-variant/15 flex flex-col gap-2">
             <div className="flex items-center gap-1.5">
-              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-semibold">
-                <span className="material-symbols-outlined text-[14px]">trending_up</span>
-                +৳4,200 this week
-              </span>
+              {recent7DayTxs.length === 0 ? (
+                <span className="text-on-surface-variant font-label-sm text-[11px] italic">
+                  {isBangla ? 'এই সপ্তাহে লেনদেন নেই' : 'No activity this week'}
+                </span>
+              ) : net7Days > 0 ? (
+                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-semibold">
+                  <span className="material-symbols-outlined text-[14px]">trending_up</span>
+                  +{formatBDT(net7Days)} {isBangla ? 'এই সপ্তাহে' : 'this week'}
+                </span>
+              ) : net7Days < 0 ? (
+                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-label-sm text-label-sm font-semibold">
+                  <span className="material-symbols-outlined text-[14px]">trending_down</span>
+                  -{formatBDT(Math.abs(net7Days))} {isBangla ? 'এই সপ্তাহে' : 'this week'}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold">
+                  ৳0 {isBangla ? 'এই সপ্তাহে' : 'this week'}
+                </span>
+              )}
             </div>
             {/* Linked MFS & Bank badges */}
             <div className="flex items-center gap-1.5 flex-wrap">
-              {user.linkedAccounts.map((acc) => (
-                <span
-                  key={acc.name}
-                  className="px-2 py-0.5 rounded-md bg-surface-container-low text-on-surface-variant font-label-sm text-[10px] font-semibold"
-                >
-                  {acc.name} ({formatBDT(acc.balance)})
+              {accounts.length > 0 ? (
+                accounts.map((acc) => (
+                  <span
+                    key={acc.name}
+                    className="px-2 py-0.5 rounded-md bg-surface-container-low text-on-surface-variant font-label-sm text-[10px] font-semibold"
+                  >
+                    {acc.name} ({formatBDT(acc.balance || 0)})
+                  </span>
+                ))
+              ) : (
+                <span className="text-on-surface-variant font-label-sm text-[11px] italic">
+                  {isBangla ? 'কোন অ্যাকাউন্ট সংযুক্ত নেই' : 'No accounts connected'}
                 </span>
-              ))}
+              )}
             </div>
           </div>
         </div>
@@ -161,7 +202,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex items-start justify-between">
             <div className="flex flex-col">
               <span className="font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">
-                Total Income (OCT)
+                Total Income ({formatMonthName(activeMonth, isBangla).toUpperCase().slice(0, 3)})
               </span>
               <div className="flex items-baseline gap-1 mt-1">
                 <span className="font-headline-lg text-headline-lg text-on-surface font-bold">
@@ -176,11 +217,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="mt-4 pt-3 border-t border-outline-variant/15 flex items-center justify-between">
             <div className="flex flex-col">
               <span className="font-body-sm text-body-sm text-on-surface-variant">
-                Primary Salary + Freelance
+                {overview.totalIncome > 0
+                  ? (isBangla ? 'রেকর্ডকৃত আয়' : 'Recorded Income Inflow')
+                  : (isBangla ? 'কোন আয় রেকর্ড নেই' : 'No income recorded')}
               </span>
               <div className="flex items-center gap-1 text-secondary mt-0.5 font-label-sm text-label-sm font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                100% Deposited on time
+                {overview.totalIncome > 0 ? (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                    <span>{isBangla ? 'সফলভাবে জমা হয়েছে' : 'Deposited to accounts'}</span>
+                  </>
+                ) : (
+                  <span className="text-outline text-xs">
+                    {isBangla ? 'আয়ের লেনদেন যুক্ত করুন' : 'Add income transaction'}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -204,13 +255,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
           <div className="mt-4 pt-3 border-t border-outline-variant/15 flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-label-sm text-label-sm font-semibold">
-                <span className="material-symbols-outlined text-[14px]">arrow_upward</span>
-                8% higher
+            {overview.totalExpenses > 0 ? (
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface font-label-sm text-label-sm font-semibold">
+                  {formatBDT(overview.dailyAverageSpend)}/day
+                </span>
+                <span className="font-body-sm text-body-sm text-on-surface-variant">
+                  {isBangla ? 'দৈনিক গড় ব্যয়' : 'daily average'}
+                </span>
+              </div>
+            ) : (
+              <span className="font-body-sm text-body-sm text-outline italic">
+                {isBangla ? 'চলতি মাসে কোন ব্যয় নেই' : 'No spending recorded this month'}
               </span>
-              <span className="font-body-sm text-body-sm text-on-surface-variant">vs last month</span>
-            </div>
+            )}
           </div>
         </div>
 
@@ -281,83 +339,121 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     cy="60"
                     fill="transparent"
                     r="48"
-                    stroke="#006c49"
-                    strokeDasharray={`${(healthMetrics.score / 100) * 301.6} 301.6`}
+                    stroke={healthMetrics.score !== null ? (healthMetrics.score >= 75 ? '#006c49' : healthMetrics.score >= 50 ? '#0284c7' : '#94a3b8') : '#cbd5e1'}
+                    strokeDasharray={`${healthMetrics.score !== null ? (healthMetrics.score / 100) * 301.6 : 0} 301.6`}
                     strokeLinecap="round"
                     strokeWidth="10"
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                   <span className="font-headline-xl text-headline-xl text-on-surface leading-none font-bold">
-                    {healthMetrics.score}
+                    {healthMetrics.score !== null ? healthMetrics.score : '--'}
                   </span>
                   <span className="font-label-sm text-label-sm text-outline mt-0.5 uppercase tracking-wider">
                     / 100
                   </span>
                 </div>
               </div>
-              <p className="font-body-sm text-body-sm text-center text-on-surface-variant max-w-[220px] mt-2">
-                Consistently outperforming{' '}
-                <span className="font-semibold text-secondary">{healthMetrics.percentile}%</span> of peers in
-                Dhaka
-              </p>
+              {healthMetrics.score !== null && healthMetrics.percentile !== null ? (
+                <p className="font-body-sm text-body-sm text-center text-on-surface-variant max-w-[220px] mt-2">
+                  Consistently outperforming{' '}
+                  <span className="font-semibold text-secondary">{healthMetrics.percentile}%</span> of peers in
+                  Dhaka
+                </p>
+              ) : (
+                <p className="font-body-sm text-body-sm text-center text-on-surface-variant max-w-[220px] mt-2">
+                  Add transactions to calculate this metric.
+                </p>
+              )}
             </div>
 
             {/* 4 Sub-metrics Breakdown */}
             <div className="flex flex-col gap-2.5 mt-2">
               <div>
-                <div className="flex justify-between font-label-sm text-label-sm mb-1">
-                  <span className="text-on-surface-variant">Saving Consistency</span>
-                  <span className="font-semibold text-on-surface">
-                    {healthMetrics.factors.savingConsistency}%
+                <div className="flex justify-between font-label-sm text-label-sm mb-1 gap-2">
+                  <span className="text-on-surface-variant truncate">Saving Consistency</span>
+                  <span className="font-semibold text-on-surface shrink-0 text-xs sm:text-label-sm">
+                    {healthMetrics.factors.savingConsistency !== null
+                      ? `${healthMetrics.factors.savingConsistency}%`
+                      : 'Insufficient Data'}
                   </span>
                 </div>
                 <div className="w-full h-1.5 rounded-full bg-surface-container-low overflow-hidden">
                   <div
                     className="h-full bg-secondary rounded-full transition-all duration-500"
-                    style={{ width: `${healthMetrics.factors.savingConsistency}%` }}
+                    style={{
+                      width: `${
+                        healthMetrics.factors.savingConsistency !== null
+                          ? healthMetrics.factors.savingConsistency
+                          : 0
+                      }%`,
+                    }}
                   ></div>
                 </div>
               </div>
               <div>
-                <div className="flex justify-between font-label-sm text-label-sm mb-1">
-                  <span className="text-on-surface-variant">Spending Control</span>
-                  <span className="font-semibold text-on-surface">
-                    {healthMetrics.factors.spendingControl}%
+                <div className="flex justify-between font-label-sm text-label-sm mb-1 gap-2">
+                  <span className="text-on-surface-variant truncate">Spending Control</span>
+                  <span className="font-semibold text-on-surface shrink-0 text-xs sm:text-label-sm">
+                    {healthMetrics.factors.spendingControl !== null
+                      ? `${healthMetrics.factors.spendingControl}%`
+                      : 'Insufficient Data'}
                   </span>
                 </div>
                 <div className="w-full h-1.5 rounded-full bg-surface-container-low overflow-hidden">
                   <div
                     className="h-full bg-secondary-fixed-dim rounded-full transition-all duration-500"
-                    style={{ width: `${healthMetrics.factors.spendingControl}%` }}
+                    style={{
+                      width: `${
+                        healthMetrics.factors.spendingControl !== null
+                          ? healthMetrics.factors.spendingControl
+                          : 0
+                      }%`,
+                    }}
                   ></div>
                 </div>
               </div>
               <div>
-                <div className="flex justify-between font-label-sm text-label-sm mb-1">
-                  <span className="text-on-surface-variant">Cash Flow Stability</span>
-                  <span className="font-semibold text-on-surface">
-                    {healthMetrics.factors.cashFlowStability}%
+                <div className="flex justify-between font-label-sm text-label-sm mb-1 gap-2">
+                  <span className="text-on-surface-variant truncate">Cash Flow Stability</span>
+                  <span className="font-semibold text-on-surface shrink-0 text-xs sm:text-label-sm">
+                    {healthMetrics.factors.cashFlowStability !== null
+                      ? `${healthMetrics.factors.cashFlowStability}%`
+                      : 'Insufficient Data'}
                   </span>
                 </div>
                 <div className="w-full h-1.5 rounded-full bg-surface-container-low overflow-hidden">
                   <div
                     className="h-full bg-secondary rounded-full transition-all duration-500"
-                    style={{ width: `${healthMetrics.factors.cashFlowStability}%` }}
+                    style={{
+                      width: `${
+                        healthMetrics.factors.cashFlowStability !== null
+                          ? healthMetrics.factors.cashFlowStability
+                          : 0
+                      }%`,
+                    }}
                   ></div>
                 </div>
               </div>
               <div>
-                <div className="flex justify-between font-label-sm text-label-sm mb-1">
-                  <span className="text-on-surface-variant">Goal Progress</span>
-                  <span className="font-semibold text-on-surface">
-                    {healthMetrics.factors.goalProgress}%
+                <div className="flex justify-between font-label-sm text-label-sm mb-1 gap-2">
+                  <span className="text-on-surface-variant truncate">Goal Progress</span>
+                  <span className="font-semibold text-on-surface shrink-0 text-xs sm:text-label-sm">
+                    {healthMetrics.factors.goalProgress !== null
+                      ? `${healthMetrics.factors.goalProgress}%`
+                      : 'Insufficient Data'}
                   </span>
                 </div>
                 <div className="w-full h-1.5 rounded-full bg-surface-container-low overflow-hidden">
                   <div
                     className="h-full bg-secondary rounded-full transition-all duration-500"
-                    style={{ width: `${healthMetrics.factors.goalProgress}%` }}
+                    style={{
+                      width: `${
+                        healthMetrics.factors.goalProgress !== null
+                          ? healthMetrics.factors.goalProgress
+                          : 0
+                      }%`,
+                    }}
                   ></div>
                 </div>
               </div>
@@ -713,237 +809,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             >
               Detailed Category Report →
             </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Module 5: 30-Day Cash Flow Forecast Projection (Span 12 Full Width) */}
-      <div className="rounded-xl bg-surface-container-lowest p-space-md lg:p-space-lg shadow-sm flex flex-col gap-space-md border border-outline-variant/20">
-        {/* Forecast Header & Toggles */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-sm pb-2 border-b border-outline-variant/15">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-on-surface">
-              <span className="material-symbols-outlined text-[24px]">trending_up</span>
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <h2 className="font-title-lg text-title-lg text-on-surface font-bold">
-                  30-Day Cash Flow Forecast Projection
-                </h2>
-                <span className="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-[10px] font-semibold">
-                  AI-assisted forecast
-                </span>
-              </div>
-              <p className="font-body-sm text-body-sm text-on-surface-variant">
-                Continuous predictive balance curve based on recurring commitments &amp; daily burn (Not a guaranteed prediction)
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-space-sm">
-            <button
-              onClick={() => setIsSimulated(!isSimulated)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-title-md text-body-sm transition-all shadow-xs ${isSimulated
-                  ? 'bg-secondary-container text-on-secondary-container font-bold ring-2 ring-secondary'
-                  : 'bg-surface-container text-on-surface hover:bg-surface-container-high'
-                }`}
-            >
-              <span className="material-symbols-outlined text-[16px] text-secondary">tune</span>
-              <span>{isSimulated ? 'Reset Baseline' : 'Simulate Expense Cut'}</span>
-            </button>
-            <button
-              onClick={onOpenMonthlyReport}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface-variant font-title-md text-body-sm hover:text-on-surface transition-colors"
-            >
-              <span className="material-symbols-outlined text-[16px]">file_upload</span>
-              <span>Export Projection</span>
-            </button>
-          </div>
-        </div>
-
-        {/* AI Advice Banner strip inside forecast */}
-        <div className="p-3.5 rounded-xl bg-surface-container-high/50 flex flex-col md:flex-row md:items-center justify-between gap-space-sm border border-outline-variant/20">
-          <div className="flex items-center gap-2.5">
-            <span className="material-symbols-outlined text-secondary-container bg-primary-container p-1 rounded-lg text-[18px]">
-              bolt
-            </span>
-            <p className="font-body-md text-body-md text-on-surface">
-              <strong>AI Advice:</strong> Your balance may become tight around the last week of the
-              month based on current spending.{' '}
-              <span className="text-on-surface-variant">
-                Recommended buffer: reserve <strong>৳4,500</strong> by Oct 20.
-              </span>
-            </p>
-          </div>
-          <button
-            onClick={() => setBufferLocked(!bufferLocked)}
-            className={`px-3 py-1.5 rounded-full font-label-sm text-label-sm font-semibold whitespace-nowrap self-start md:self-auto transition-all ${bufferLocked
-                ? 'bg-primary-container text-on-primary'
-                : 'bg-secondary text-on-secondary hover:bg-on-secondary-fixed-variant'
-              }`}
-          >
-            {bufferLocked ? '৳4,500 Buffer Reserved' : 'Lock Buffer Now'}
-          </button>
-        </div>
-
-        {/* Interactive Line Chart Canvas Area */}
-        <div className="w-full bg-surface-container-low/40 rounded-xl p-space-md relative overflow-hidden border border-outline-variant/15">
-          {/* Grid Header Legends */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-4 text-label-sm font-label-sm flex-wrap">
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-1 bg-secondary rounded-full"></span>
-                <span className="text-on-surface">Projected Balance</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-1 bg-outline-variant rounded-full"></span>
-                <span className="text-on-surface-variant">Expected Recurring Outflows</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-error"></span>
-                <span className="text-error font-semibold">Pressure Zone (Day 26)</span>
-              </div>
-              {isSimulated && (
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container text-xs font-bold">
-                  <span>+৳300/day simulation active</span>
-                </div>
-              )}
-            </div>
-            <span className="font-label-sm text-label-sm text-outline">Oct 1 - Oct 31, 2024</span>
-          </div>
-
-          {/* Forecast SVG Visualization */}
-          <div className="w-full h-64 relative">
-            <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 800 240">
-              <defs>
-                <linearGradient id="balanceGrad" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#006c49" stopOpacity="0.25"></stop>
-                  <stop offset="100%" stopColor="#006c49" stopOpacity="0.0"></stop>
-                </linearGradient>
-                <linearGradient id="pressureGrad" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#ba1a1a" stopOpacity="0.2"></stop>
-                  <stop offset="100%" stopColor="#ba1a1a" stopOpacity="0.0"></stop>
-                </linearGradient>
-              </defs>
-              {/* Horizontal Grid Lines */}
-              <line opacity="0.6" stroke="#d3e4fe" strokeDasharray="4 4" strokeWidth="1" x1="0" x2="800" y1="40" y2="40" />
-              <line opacity="0.6" stroke="#d3e4fe" strokeDasharray="4 4" strokeWidth="1" x1="0" x2="800" y1="100" y2="100" />
-              <line opacity="0.6" stroke="#d3e4fe" strokeDasharray="4 4" strokeWidth="1" x1="0" x2="800" y1="160" y2="160" />
-              <line opacity="0.6" stroke="#d3e4fe" strokeDasharray="4 4" strokeWidth="1" x1="0" x2="800" y1="210" y2="210" />
-
-              {/* Pressure Zone Area Fill (Day 24 - 28) */}
-              <rect fill="url(#pressureGrad)" height="200" rx="8" width="120" x="580" y="20" />
-              <line stroke="#ba1a1a" strokeDasharray="3 3" strokeWidth="1.5" x1="640" x2="640" y1="20" y2="220" />
-
-              {/* Area fill under balance curve */}
-              <path
-                d={
-                  isSimulated
-                    ? 'M 0,90 Q 150,55 300,68 T 500,85 T 640,125 T 800,100 L 800,230 L 0,230 Z'
-                    : 'M 0,90 Q 150,60 300,75 T 500,110 T 640,175 T 800,140 L 800,230 L 0,230 Z'
-                }
-                fill="url(#balanceGrad)"
-                className="transition-all duration-700 ease-out"
-              />
-
-              {/* Outflows baseline curve */}
-              <path
-                d="M 0,180 Q 200,170 400,160 T 640,210 T 800,195"
-                fill="none"
-                stroke="#76777d"
-                strokeDasharray="5 5"
-                strokeWidth="2"
-              />
-
-              {/* Main Projected Balance Curve */}
-              <path
-                d={
-                  isSimulated
-                    ? 'M 0,90 Q 150,55 300,68 T 500,85 T 640,125 T 800,100'
-                    : 'M 0,90 Q 150,60 300,75 T 500,110 T 640,175 T 800,140'
-                }
-                fill="none"
-                stroke={isSimulated ? '#00714d' : '#006c49'}
-                strokeLinecap="round"
-                strokeWidth={isSimulated ? 4 : 3}
-                className="transition-all duration-700 ease-out"
-              />
-
-              {/* Anchor Points */}
-              <circle cx="280" cy={isSimulated ? 68 : 72} fill="#006c49" r="5" stroke="#ffffff" strokeWidth="2" />
-              <circle cx="640" cy={isSimulated ? 125 : 175} fill={isSimulated ? '#006c49' : '#ba1a1a'} r="6" stroke="#ffffff" strokeWidth="2.5" />
-            </svg>
-
-            {/* Positioned Marker Tag at Day 26 */}
-            <div className="absolute top-20 left-[75%] -translate-x-1/2 p-2.5 rounded-lg bg-surface-container-lowest shadow-md max-w-[210px] pointer-events-none border border-outline-variant/30">
-              <div className="flex items-center gap-1 text-error font-label-sm text-label-sm font-bold">
-                <span className="material-symbols-outlined text-[14px]">report</span>
-                Cash Flow Pressure Zone
-              </div>
-              <p className="font-body-sm text-[11px] text-on-surface-variant leading-tight mt-1">
-                <strong>Oct 27:</strong> Rent (৳16,000) &amp; utility dues.{' '}
-                {isSimulated
-                  ? 'Projected buffer improved to ৳6,800!'
-                  : 'Minimum projected margin: ৳3,200.'}
-              </p>
-            </div>
-
-            {/* Positioned Marker for Current Day */}
-            <div className="absolute top-8 left-[35%] -translate-x-1/2 p-1.5 px-2.5 rounded-md bg-primary-container text-on-primary text-[11px] font-label-sm shadow-sm pointer-events-none">
-              Today: {formatBDT(totalBalance)}
-            </div>
-          </div>
-
-          {/* X-Axis Timeline Markers */}
-          <div className="flex justify-between items-center text-outline font-label-sm text-[11px] pt-3">
-            <span>Day 1 (Oct 1)</span>
-            <span>Day 7 (Oct 7)</span>
-            <span className="text-secondary font-semibold">Day 14 (Oct 14 • Today)</span>
-            <span>Day 21 (Oct 21)</span>
-            <span className="text-error font-semibold">Day 26 (Oct 27 • Rent)</span>
-            <span>Day 30 (Oct 31)</span>
-          </div>
-        </div>
-
-        {/* Projected Cash Flow Metrics Summary Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-space-sm pt-2">
-          <div className="p-3 rounded-lg bg-surface-container-low flex flex-col border border-outline-variant/15">
-            <span className="font-label-sm text-label-sm text-outline">Projected Month-End</span>
-            <span className="font-title-lg text-title-lg text-on-surface font-bold mt-0.5">
-              {isSimulated ? '৳11,250' : '৳7,450'}
-            </span>
-            <span className="font-body-sm text-body-sm text-secondary font-medium">
-              {isSimulated ? 'Surplus expanded by ৳3,800' : 'Safe positive close'}
-            </span>
-          </div>
-
-          <div className="p-3 rounded-lg bg-surface-container-low flex flex-col border border-outline-variant/15">
-            <span className="font-label-sm text-label-sm text-outline">Upcoming Bills</span>
-            <span className="font-title-lg text-title-lg text-on-surface font-bold mt-0.5">
-              ৳18,200
-            </span>
-            <span className="font-body-sm text-body-sm text-on-surface-variant">Due within 16 days</span>
-          </div>
-
-          <div className="p-3 rounded-lg bg-surface-container-low flex flex-col border border-outline-variant/15">
-            <span className="font-label-sm text-label-sm text-outline">Expected Inflow</span>
-            <span className="font-title-lg text-title-lg text-secondary font-bold mt-0.5">
-              ৳6,000
-            </span>
-            <span className="font-body-sm text-body-sm text-on-surface-variant">
-              Freelance settlement
-            </span>
-          </div>
-
-          <div className="p-3 rounded-lg bg-surface-container-low flex flex-col border border-outline-variant/15">
-            <span className="font-label-sm text-label-sm text-outline">Risk Level</span>
-            <span className="font-title-lg text-title-lg text-on-surface font-bold mt-0.5 flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-secondary-container"></span>
-              {isSimulated ? 'Low' : 'Moderate'}
-            </span>
-            <span className="font-body-sm text-body-sm text-on-surface-variant">
-              Auto-shield enabled
-            </span>
           </div>
         </div>
       </div>
