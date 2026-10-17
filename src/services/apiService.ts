@@ -1,4 +1,4 @@
-import { User, Transaction, SavingsGoal, CustomCategory } from '../types/financial';
+import { User, Transaction, SavingsGoal, CustomCategory, WalletAccount } from '../types/financial';
 
 const BASE_URL = typeof window !== 'undefined' ? '' : 'http://localhost:3000';
 
@@ -303,5 +303,93 @@ export const apiService = {
       throw new Error(errData.error || `Failed to delete category (${res.status})`);
     }
     return true;
+  },
+
+  /**
+   * GET /api/users/:userId/wallets
+   */
+  async getWalletAccounts(userId: string): Promise<WalletAccount[]> {
+    try {
+      const res = await fetch(`${BASE_URL}/api/users/${encodeURIComponent(userId)}/wallets`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) return [];
+      return await res.json();
+    } catch (err) {
+      console.warn(`[apiService] getWalletAccounts(${userId}) failed:`, err);
+      return [];
+    }
+  },
+
+  /**
+   * POST /api/users/:userId/wallets
+   */
+  async addWalletAccount(userId: string, account: Partial<WalletAccount>): Promise<WalletAccount | null> {
+    try {
+      const res = await fetch(`${BASE_URL}/api/users/${encodeURIComponent(userId)}/wallets`, {
+        method: 'POST',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify(account),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to add wallet account');
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn(`[apiService] addWalletAccount failed:`, err);
+      throw err;
+    }
+  },
+
+  /**
+   * PUT /api/users/:userId/wallets/:accountId
+   */
+  async updateWalletAccount(
+    userId: string,
+    accountId: string,
+    updates: Partial<WalletAccount>
+  ): Promise<WalletAccount | null> {
+    try {
+      const res = await fetch(
+        `${BASE_URL}/api/users/${encodeURIComponent(userId)}/wallets/${encodeURIComponent(accountId)}`,
+        {
+          method: 'PUT',
+          headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify(updates),
+        }
+      );
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to update wallet account');
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn(`[apiService] updateWalletAccount failed:`, err);
+      throw err;
+    }
+  },
+
+  /**
+   * DELETE /api/users/:userId/wallets/:accountId
+   */
+  async deleteWalletAccount(userId: string, accountId: string): Promise<boolean> {
+    try {
+      const res = await fetch(
+        `${BASE_URL}/api/users/${encodeURIComponent(userId)}/wallets/${encodeURIComponent(accountId)}`,
+        {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        }
+      );
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to delete wallet account');
+      }
+      return true;
+    } catch (err) {
+      console.warn(`[apiService] deleteWalletAccount failed:`, err);
+      throw err;
+    }
   },
 };

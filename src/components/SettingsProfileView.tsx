@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserProfile, Transaction, SavingsGoal } from '../types/financial';
-import { validateFinancialData } from '../services/financialCalculations';
 import { SUPPORTED_CURRENCIES, normalizeCurrencyCode, formatCurrency, convertAmount } from '../services/currencyService';
-import { COMMON_TIMEZONES, resolveTimeZone } from '../services/dateTimeService';
+import { WalletsManagementSection } from './WalletsManagementSection';
 
 interface SettingsProfileViewProps {
   user: UserProfile;
@@ -17,25 +16,34 @@ interface SettingsProfileViewProps {
 
 export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
   user,
-  transactions = [],
-  goals = [],
+  transactions: _transactions = [],
+  goals: _goals = [],
   onUpdateUser,
   onResetData,
   onLogout,
   isBangla,
-  onToggleBangla,
+  onToggleBangla: _onToggleBangla,
 }) => {
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
   const [profileImage, setProfileImage] = useState(user.profileImage || '');
-  const [preferredLanguage, setPreferredLanguage] = useState<'en' | 'bn'>(user.preferredLanguage || 'en');
+  const [monthlyIncome, setMonthlyIncome] = useState<string>(
+    user.monthlyIncome !== undefined && user.monthlyIncome !== null ? user.monthlyIncome.toString() : ''
+  );
+  const [monthlyIncomeError, setMonthlyIncomeError] = useState<string | null>(null);
   const [currency, setCurrency] = useState(normalizeCurrencyCode(user.currency));
-  const [timeZone, setTimeZone] = useState(resolveTimeZone(user.timeZone));
-  const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>(user.timeFormat || '24h');
-  const [monthlyIncome, setMonthlyIncome] = useState(user.monthlyIncome ? user.monthlyIncome.toString() : '');
-  const [riskTolerance, setRiskTolerance] = useState(user.riskTolerance);
   const [savedMsg, setSavedMsg] = useState(false);
-  const [validationExpanded, setValidationExpanded] = useState(true);
+
+  // Sync state if user changes externally
+  useEffect(() => {
+    setName(user.name || '');
+    setEmail(user.email || '');
+    setProfileImage(user.profileImage || '');
+    setMonthlyIncome(
+      user.monthlyIncome !== undefined && user.monthlyIncome !== null ? user.monthlyIncome.toString() : ''
+    );
+    setCurrency(normalizeCurrencyCode(user.currency));
+  }, [user.id, user.name, user.email, user.profileImage, user.monthlyIncome, user.currency]);
 
   // Quick avatar choices
   const sampleAvatars = [
@@ -45,9 +53,6 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
     'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
   ];
 
-  // Compute live mathematical validation
-  const validationReport = validateFinancialData(transactions, goals, '2024-10');
-
   const formatMoney = (amountInBDT: number) => {
     const converted = convertAmount(amountInBDT, 'BDT', currency);
     return formatCurrency(converted, currency);
@@ -55,25 +60,32 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    const parsedIncome = monthlyIncome.trim() ? parseInt(monthlyIncome, 10) : 0;
+    setMonthlyIncomeError(null);
+
+    let parsedIncome: number | undefined = undefined;
+    const trimmedIncome = monthlyIncome.trim();
+    if (trimmedIncome !== '') {
+      const num = Number(trimmedIncome);
+      if (isNaN(num) || !isFinite(num) || num < 0) {
+        setMonthlyIncomeError(
+          isBangla
+            ? 'অনুগ্রহ করে একটি বৈধ এবং অ-ঋণাত্মক আর্থিক পরিমাণ লিখুন।'
+            : 'Please enter a valid, non-negative monetary value.'
+        );
+        return;
+      }
+      parsedIncome = Math.round(num * 100) / 100;
+    }
+
     const updated: UserProfile = {
       ...user,
-      name,
-      email,
+      name: name.trim(),
+      email: email.trim(),
       profileImage: profileImage.trim() || undefined,
-      preferredLanguage,
+      monthlyIncome: parsedIncome,
       currency,
-      timeZone,
-      timeFormat,
-      monthlyIncome: isNaN(parsedIncome) ? 0 : parsedIncome,
-      riskTolerance,
     };
     onUpdateUser(updated);
-    if (preferredLanguage === 'bn' && !isBangla) {
-      onToggleBangla(true);
-    } else if (preferredLanguage === 'en' && isBangla) {
-      onToggleBangla(false);
-    }
     setSavedMsg(true);
     setTimeout(() => setSavedMsg(false), 3000);
   };
@@ -117,13 +129,10 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
         onSubmit={handleSave}
         className="p-space-lg rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/20 flex flex-col gap-space-md"
       >
-        <div className="flex items-center justify-between pb-3 border-b border-outline-variant/15">
+        <div className="pb-3 border-b border-outline-variant/15">
           <h2 className="font-title-lg text-title-lg text-on-surface font-bold">
             {isBangla ? 'ব্যবহারকারীর তথ্য ও পছন্দসমূহ' : 'User Profile & Identity'}
           </h2>
-          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-secondary-container text-on-secondary-container">
-            {user.memberStatus || 'Active Member'}
-          </span>
         </div>
 
         {/* Profile Avatar & Image Section */}
@@ -212,19 +221,58 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
             />
           </div>
 
-          {/* Preferred Language */}
+          {/* Monthly Inflow Baseline (BDT) */}
           <div className="flex flex-col gap-1.5">
-            <label className="font-label-md text-xs font-semibold text-outline uppercase tracking-wider">
-              {isBangla ? 'পছন্দের ভাষা' : 'Preferred Language'}
-            </label>
-            <select
-              value={preferredLanguage}
-              onChange={(e) => setPreferredLanguage(e.target.value as 'en' | 'bn')}
-              className="p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-body-md text-sm"
-            >
-              <option value="en">English (Default)</option>
-              <option value="bn">বাংলা (Bengali)</option>
-            </select>
+            <div className="flex items-center justify-between">
+              <label className="font-label-md text-xs font-semibold text-outline uppercase tracking-wider">
+                {isBangla ? 'মাসিক নিয়মিত আয় (BDT)' : 'MONTHLY INFLOW BASELINE (BDT)'}
+              </label>
+              <span className="text-[11px] text-outline font-normal">
+                {isBangla ? '(ঐচ্ছিক)' : '(Optional)'}
+              </span>
+            </div>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-secondary text-sm pointer-events-none select-none">
+                ৳
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={monthlyIncome}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setMonthlyIncome(val);
+                  if (monthlyIncomeError) setMonthlyIncomeError(null);
+                  if (val.trim() !== '') {
+                    const num = Number(val);
+                    if (isNaN(num) || !isFinite(num) || num < 0) {
+                      setMonthlyIncomeError(
+                        isBangla
+                          ? 'মান ০ বা তার বেশি হতে হবে।'
+                          : 'Value must be zero or a positive number.'
+                      );
+                    }
+                  }
+                }}
+                placeholder={isBangla ? 'যেমন: ৩৫০০০ (ঐচ্ছিক আয়)' : 'e.g. 35000 (Optional baseline)'}
+                className={`w-full pl-8 pr-3 py-3 rounded-xl border bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 font-body-md text-sm transition-all ${
+                  monthlyIncomeError
+                    ? 'border-error focus:ring-error text-error'
+                    : 'border-outline-variant/30 focus:ring-secondary'
+                }`}
+              />
+            </div>
+            {monthlyIncomeError ? (
+              <span className="text-xs text-error font-medium flex items-center gap-1">
+                <span className="material-symbols-outlined text-[14px]">error</span>
+                {monthlyIncomeError}
+              </span>
+            ) : (
+              <span className="text-[11px] text-outline">
+                {isBangla ? 'বাজেট এবং নগদ প্রবাহ হিসাবের ভিত্তি হিসেবে ব্যবহৃত হবে।' : 'Used for liquidity buffer and cash flow projections.'}
+              </span>
+            )}
           </div>
 
           {/* Currency */}
@@ -244,69 +292,6 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
               ))}
             </select>
           </div>
-
-          {/* Timezone Preference */}
-          <div className="flex flex-col gap-1.5">
-            <label className="font-label-md text-xs font-semibold text-outline uppercase tracking-wider">
-              {isBangla ? 'টাইমজোন (Timezone)' : 'Primary Timezone'}
-            </label>
-            <select
-              value={timeZone}
-              onChange={(e) => setTimeZone(e.target.value)}
-              className="p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-body-md text-sm cursor-pointer"
-            >
-              {COMMON_TIMEZONES.map((tz) => (
-                <option key={tz.value} value={tz.value}>
-                  {tz.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Time Format (12h vs 24h) */}
-          <div className="flex flex-col gap-1.5">
-            <label className="font-label-md text-xs font-semibold text-outline uppercase tracking-wider">
-              {isBangla ? 'সময়ের ফরম্যাট' : 'Time Display Format'}
-            </label>
-            <select
-              value={timeFormat}
-              onChange={(e) => setTimeFormat(e.target.value as '12h' | '24h')}
-              className="p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-body-md text-sm cursor-pointer"
-            >
-              <option value="24h">24-Hour (e.g. 09:52, 18:30)</option>
-              <option value="12h">12-Hour (e.g. 09:52 AM, 06:30 PM)</option>
-            </select>
-          </div>
-
-          {/* Monthly Inflow */}
-          <div className="flex flex-col gap-1.5">
-            <label className="font-label-md text-xs font-semibold text-outline uppercase tracking-wider">
-              {isBangla ? 'মাসিক নিয়মিত আয় (BDT)' : 'Monthly Inflow Baseline (BDT)'}
-            </label>
-            <input
-              type="number"
-              value={monthlyIncome}
-              onChange={(e) => setMonthlyIncome(e.target.value)}
-              placeholder={isBangla ? 'ঐচ্ছিক নিয়মিত আয় (যেমন: ৩৫০০০)' : 'e.g. 35000 (Optional baseline)'}
-              className="p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-body-md text-sm"
-            />
-          </div>
-
-          {/* Risk Profile */}
-          <div className="flex flex-col gap-1.5">
-            <label className="font-label-md text-xs font-semibold text-outline uppercase tracking-wider">
-              {isBangla ? 'ঝুঁকি সহনশীলতা' : 'Risk Profile & Volatility Tolerance'}
-            </label>
-            <select
-              value={riskTolerance}
-              onChange={(e) => setRiskTolerance(e.target.value as any)}
-              className="p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-body-md text-sm"
-            >
-              <option value="Low">Low (Capital Preservation Focus)</option>
-              <option value="Moderate">Moderate (Balanced MFS Growth)</option>
-              <option value="Aggressive">Aggressive (High Savings Acceleration)</option>
-            </select>
-          </div>
         </div>
 
         <div className="pt-2 flex justify-end">
@@ -319,109 +304,19 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
         </div>
       </form>
 
-      {/* Internal Calculation Engine Validation Suite */}
-      <div className="p-space-lg rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/20 flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-secondary text-[22px]">verified</span>
-            <div>
-              <h2 className="font-title-lg text-title-lg text-on-surface font-bold">
-                {isBangla ? 'আর্থিক হিসাব যাচাইকরণ ইঞ্জিন' : 'Internal Calculation Engine Verification'}
-              </h2>
-              <p className="text-xs text-on-surface-variant">
-                {isBangla
-                  ? 'গাণিতিক নিরীক্ষা যা নিশ্চিত করে সব পাতায় সঠিক তথ্য প্রবাহিত হচ্ছে'
-                  : 'Mathematical audit confirming consistent data propagation across all pages'}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setValidationExpanded(!validationExpanded)}
-            className="text-xs text-secondary font-semibold hover:underline flex items-center gap-1"
-          >
-            {validationExpanded ? 'Collapse' : 'Expand'}
-            <span className="material-symbols-outlined text-[16px]">
-              {validationExpanded ? 'expand_less' : 'expand_more'}
-            </span>
-          </button>
-        </div>
-
-        {validationExpanded && (
-          <div className="flex flex-col gap-3 pt-2 border-t border-outline-variant/15 text-sm">
-            {/* Check 1: Income - Expenses = Net Savings */}
-            <div className="p-3 rounded-xl bg-surface-container-low/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border border-outline-variant/15">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-secondary text-[18px]">check_circle</span>
-                <span className="font-semibold text-on-surface">Income - Expenses = Net Savings</span>
-              </div>
-              <div className="text-xs text-on-surface-variant font-mono">
-                {formatMoney(validationReport.totalIncome)} - {formatMoney(validationReport.totalExpenses)} ={' '}
-                <strong className="text-secondary">{formatMoney(validationReport.netSavings)}</strong>
-                <span className="ml-2 px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-bold text-[10px]">
-                  PASS
-                </span>
-              </div>
-            </div>
-
-            {/* Check 2: Category Totals = Total Expenses */}
-            <div className="p-3 rounded-xl bg-surface-container-low/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border border-outline-variant/15">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-secondary text-[18px]">check_circle</span>
-                <span className="font-semibold text-on-surface">Category Totals = Total Expenses</span>
-              </div>
-              <div className="text-xs text-on-surface-variant font-mono">
-                Categories Sum ({formatMoney(validationReport.categorySum)}) == Total (
-                {formatMoney(validationReport.totalExpenses)})
-                <span className="ml-2 px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-bold text-[10px]">
-                  MATCH
-                </span>
-              </div>
-            </div>
-
-            {/* Check 3: Savings Rate Accuracy */}
-            <div className="p-3 rounded-xl bg-surface-container-low/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border border-outline-variant/15">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-secondary text-[18px]">check_circle</span>
-                <span className="font-semibold text-on-surface">Savings Rate = Savings / Income * 100</span>
-              </div>
-              <div className="text-xs text-on-surface-variant font-mono">
-                {formatMoney(validationReport.netSavings)} / {formatMoney(validationReport.totalIncome)} ={' '}
-                <strong className="text-secondary">{validationReport.savingsRate}%</strong>
-                <span className="ml-2 px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-bold text-[10px]">
-                  EXACT
-                </span>
-              </div>
-            </div>
-
-            {/* Check 4 & 5: Goals Math */}
-            <div className="p-3 rounded-xl bg-surface-container-low/50 flex flex-col gap-2 border border-outline-variant/15">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-secondary text-[18px]">check_circle</span>
-                  <span className="font-semibold text-on-surface">
-                    Goal Calculations: Remaining = Target - Current | Progress = Current / Target * 100
-                  </span>
-                </div>
-                <span className="px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-bold text-[10px]">
-                  VERIFIED
-                </span>
-              </div>
-              <div className="divide-y divide-outline-variant/15 text-xs text-on-surface-variant">
-                {validationReport.goalValidations.map((g) => (
-                  <div key={g.goalId} className="py-1.5 flex justify-between items-center font-mono">
-                    <span>{g.title}</span>
-                    <span>
-                      {formatMoney(g.currentAmount)} / {formatMoney(g.targetAmount)} (Remaining:{' '}
-                      {formatMoney(g.remainingAmount)} | Progress: {g.progressPercentage}%)
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Wallets & Banking Accounts */}
+      <WalletsManagementSection
+        walletAccounts={user.walletAccounts || []}
+        onUpdateWalletAccounts={(accounts) => {
+          onUpdateUser({
+            ...user,
+            walletAccounts: accounts,
+          });
+        }}
+        userId={user.id}
+        isBangla={isBangla}
+        currency={currency}
+      />
 
       {/* Linked Accounts */}
       <div className="p-space-lg rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/20 flex flex-col gap-space-md">
