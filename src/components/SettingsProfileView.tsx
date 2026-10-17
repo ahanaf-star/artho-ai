@@ -1,14 +1,11 @@
 import React, { useState } from 'react';
-import { UserProfile, Transaction, SavingsGoal, CustomCategory } from '../types/financial';
+import { UserProfile, Transaction, SavingsGoal } from '../types/financial';
 import { formatBDT, validateFinancialData } from '../services/financialCalculations';
 
 interface SettingsProfileViewProps {
   user: UserProfile;
   transactions?: Transaction[];
   goals?: SavingsGoal[];
-  customCategories?: CustomCategory[];
-  onCreateCategory?: (name: string) => Promise<CustomCategory | null>;
-  onDeleteCategory?: (categoryId: string) => Promise<boolean>;
   onUpdateUser: (user: UserProfile) => void;
   onResetData: () => void;
   onLogout?: () => void;
@@ -20,9 +17,6 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
   user,
   transactions = [],
   goals = [],
-  customCategories = [],
-  onCreateCategory,
-  onDeleteCategory,
   onUpdateUser,
   onResetData,
   onLogout,
@@ -38,14 +32,6 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
   const [riskTolerance, setRiskTolerance] = useState(user.riskTolerance);
   const [savedMsg, setSavedMsg] = useState(false);
   const [validationExpanded, setValidationExpanded] = useState(true);
-
-  // Custom Category Management State
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [categoryError, setCategoryError] = useState<string | null>(null);
-  const [categorySuccess, setCategorySuccess] = useState<string | null>(null);
-  const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
-  const [deletingCatId, setDeletingCatId] = useState<string | null>(null);
-  const [deleteConfirmCatId, setDeleteConfirmCatId] = useState<string | null>(null);
 
   // Quick avatar choices
   const sampleAvatars = [
@@ -79,69 +65,6 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
     }
     setSavedMsg(true);
     setTimeout(() => setSavedMsg(false), 3000);
-  };
-
-  const handleCreateCategorySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCategoryError(null);
-    setCategorySuccess(null);
-    const trimmed = newCategoryName.trim();
-    if (!trimmed) {
-      setCategoryError(isBangla ? 'ক্যাটাগরির নাম আবশ্যক' : 'Category name cannot be empty');
-      return;
-    }
-    if (trimmed.length > 50) {
-      setCategoryError(isBangla ? 'ক্যাটাগরির নাম ৫০ অক্ষরের কম হতে হবে' : 'Category name must be 50 characters or fewer');
-      return;
-    }
-    const standardList = [
-      'food & groceries',
-      'shopping & gadgets',
-      'utility & fixed costs',
-      'transportation',
-      'cash-out & bank fees',
-      'entertainment & others',
-      'salary & inflow',
-      'savings & investment',
-    ];
-    if (standardList.includes(trimmed.toLowerCase())) {
-      setCategoryError(isBangla ? 'স্ট্যান্ডার্ড ক্যাটাগরির নামে নতুন ক্যাটাগরি তৈরি করা যাবে না' : 'Cannot use a standard category name');
-      return;
-    }
-    if (customCategories.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
-      setCategoryError(isBangla ? 'এই নামের ক্যাটাগরি ইতিমধ্যে রয়েছে' : 'A category with this name already exists');
-      return;
-    }
-    if (onCreateCategory) {
-      setIsSubmittingCategory(true);
-      try {
-        await onCreateCategory(trimmed);
-        setNewCategoryName('');
-        setCategorySuccess(isBangla ? `ক্যাটাগরি "${trimmed}" তৈরি হয়েছে!` : `Category "${trimmed}" created successfully!`);
-        setTimeout(() => setCategorySuccess(null), 3500);
-      } catch (err: any) {
-        setCategoryError(err?.message || (isBangla ? 'ক্যাটাগরি তৈরি করতে ব্যর্থ হয়েছে' : 'Failed to create category'));
-      } finally {
-        setIsSubmittingCategory(false);
-      }
-    }
-  };
-
-  const handleDeleteCategoryClick = async (catId: string) => {
-    setCategoryError(null);
-    setCategorySuccess(null);
-    if (!onDeleteCategory || !catId) return;
-    setDeletingCatId(catId);
-    try {
-      await onDeleteCategory(catId);
-      setDeleteConfirmCatId(null);
-      setCategorySuccess(isBangla ? 'ক্যাটাগরি সফলভাবে অপসারিত হয়েছে' : 'Category deleted successfully');
-      setTimeout(() => setCategorySuccess(null), 3500);
-    } catch (err: any) {
-      setCategoryError(err?.message || (isBangla ? 'ক্যাটাগরি মুছতে ব্যর্থ হয়েছে' : 'Failed to delete category'));
-    } finally {
-      setDeletingCatId(null);
-    }
   };
 
   return (
@@ -452,173 +375,6 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
             </div>
           </div>
         )}
-      </div>
-
-      {/* Custom Expense Categories Management */}
-      <div className="p-space-lg rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/20 flex flex-col gap-space-md">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-outline-variant/15">
-          <div>
-            <h2 className="font-title-lg text-title-lg text-on-surface font-bold">
-              {isBangla ? 'কাস্টম ব্যয়ের ক্যাটাগরি' : 'Custom Expense Categories'}
-            </h2>
-            <p className="text-xs text-on-surface-variant">
-              {isBangla
-                ? 'আপনার প্রয়োজন অনুযায়ী নতুন খরচের খাত যোগ করুন এবং পরিচালনা করুন।'
-                : 'Create and manage personalized expense categories for transaction tracking.'}
-            </p>
-          </div>
-          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-secondary-container text-on-secondary-container self-start sm:self-auto">
-            {customCategories.length} {isBangla ? 'টি কাস্টম খাত' : 'Custom Categories'}
-          </span>
-        </div>
-
-        {/* Feedback Messages */}
-        {categorySuccess && (
-          <div className="p-3 rounded-xl bg-secondary text-on-secondary text-xs font-semibold flex items-center gap-2 animate-in fade-in duration-200">
-            <span className="material-symbols-outlined text-[18px]">check_circle</span>
-            <span>{categorySuccess}</span>
-          </div>
-        )}
-
-        {categoryError && (
-          <div className="p-3 rounded-xl bg-error-container text-on-error-container text-xs font-semibold flex items-center gap-2 animate-in fade-in duration-200 border border-error/20">
-            <span className="material-symbols-outlined text-[18px] text-error shrink-0">error</span>
-            <span>{categoryError}</span>
-          </div>
-        )}
-
-        {/* Add Category Form */}
-        <form onSubmit={handleCreateCategorySubmit} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-1">
-          <div className="relative flex-1">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-[18px] text-outline">
-              new_label
-            </span>
-            <input
-              type="text"
-              value={newCategoryName}
-              onChange={(e) => {
-                setNewCategoryName(e.target.value);
-                setCategoryError(null);
-              }}
-              placeholder={isBangla ? 'যেমন: স্বাস্থ্যসেবা, গৃহ সংস্কার, অনুদান' : 'e.g. Healthcare, Home Renovation, Education'}
-              maxLength={50}
-              className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={isSubmittingCategory || !newCategoryName.trim()}
-            className="px-4 py-2.5 rounded-xl bg-secondary text-on-secondary font-title-md text-sm font-semibold hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all shadow-xs flex items-center justify-center gap-1.5 shrink-0"
-          >
-            {isSubmittingCategory ? (
-              <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
-            ) : (
-              <span className="material-symbols-outlined text-[18px]">add</span>
-            )}
-            <span>{isBangla ? 'ক্যাটাগরি যোগ করুন' : 'Add Category'}</span>
-          </button>
-        </form>
-
-        {/* Category List */}
-        <div className="divide-y divide-outline-variant/15 border border-outline-variant/20 rounded-xl overflow-hidden mt-1">
-          {customCategories.length === 0 ? (
-            <div className="p-6 text-center text-xs text-on-surface-variant flex flex-col items-center gap-1 bg-surface-container-low/30">
-              <span className="material-symbols-outlined text-outline text-[28px]">category</span>
-              <p className="font-medium">
-                {isBangla ? 'কোনো কাস্টম ক্যাটাগরি তৈরি করা হয়নি' : 'No custom categories created yet'}
-              </p>
-              <p className="text-[11px] text-outline">
-                {isBangla ? 'উপরে নাম লিখে আপনার প্রথম কাস্টম ক্যাটাগরি যোগ করুন।' : 'Type a name above to add your first personalized expense category.'}
-              </p>
-            </div>
-          ) : (
-            customCategories.map((cat) => {
-              const txCount = transactions.filter(
-                (t) => t.category.toLowerCase() === cat.name.toLowerCase()
-              ).length;
-              const isConfirming = deleteConfirmCatId === (cat.id || cat.name);
-              const isDeleting = deletingCatId === (cat.id || cat.name);
-
-              return (
-                <div
-                  key={cat.id || cat.name}
-                  className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-surface-container-low/40 transition-colors bg-surface-container-lowest"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-[20px] text-secondary">
-                        category
-                      </span>
-                    </div>
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-2">
-                        <span className="font-title-md text-sm text-on-surface font-bold">
-                          {cat.name}
-                        </span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-surface-container text-on-surface-variant">
-                          Expense
-                        </span>
-                      </div>
-                      <span className="text-[11px] text-outline">
-                        {txCount > 0
-                          ? isBangla
-                            ? `${txCount} টি লেনদেনে ব্যবহৃত`
-                            : `Used in ${txCount} transaction(s)`
-                          : isBangla
-                          ? 'কোনো লেনদেনে ব্যবহৃত হয়নি'
-                          : 'Not used in any transactions'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 self-end sm:self-auto">
-                    {isConfirming ? (
-                      <div className="flex items-center gap-1.5 animate-in fade-in duration-150">
-                        <span className="text-[11px] text-error font-medium">
-                          {isBangla ? 'মুছে ফেলতে নিশ্চিত?' : 'Confirm delete?'}
-                        </span>
-                        <button
-                          type="button"
-                          disabled={isDeleting}
-                          onClick={() => handleDeleteCategoryClick(cat.id || '')}
-                          className="px-2.5 py-1 rounded-lg bg-error text-on-error text-xs font-bold hover:opacity-90 transition-opacity flex items-center gap-1"
-                        >
-                          {isDeleting && (
-                            <span className="material-symbols-outlined text-[12px] animate-spin">
-                              progress_activity
-                            </span>
-                          )}
-                          <span>{isBangla ? 'হ্যাঁ' : 'Yes'}</span>
-                        </button>
-                        <button
-                          type="button"
-                          disabled={isDeleting}
-                          onClick={() => setDeleteConfirmCatId(null)}
-                          className="px-2.5 py-1 rounded-lg bg-surface-container text-on-surface text-xs font-semibold hover:bg-surface-container-high transition-colors"
-                        >
-                          {isBangla ? 'না' : 'No'}
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCategoryError(null);
-                          setDeleteConfirmCatId(cat.id || cat.name);
-                        }}
-                        className="p-1.5 rounded-lg text-outline hover:text-error hover:bg-error-container/20 transition-colors"
-                        title={isBangla ? 'ক্যাটাগরি মুছুন' : 'Delete category'}
-                      >
-                        <span className="material-symbols-outlined text-[18px]">delete</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
       </div>
 
       {/* Linked Accounts */}

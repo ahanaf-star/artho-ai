@@ -703,6 +703,9 @@ export default function App() {
                 navigateTo('ai-coach');
               }}
               onSelectTransactionForEdit={(tx) => setEditingTransaction(tx)}
+              customCategories={customCategories}
+              onCreateCategory={handleCreateCategory}
+              onDeleteCategory={handleDeleteCategory}
             />
           )}
 
@@ -763,9 +766,6 @@ export default function App() {
               user={currentUser}
               transactions={transactions}
               goals={goals}
-              customCategories={customCategories}
-              onCreateCategory={handleCreateCategory}
-              onDeleteCategory={handleDeleteCategory}
               onUpdateUser={handleUpdateUser}
               onResetData={handleResetData}
               onLogout={handleLogout}
