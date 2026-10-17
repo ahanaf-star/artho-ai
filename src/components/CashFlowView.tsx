@@ -38,7 +38,6 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
   };
 
   const [horizon, setHorizon] = useState<7 | 14 | 30>(30);
-  const [isSimulated, setIsSimulated] = useState(false);
   const [lockedBuffer, setLockedBuffer] = useState(false);
   const [isAddObligationOpen, setIsAddObligationOpen] = useState(false);
   const [newObligationName, setNewObligationName] = useState('');
@@ -56,7 +55,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
   // Generate detailed authentic forecast
   const forecast = getDetailedForecast(
     startingBalance,
-    isSimulated,
+    false,
     transactions,
     recurringObligations
   );
@@ -70,7 +69,6 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
   const nonRecurringExpenses = transactions.filter((t) => t.type === 'expense' && !t.isRecurring);
   const totalNonRecurring = nonRecurringExpenses.reduce((sum, t) => sum + t.amount, 0);
   const dailyBurn = nonRecurringExpenses.length > 0 ? Math.round(totalNonRecurring / 30) : 0;
-  const simulationSaving = isSimulated ? Math.min(300, Math.round(dailyBurn * 0.15)) : 0;
 
   // Active upcoming obligations within the selected horizon
   const activeObligations = recurringObligations.filter((o) => o.isEnabled);
@@ -228,13 +226,13 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           </h1>
           <p className="font-body-md text-body-md text-on-surface-variant max-w-2xl mt-0.5">
             {isBangla
-              ? 'আসন্ন নিয়মিত খরচ ও বিলের পূর্বাভাস দেখুন, মাসের শেষভাগের চাপ দূর করুন এবং খরচ কমানোর প্রভাব পরীক্ষা করুন।'
-              : 'Understand upcoming obligations, eliminate month-end overdraft stress, and simulate expense cuts.'}
+              ? 'আসন্ন নিয়মিত খরচ ও বিলের পূর্বাভাস দেখুন এবং মাসের শেষভাগের আর্থিক চাপ দূর করুন।'
+              : 'Understand upcoming obligations, eliminate month-end overdraft stress, and plan your liquidity buffer.'}
           </p>
         </div>
 
-        {/* Controls: Horizon Tabs & Simulation Toggle */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        {/* Controls: Horizon Tabs */}
+        <div className="flex items-center">
           {/* Horizon Selection */}
           <div className="inline-flex p-1 rounded-xl bg-surface-container shadow-inner border border-outline-variant/20">
             {([7, 14, 30] as const).map((days) => (
@@ -251,22 +249,6 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
               </button>
             ))}
           </div>
-
-          {/* Simulate Expense Cut Toggle */}
-          <button
-            onClick={() => setIsSimulated(!isSimulated)}
-            aria-pressed={isSimulated}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-title-md text-sm transition-all shadow-sm ${
-              isSimulated
-                ? 'bg-secondary-container text-on-secondary-container font-bold ring-2 ring-secondary'
-                : 'bg-surface-container-lowest text-on-surface hover:bg-surface-container-low border border-outline-variant/30'
-            }`}
-          >
-            <span className="material-symbols-outlined text-[18px] text-secondary">tune</span>
-            <span>
-              {isBangla ? 'খরচ হ্রাস সিমুলেট করুন' : 'Simulate Expense Cut'}
-            </span>
-          </button>
         </div>
       </div>
 
@@ -365,13 +347,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             {formatMoney(projectedEndBalance)}
           </span>
           <span className="text-xs text-secondary font-medium mt-1">
-            {isSimulated
-              ? isBangla
-                ? `সিমুলেশনে +${formatMoney(simulationSaving * horizon)} উদ্বৃত্ত`
-                : `Simulated surplus +${formatMoney(simulationSaving * horizon)}`
-              : isBangla
-              ? 'বাস্তব প্রজেকশন'
-              : 'Authentic baseline'}
+            {isBangla ? 'বাস্তব প্রজেকশন' : 'Authentic baseline'}
           </span>
         </div>
 
@@ -463,7 +439,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             <path
               d={svgCoordinates.path}
               fill="none"
-              stroke={isSimulated ? '#00714d' : '#006c49'}
+              stroke="#006c49"
               strokeWidth="3.5"
               strokeLinecap="round"
               className="transition-all duration-700 ease-out"
@@ -509,11 +485,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             </span>
             <p className="text-xs text-on-surface-variant leading-relaxed">
               {dailyBurn > 0
-                ? isSimulated
-                  ? isBangla
-                    ? `সিমুলেশন অনুযায়ী দৈনিক খরচ ${formatMoney(Math.max(0, dailyBurn - simulationSaving))} ধরা হয়েছে (${formatMoney(simulationSaving)}/দিন সাশ্রয় অন্তর্ভুক্ত)।`
-                    : `Calibrated at ${formatMoney(Math.max(0, dailyBurn - simulationSaving))}/day with simulated ${formatMoney(simulationSaving)}/day discretionary cap.`
-                  : isBangla
+                ? isBangla
                   ? `আপনার লেনদেনের ভিত্তিতে দৈনিক গড় খরচ ${formatMoney(dailyBurn)} ধরা হয়েছে।`
                   : `Calibrated at ${formatMoney(dailyBurn)}/day based on past 30-day non-recurring spending.`
                 : isBangla
