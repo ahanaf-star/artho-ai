@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { connectDB } from '../config/database';
+import { connectDB, disconnectDB } from '../config/database';
 import { TransactionModel } from '../models/Transaction';
 import { SavingsGoalModel } from '../models/SavingsGoal';
 import { UserModel } from '../models/User';
@@ -135,8 +135,7 @@ describe('buildCoachContext Database & Data-Isolation Tests', () => {
     await TransactionModel.deleteMany({ userId: { $in: [userA_Id, userB_Id] } });
     await SavingsGoalModel.deleteMany({ userId: { $in: [userA_Id, userB_Id] } });
     await UserModel.deleteMany({ customId: { $in: [userA_Id, userB_Id] } });
-    const mongoose = (await import('mongoose')).default;
-    await mongoose.disconnect();
+    await disconnectDB();
   });
 
   it('should calculate correct totals for User A and exclude transfers', async () => {

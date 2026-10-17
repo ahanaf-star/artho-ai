@@ -26,84 +26,18 @@ function formatGreeting(userName?: string, isBangla?: boolean): string {
 
 function buildInitialCoachMessages(
   userName?: string,
-  isBangla?: boolean,
-  hasData: boolean = false,
-  goals?: SavingsGoal[]
+  isBangla?: boolean
 ): CoachMessage[] {
   const greeting = formatGreeting(userName, isBangla);
-  if (!hasData) {
-    return [
-      {
-        id: 'msg-initial-assistant',
-        sender: 'assistant',
-        text: isBangla
-          ? `${greeting} আমি অর্থবাঁচাও এআই (ArthoAI) পার্সোনাল ফাইন্যান্সিয়াল কোচ।\n\nআপনার মাসিক বাজেট, সঞ্চয়ের লক্ষ্য বা ক্যাশ-ফ্লো সম্পর্কিত যেকোনো প্রশ্ন আমাকে করতে পারেন। আপনার সঠিক লেনদেন এবং সঞ্চয়ের লক্ষ্য যুক্ত করলে আমি আপনার জন্য সম্পূর্ণ তথ্যভিত্তিক পরামর্শ ও বিশ্লেষণ প্রদান করতে পারব।\n\nশুরু করতে নিচের সাজেস্ট করা প্রশ্নগুলো ক্লিক করুন অথবা আপনার প্রশ্ন লিখুন:`
-          : `${greeting} I am your ArthoAI Personal Financial Coach.\n\nAsk me anything about your monthly budget, savings goals, or cash flow. Once you log your transactions and savings targets, I will deliver precise, ledger-grounded insights tailored to your financial life in Bangladesh.\n\nTo get started, click a suggested question below or type your inquiry:`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isDeterministic: true,
-      },
-    ];
-  }
-
-  const primary = goals && goals.length > 0 ? goals[0] : null;
-  const targetGoal = primary ? primary.targetAmount : 30000;
-  const targetTitle = primary ? primary.title : 'সঞ্চয় লক্ষ্য';
-  const targetTitleEn = primary ? primary.title : 'Emergency Fund';
-
   return [
-    {
-      id: 'msg-initial-user',
-      sender: 'user',
-      text: isBangla
-        ? `আমি ৬ মাসে ৳${targetGoal.toLocaleString()} ${targetTitle} সঞ্চয় করতে চাই। এটি বর্তমানে কতটা বাস্তবসম্মত?`
-        : `I want to save ৳${targetGoal.toLocaleString()} for my ${targetTitleEn} in six months. How realistic is that right now?`,
-      timestamp: '11:42 AM',
-    },
     {
       id: 'msg-initial-assistant',
       sender: 'assistant',
-      text: `${greeting} ${
-        isBangla
-          ? `আপনার সাম্প্রতিক ক্যাশ-ফ্লো অনুযায়ী, ছয় মাসে ৳${targetGoal.toLocaleString()} সঞ্চয় করতে প্রতি মাসে আনুমানিক ৳${Math.round(targetGoal / 6).toLocaleString()} প্রয়োজন।\n\nআপনার আর্থিক তথ্য পর্যালোচনা করে কার্যকর সাশ্রয় পরিকল্পনা তৈরি করা হয়েছে:`
-          : `Based on your recent cash flow, saving ৳${targetGoal.toLocaleString()} in six months requires approximately ৳${Math.round(targetGoal / 6).toLocaleString()} per month.\n\nHere are actionable optimization opportunities based on your ledger:`
-      }`,
-      timestamp: '11:42 AM',
+      text: isBangla
+        ? `${greeting} আমি অর্থবাঁচাও এআই (ArthoAI) পার্সোনাল ফাইন্যান্সিয়াল কোচ।\n\nআপনার মাসিক বাজেট, সঞ্চয়ের লক্ষ্য বা ক্যাশ-ফ্লো সম্পর্কিত যেকোনো প্রশ্ন আমাকে করতে পারেন। আপনার সঠিক লেনদেন এবং সঞ্চয়ের লক্ষ্য অনুযায়ী আমি আপনার জন্য সম্পূর্ণ তথ্যভিত্তিক পরামর্শ ও বিশ্লেষণ প্রদান করব।\n\nশুরু করতে নিচের সাজেস্ট করা প্রশ্নগুলো ক্লিক করুন অথবা আপনার প্রশ্ন লিখুন:`
+        : `${greeting} I am your ArthoAI Personal Financial Coach.\n\nAsk me anything about your monthly budget, savings goals, or cash flow. Once you log your transactions and savings targets, I will deliver precise, ledger-grounded insights tailored to your financial life in Bangladesh.\n\nTo get started, click a suggested question below or type your inquiry:`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isDeterministic: true,
-      structuredData: {
-        targetVelocity: {
-          current: 3200,
-          needed: Math.round(targetGoal / 6),
-          percentage: 64,
-          shortfall: Math.max(0, Math.round(targetGoal / 6) - 3200),
-        },
-        recommendations: [
-          {
-            category: 'Food Delivery (Foodpanda/Pathao)',
-            currentMonthly: 8200,
-            potentialSavings: 900,
-            why: 'Consolidating weekly food orders and eating out moderately frees up immediate cash.',
-            actionLabel: 'Set Weekly Dining Limit',
-            badge: '-11% target',
-            icon: 'delivery_dining',
-          },
-          {
-            category: 'Cash-out Fees & Bank Tariffs',
-            currentMonthly: 3200,
-            potentialSavings: 650,
-            why: 'Frequent micro ATM/MFS cashouts incur repeated fees.',
-            actionLabel: 'Consolidate Withdrawals',
-            badge: 'Instant Leak',
-            icon: 'account_balance_wallet',
-          },
-        ],
-        simulation: {
-          target: targetGoal,
-          currentMonths: 9.4,
-          optimizedMonths: 5.8,
-          currentEstDate: 'August 2025',
-          optimizedEstDate: 'April 2025',
-        },
-      },
     },
   ];
 }
@@ -132,21 +66,18 @@ export const AICoach: React.FC<AICoachProps> = ({
 
   // Initialize conversation stream with authentic data
   const [messages, setMessages] = useState<CoachMessage[]>(() =>
-    buildInitialCoachMessages(effectiveUserName, isBanglaMode, hasData, goals)
+    buildInitialCoachMessages(effectiveUserName, isBanglaMode)
   );
 
   // Keep greeting personalized to authenticated user when in initial state
   useEffect(() => {
     setMessages((prev) => {
-      if (
-        (prev.length === 1 && prev[0].id === 'msg-initial-assistant') ||
-        (prev.length === 2 && prev[0].id === 'msg-initial-user' && prev[1].id === 'msg-initial-assistant')
-      ) {
-        return buildInitialCoachMessages(effectiveUserName, isBanglaMode, hasData, goals);
+      if (prev.length === 1 && prev[0].id === 'msg-initial-assistant') {
+        return buildInitialCoachMessages(effectiveUserName, isBanglaMode);
       }
       return prev;
     });
-  }, [effectiveUserName, isBanglaMode, hasData, goals]);
+  }, [effectiveUserName, isBanglaMode]);
 
   const streamEndRef = useRef<HTMLDivElement>(null);
 
@@ -175,6 +106,14 @@ export const AICoach: React.FC<AICoachProps> = ({
     setInputText('');
     setIsTyping(true);
 
+    const recentHistory = messages
+      .filter((m) => m.id !== 'msg-initial-assistant')
+      .slice(-6)
+      .map((m) => ({
+        role: m.sender === 'assistant' ? ('assistant' as const) : ('user' as const),
+        content: m.text,
+      }));
+
     try {
       const coachMsg = await askFinancialCoach(
         text,
@@ -182,7 +121,9 @@ export const AICoach: React.FC<AICoachProps> = ({
         goals,
         effectiveIncome,
         isBanglaMode,
-        effectiveUserName
+        effectiveUserName,
+        0,
+        recentHistory
       );
       setMessages((prev) => [...prev, coachMsg]);
     } catch (err) {
