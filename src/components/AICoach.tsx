@@ -304,11 +304,9 @@ export const AICoach: React.FC<AICoachProps> = ({
         </div>
       </div>
 
-      {/* Primary Coach Workspace: 2-Column Split */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-space-lg items-start">
-        {/* Left: Conversation Flow (8 Cols) */}
-        <div className="xl:col-span-8 flex flex-col gap-space-lg">
-          <div className="flex flex-col gap-space-lg">
+      {/* Primary Coach Workspace */}
+      <div className="flex flex-col gap-space-lg w-full">
+        <div className="flex flex-col gap-space-lg">
             {/* Context Timestamp */}
             <div className="flex items-center justify-center">
               <span className="px-3 py-1 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm border border-outline-variant/20">
@@ -729,161 +727,8 @@ export const AICoach: React.FC<AICoachProps> = ({
             </div>
           </div>
         </div>
-
-        {/* Right: Coach Memory & Guardrails Sidebar Widget (4 Cols) */}
-        <div className="xl:col-span-4 flex flex-col gap-space-lg">
-          {/* Memory Parameters Card */}
-          <div className="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col gap-space-md border border-outline-variant/20">
-            <div className="flex items-center justify-between pb-2 border-b border-outline-variant/15">
-              <div className="flex items-center gap-space-xs">
-                <span className="material-symbols-outlined text-secondary text-[20px]">
-                  psychology
-                </span>
-                <h3 className="font-title-lg text-title-lg text-on-surface font-bold">
-                  Coach Memory
-                </h3>
-              </div>
-              <button
-                onClick={() => onNavigate('settings-profile')}
-                className="font-label-sm text-label-sm text-secondary font-semibold hover:underline"
-              >
-                Edit Context
-              </button>
-            </div>
-
-            <p className="font-body-sm text-body-sm text-on-surface-variant">
-              ArthoBachao AI keeps these personal baselines locked into working memory when answering queries:
-            </p>
-
-            <div className="flex flex-col gap-space-xs">
-              <div className="p-space-sm rounded-xl bg-surface-container-low flex items-center justify-between border border-outline-variant/15">
-                <div className="flex items-center gap-space-xs">
-                  <span className="material-symbols-outlined text-on-surface-variant text-[18px]">
-                    speed
-                  </span>
-                  <span className="font-label-md text-label-md text-on-surface-variant">
-                    Risk Tolerance
-                  </span>
-                </div>
-                <span className="font-label-md text-label-md font-semibold text-on-surface">
-                  {user?.riskTolerance || 'Not set'}
-                </span>
-              </div>
-
-              <div className="p-space-sm rounded-xl bg-surface-container-low flex items-center justify-between border border-outline-variant/15">
-                <div className="flex items-center gap-space-xs">
-                  <span className="material-symbols-outlined text-secondary text-[18px]">
-                    crisis_alert
-                  </span>
-                  <span className="font-label-md text-label-md text-on-surface-variant">
-                    Primary Goal
-                  </span>
-                </div>
-                <span className="font-label-md text-label-md font-semibold text-secondary">
-                  {(() => {
-                    const primary = goals.find((g) => g.id === user?.primaryGoalId) || goals[0];
-                    if (!primary) return 'No goal set';
-                    const amountText = primary.targetAmount >= 1000 ? `৳${(primary.targetAmount / 1000).toFixed(0)}k` : `৳${primary.targetAmount}`;
-                    return `${primary.title} (${amountText})`;
-                  })()}
-                </span>
-              </div>
-
-              <div className="p-space-sm rounded-xl bg-surface-container-low flex items-center justify-between border border-outline-variant/15">
-                <div className="flex items-center gap-space-xs">
-                  <span className="material-symbols-outlined text-on-surface-variant text-[18px]">
-                    payments
-                  </span>
-                  <span className="font-label-md text-label-md text-on-surface-variant">
-                    Monthly Income
-                  </span>
-                </div>
-                <span className="font-label-md text-label-md font-semibold text-on-surface">
-                  {effectiveIncome !== undefined && effectiveIncome > 0
-                    ? `৳${effectiveIncome.toLocaleString()}`
-                    : 'Not provided'}
-                </span>
-              </div>
-
-              <div className="p-space-sm rounded-xl bg-surface-container-low flex items-center justify-between border border-outline-variant/15">
-                <div className="flex items-center gap-space-xs">
-                  <span className="material-symbols-outlined text-on-surface-variant text-[18px]">
-                    lock
-                  </span>
-                  <span className="font-label-md text-label-md text-on-surface-variant">
-                    Privacy Status
-                  </span>
-                </div>
-                <span className="font-label-sm text-label-sm font-semibold text-secondary">
-                  {user?.privacyStatus || 'E2E Encrypted'}
-                </span>
-              </div>
-            </div>
-
-            {/* Bangla Prompt Helper Tooltip Card */}
-            <div className="p-space-md rounded-xl bg-surface-container-high flex flex-col gap-space-xs border border-outline-variant/20">
-              <div className="flex items-center gap-1.5 text-on-surface">
-                <span className="material-symbols-outlined text-[18px] text-tertiary-container">
-                  translate
-                </span>
-                <span className="font-title-md text-title-md font-bold">বাংলায় প্রশ্ন করুন</span>
-              </div>
-              <p className="font-body-sm text-body-sm text-on-surface-variant">
-                যেকোনো সময় বাংলায় টাইপ করে পরামর্শ নিন। যেমন:
-              </p>
-              <div
-                onClick={() => handleSendMessage('আগামী মাসে আমার টাকা কত থাকতে পারে?')}
-                className="p-space-xs px-space-sm rounded-lg bg-surface-container-lowest font-body-sm text-body-sm text-on-surface font-medium cursor-pointer hover:bg-surface-container transition-colors border border-outline-variant/30"
-              >
-                "আগামী মাসে আমার টাকা কত থাকতে পারে?"
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Financial Reality Card */}
-          <div className="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col gap-space-md border border-outline-variant/20">
-            <div className="flex items-center justify-between pb-2 border-b border-outline-variant/15">
-              <span className="font-title-md text-title-md text-on-surface font-bold">
-                90-Day Cash Flow Pulse
-              </span>
-              <span className="font-label-sm text-label-sm text-secondary font-bold">
-                Dhaka Metro
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-space-sm">
-              <div className="p-space-sm rounded-lg bg-surface-container-low border border-outline-variant/15">
-                <span className="font-label-sm text-label-sm text-outline">Fixed Outflow</span>
-                <p className="font-numeric-hero-mobile text-numeric-hero-mobile text-on-surface mt-0.5 font-bold">
-                  ৳22,100
-                </p>
-                <span className="font-body-sm text-body-sm text-on-surface-variant">
-                  Rent, Bills, EMI
-                </span>
-              </div>
-              <div className="p-space-sm rounded-lg bg-surface-container-low border border-outline-variant/15">
-                <span className="font-label-sm text-label-sm text-outline">Discretionary</span>
-                <p className="font-numeric-hero-mobile text-numeric-hero-mobile text-on-surface mt-0.5 font-bold">
-                  ৳13,200
-                </p>
-                <span className="font-body-sm text-body-sm text-on-surface-variant">
-                  Dining, MFS, Transit
-                </span>
-              </div>
-            </div>
-
-            <div className="p-space-md rounded-xl bg-surface-container-low flex items-start gap-space-sm border border-outline-variant/15">
-              <span className="material-symbols-outlined text-secondary text-[20px] shrink-0 mt-0.5">
-                lightbulb
-              </span>
-              <p className="font-body-sm text-body-sm text-on-surface-variant">
-                ArthoBachao AI continuously scans cash-out fees at Bkash &amp; Nagad agent points. You can
-                save up to ৳420/month just by switching 3 withdrawals to City Bank ATM cards.
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
+
+
