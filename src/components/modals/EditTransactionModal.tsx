@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Transaction, CategoryName, TransactionType } from '../../types/financial';
+import { Transaction, CategoryName, TransactionType, CustomCategory } from '../../types/financial';
 import { getLocalDateString } from '../../services/financialCalculations';
 
 interface EditTransactionModalProps {
@@ -8,6 +8,7 @@ interface EditTransactionModalProps {
   transaction: Transaction | null;
   onUpdateTransaction: (transaction: Transaction) => Promise<void>;
   onDeleteTransaction: (transactionId: string) => Promise<void>;
+  customCategories?: CustomCategory[];
   isBangla?: boolean;
 }
 
@@ -17,6 +18,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
   transaction,
   onUpdateTransaction,
   onDeleteTransaction,
+  customCategories = [],
   isBangla = false,
 }) => {
   const [type, setType] = useState<TransactionType>('expense');
@@ -259,12 +261,46 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
               >
                 {type === 'expense' ? (
                   <>
-                    <option value="Food & Groceries">Food &amp; Groceries</option>
-                    <option value="Shopping & Gadgets">Shopping &amp; Gadgets</option>
-                    <option value="Utility & Fixed Costs">Utility &amp; Fixed Costs</option>
-                    <option value="Transportation">Transportation</option>
-                    <option value="Cash-out & Bank Fees">Cash-out &amp; Bank Fees</option>
-                    <option value="Entertainment & Others">Entertainment &amp; Others</option>
+                    <optgroup label={isBangla ? 'স্ট্যান্ডার্ড ক্যাটাগরি' : 'Standard Categories'}>
+                      <option value="Food & Groceries">Food &amp; Groceries</option>
+                      <option value="Shopping & Gadgets">Shopping &amp; Gadgets</option>
+                      <option value="Utility & Fixed Costs">Utility &amp; Fixed Costs</option>
+                      <option value="Transportation">Transportation</option>
+                      <option value="Cash-out & Bank Fees">Cash-out &amp; Bank Fees</option>
+                      <option value="Entertainment & Others">Entertainment &amp; Others</option>
+                    </optgroup>
+                    {(customCategories.length > 0 ||
+                      (category &&
+                        ![
+                          'Food & Groceries',
+                          'Shopping & Gadgets',
+                          'Utility & Fixed Costs',
+                          'Transportation',
+                          'Cash-out & Bank Fees',
+                          'Entertainment & Others',
+                        ].includes(category))) && (
+                      <optgroup label={isBangla ? 'কাস্টম ক্যাটাগরি' : 'Custom Categories'}>
+                        {customCategories.map((c) => (
+                          <option key={c.id || c.name} value={c.name}>
+                            {c.name}
+                          </option>
+                        ))}
+                        {category &&
+                          ![
+                            'Food & Groceries',
+                            'Shopping & Gadgets',
+                            'Utility & Fixed Costs',
+                            'Transportation',
+                            'Cash-out & Bank Fees',
+                            'Entertainment & Others',
+                          ].includes(category) &&
+                          !customCategories.some(
+                            (c) => c.name.toLowerCase() === category.toLowerCase()
+                          ) && (
+                            <option value={category}>{category}</option>
+                          )}
+                      </optgroup>
+                    )}
                   </>
                 ) : (
                   <>

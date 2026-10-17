@@ -482,6 +482,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <div className="md:col-span-5 flex items-center justify-center relative">
                 <div className="w-36 h-36 relative flex items-center justify-center">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <circle
+                      cx="50"
+                      cy="50"
+                      fill="transparent"
+                      r="40"
+                      stroke="#eff4ff"
+                      strokeWidth="12"
+                    />
                     {(() => {
                       const circumference = 251.2;
                       const colors = [
@@ -491,10 +499,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         '#4edea3',
                         '#d3e4fe',
                         '#c6c6cd',
+                        '#e06d53',
+                        '#9c4146',
                       ];
+                      const activeCategories =
+                        overview.totalExpenses > 0
+                          ? overview.categories.filter((c) => c.amount > 0).sort((a, b) => b.amount - a.amount)
+                          : [];
                       let currentOffset = 0;
-                      return overview.categories.map((c, i) => {
-                        const dash = Math.max(0.5, (c.percentage / 100) * circumference);
+                      return activeCategories.map((c, i) => {
+                        const dash = c.percentage > 0 ? (c.percentage / 100) * circumference : 0;
+                        if (dash <= 0) return null;
                         const offset = -currentOffset;
                         currentOffset += dash;
                         return (
@@ -527,7 +542,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
               {/* Category Legend Breakdown (7 cols) */}
               <div className="md:col-span-7 flex flex-col gap-2">
-                {overview.categories.map((c, i) => {
+                {(() => {
                   const colors = [
                     '#ba1a1a',
                     '#006c49',
@@ -535,8 +550,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     '#4edea3',
                     '#d3e4fe',
                     '#c6c6cd',
+                    '#e06d53',
+                    '#9c4146',
                   ];
-                  return (
+                  const displayCategories =
+                    overview.totalExpenses > 0
+                      ? overview.categories.filter((c) => c.amount > 0).sort((a, b) => b.amount - a.amount)
+                      : overview.categories;
+
+                  return displayCategories.map((c, i) => (
                     <div
                       key={c.category}
                       className="flex items-center justify-between text-body-sm font-body-sm"
@@ -555,8 +577,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <span className="text-outline text-[11px]">{c.percentage}%</span>
                       </div>
                     </div>
-                  );
-                })}
+                  ));
+                })()}
               </div>
             </div>
           </div>

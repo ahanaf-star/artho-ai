@@ -210,7 +210,7 @@ export function calculateMonthlyOverview(
   const dailyAverageSpend = totalExpenses > 0 ? Math.round(totalExpenses / 30) : 0;
 
   // Build categories list
-  const categoryOrder: CategoryName[] = [
+  const standardCategoryOrder: CategoryName[] = [
     'Food & Groceries',
     'Shopping & Gadgets',
     'Utility & Fixed Costs',
@@ -219,7 +219,15 @@ export function calculateMonthlyOverview(
     'Entertainment & Others',
   ];
 
-  const categories: CategorySummary[] = categoryOrder.map((catName) => {
+  const allCategoryNames: CategoryName[] = Array.from(
+    new Set([
+      ...standardCategoryOrder,
+      ...Object.keys(catMap),
+      ...Object.keys(prevCatMap),
+    ])
+  );
+
+  const categories: CategorySummary[] = allCategoryNames.map((catName) => {
     const entry = catMap[catName] || { amount: 0, count: 0, merchants: new Set() };
     const prevAmount = prevCatMap[catName] || (entry.amount > 0 ? entry.amount * 0.9 : 0);
     const pct = totalExpenses > 0 ? (entry.amount / totalExpenses) * 100 : 0;

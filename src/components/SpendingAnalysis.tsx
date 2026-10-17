@@ -451,7 +451,9 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                           ? 'bolt'
                           : cat.category === 'Transportation'
                           ? 'directions_subway'
-                          : 'movie'}
+                          : cat.category === 'Entertainment & Others'
+                          ? 'movie'
+                          : 'category'}
                       </span>
                     </div>
                     <div>
