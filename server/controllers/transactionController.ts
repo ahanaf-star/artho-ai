@@ -132,6 +132,12 @@ export async function createTransaction(req: Request, res: Response) {
     return res.status(400).json({ error: 'Description is required' });
   }
 
+  // Validate merchant: required for expense, optional for income / transfer
+  const trimmedMerchant = typeof merchant === 'string' ? merchant.trim() : '';
+  if (type === 'expense' && !trimmedMerchant) {
+    return res.status(400).json({ error: 'Merchant / Counterparty is required for expense transactions' });
+  }
+
   // Validate date format YYYY-MM-DD
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
   const txDate = date || new Date().toISOString().split('T')[0];
@@ -149,7 +155,7 @@ export async function createTransaction(req: Request, res: Response) {
       category: category.trim(),
       description: description.trim(),
       date: txDate,
-      merchant: merchant?.trim() || '',
+      merchant: trimmedMerchant,
       account: account || 'bKash',
       paymentMethod: paymentMethod || 'Direct Payment',
       classification: classification || 'essential',
@@ -170,7 +176,7 @@ export async function createTransaction(req: Request, res: Response) {
       category: category.trim(),
       description: description.trim(),
       date: txDate,
-      merchant: merchant?.trim() || '',
+      merchant: trimmedMerchant,
       account: account || 'bKash',
       paymentMethod: paymentMethod || 'Direct Payment',
       classification: classification || 'essential',
@@ -220,6 +226,13 @@ export async function updateTransaction(req: Request, res: Response) {
     return res.status(400).json({ error: 'Transaction type must be expense, income, or transfer' });
   }
 
+  if (updates.merchant !== undefined) {
+    if (typeof updates.merchant !== 'string') {
+      return res.status(400).json({ error: 'Merchant must be a string' });
+    }
+    updates.merchant = updates.merchant.trim();
+  }
+
   if (updates.category !== undefined) {
     if (typeof updates.category !== 'string' || !updates.category.trim()) {
       return res.status(400).json({ error: 'Category cannot be empty' });
@@ -250,6 +263,9 @@ export async function updateTransaction(req: Request, res: Response) {
   const authUser = (req as any).user;
 
   if (!isDbConnected()) {
+    if (updates.type === 'expense' && updates.merchant !== undefined && !updates.merchant) {
+      return res.status(400).json({ error: 'Merchant / Counterparty is required for expense transactions' });
+    }
     return res.json({
       ...updates,
       id: txId,
@@ -292,6 +308,18 @@ export async function updateTransaction(req: Request, res: Response) {
       }
     } else if (existingTx.userId !== 'usr-ahmed-01') {
       return res.status(401).json({ error: 'Authentication required to update this transaction' });
+    }
+
+    // Validate conditional merchant requirement for expense transactions
+    const effectiveType = updates.type !== undefined ? updates.type : existingTx.type;
+    if (effectiveType === 'expense') {
+      const effectiveMerchant =
+        updates.merchant !== undefined
+          ? updates.merchant
+          : (existingTx.merchant || '').trim();
+      if (!effectiveMerchant) {
+        return res.status(400).json({ error: 'Merchant / Counterparty is required for expense transactions' });
+      }
     }
 
     Object.assign(existingTx, updates);

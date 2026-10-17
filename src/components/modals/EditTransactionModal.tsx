@@ -32,6 +32,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [merchantError, setMerchantError] = useState<string | null>(null);
 
   useEffect(() => {
     if (transaction) {
@@ -44,6 +45,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
       setDate(transaction.date || getLocalDateString());
       setShowDeleteConfirm(false);
       setErrorMessage(null);
+      setMerchantError(null);
     }
   }, [transaction, isOpen]);
 
@@ -59,13 +61,23 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
       return;
     }
 
+    const trimmedMerchant = merchant.trim();
+    if (type === 'expense' && !trimmedMerchant) {
+      setMerchantError(
+        isBangla
+          ? 'মার্চেন্ট / প্রতিষ্ঠানের নাম দেওয়া আবশ্যক'
+          : 'Merchant / Counterparty name is required'
+      );
+      return;
+    }
+
     const updatedTx: Transaction = {
       ...transaction,
       date: date || transaction.date || getLocalDateString(),
       type,
       category,
       amount: parsedAmount,
-      merchant: merchant.trim(),
+      merchant: trimmedMerchant,
       description: description.trim() || `${category} transaction`,
       account,
       paymentMethod: `${account} Direct`,
@@ -169,7 +181,18 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
             <div className="grid grid-cols-2 gap-2 p-1 bg-surface-container-low rounded-xl">
               <button
                 type="button"
-                onClick={() => setType('expense')}
+                onClick={() => {
+                  setType('expense');
+                  if (!merchant.trim()) {
+                    setMerchantError(
+                      isBangla
+                        ? 'মার্চেন্ট / প্রতিষ্ঠানের নাম দেওয়া আবশ্যক'
+                        : 'Merchant / Counterparty name is required'
+                    );
+                  } else {
+                    setMerchantError(null);
+                  }
+                }}
                 className={`py-2 rounded-lg font-title-md text-sm font-semibold transition-all ${type === 'expense'
                   ? 'bg-surface-container-lowest shadow-sm text-error font-bold'
                   : 'text-on-surface-variant hover:text-on-surface'
@@ -181,6 +204,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
                 type="button"
                 onClick={() => {
                   setType('income');
+                  setMerchantError(null);
                   if (category !== 'Salary & Inflow' && category !== 'Savings & Investment') {
                     setCategory('Salary & Inflow');
                   }
@@ -229,24 +253,53 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
 
             {/* Merchant */}
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                {isBangla ? 'মার্চেন্ট / প্রতিষ্ঠান (ঐচ্ছিক)' : 'Merchant / Counterparty (Optional)'}
+              <label className="text-xs font-semibold text-outline uppercase tracking-wider flex items-center gap-1">
+                <span>{isBangla ? 'মার্চেন্ট / প্রতিষ্ঠান' : 'Merchant / Counterparty'}</span>
+                {type === 'expense' ? (
+                  <span className="text-error font-bold" title={isBangla ? 'বাধ্যতামূলক' : 'Required'}>*</span>
+                ) : (
+                  <span className="text-[10px] font-normal text-outline">({isBangla ? 'ঐচ্ছিক' : 'Optional'})</span>
+                )}
               </label>
               <input
                 type="text"
                 value={merchant}
-                onChange={(e) => setMerchant(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setMerchant(val);
+                  if (type === 'expense') {
+                    if (val.trim()) {
+                      setMerchantError(null);
+                    } else if (merchantError) {
+                      setMerchantError(
+                        isBangla
+                          ? 'মার্চেন্ট / প্রতিষ্ঠানের নাম দেওয়া আবশ্যক'
+                          : 'Merchant / Counterparty name is required'
+                      );
+                    }
+                  } else {
+                    setMerchantError(null);
+                  }
+                }}
                 placeholder={
-                  type === 'income'
+                  type === 'expense'
                     ? isBangla
-                      ? 'যেমন: প্রতিষ্ঠান, ক্লায়েন্ট, উৎস (ঐচ্ছিক)'
-                      : 'e.g. Employer, Client, Source (Optional)'
+                      ? 'মার্চেন্ট বা প্রতিষ্ঠানের নাম লিখুন'
+                      : 'Enter merchant or counterparty name'
                     : isBangla
-                      ? 'যেমন: স্বপ্ন, পাঠাও, ডেসকো (ঐচ্ছিক)'
-                      : 'e.g. Shwapno, Pathao, DESCO (Optional)'
+                    ? 'যেমন: প্রতিষ্ঠান, ক্লায়েন্ট, উৎস (ঐচ্ছিক)'
+                    : 'e.g. Employer, Client, Source (Optional)'
                 }
-                className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant/40 bg-surface-container-lowest text-on-surface font-body-md focus:outline-none focus:ring-2 focus:ring-primary-container"
+                className={`w-full px-3.5 py-2.5 rounded-xl border ${
+                  merchantError ? 'border-error ring-1 ring-error/50' : 'border-outline-variant/40'
+                } bg-surface-container-lowest text-on-surface font-body-md focus:outline-none focus:ring-2 focus:ring-primary-container`}
               />
+              {merchantError && (
+                <span className="text-error text-xs flex items-center gap-1 mt-0.5 animate-in fade-in duration-150">
+                  <span className="material-symbols-outlined text-[14px]">error</span>
+                  {merchantError}
+                </span>
+              )}
             </div>
 
             {/* Category */}
