@@ -175,7 +175,8 @@ export function filterTransactionsByMonth(
 // Compute dynamic monthly overview
 export function calculateMonthlyOverview(
   transactions: Transaction[],
-  selectedMonth?: string
+  selectedMonth?: string,
+  extraCategories?: string[]
 ): MonthlyOverview {
   const activeMonth = selectedMonth || getLatestTransactionMonth(transactions);
   const currentMonthTxs = filterTransactionsByMonth(transactions, activeMonth);
@@ -237,10 +238,11 @@ export function calculateMonthlyOverview(
   const allCategoryNames: CategoryName[] = Array.from(
     new Set([
       ...standardCategoryOrder,
+      ...(extraCategories || []).filter(Boolean),
       ...Object.keys(catMap),
       ...Object.keys(prevCatMap),
     ])
-  );
+  ) as CategoryName[];
 
   const categories: CategorySummary[] = allCategoryNames.map((catName) => {
     const entry = catMap[catName] || { amount: 0, count: 0, merchants: new Set() };

@@ -12,6 +12,8 @@ import {
   getCurrencyConfig,
 } from '../services/currencyService';
 import { detectSpendingAnomalies } from '../services/spendingService';
+import { getCategoryIcon } from '../services/categoryService';
+import { CategoryDetailsModal } from './modals/CategoryDetailsModal';
 import { NavScreen } from './Sidebar';
 
 interface SpendingAnalysisProps {
@@ -30,7 +32,7 @@ interface SpendingAnalysisProps {
 export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
   transactions,
   onNavigate,
-  onOpenAddTransaction: _onOpenAddTransaction,
+  onOpenAddTransaction,
   isBangla,
   user,
   onCoachQuery,
@@ -56,6 +58,10 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
   const [alertActive, setAlertActive] = useState(false);
   const [occasionExcluded, setOccasionExcluded] = useState(false);
   const [reclassifyModalOpen, setReclassifyModalOpen] = useState(false);
+
+  // Category Details Modal State
+  const [selectedCategoryForModal, setSelectedCategoryForModal] = useState<string | null>(null);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   // Custom Category Management State
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -99,8 +105,12 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
 
   // Dynamic calculations based on selected month
   const overview = useMemo(() => {
-    return calculateMonthlyOverview(transactions, selectedMonth);
-  }, [transactions, selectedMonth]);
+    return calculateMonthlyOverview(
+      transactions,
+      selectedMonth,
+      customCategories.map((c) => c.name)
+    );
+  }, [transactions, selectedMonth, customCategories]);
 
   // Dynamic previous month comparison for Monthly Spending Card
   const prevMonth = useMemo(() => getPreviousMonth(selectedMonth), [selectedMonth]);
@@ -675,20 +685,38 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
               const isConfirming = deleteConfirmCatId === catIdentifier;
               const isDeleting = deletingCatId === catIdentifier;
 
+              const catIcon = getCategoryIcon(cat.name);
+
               return (
                 <div
                   key={catIdentifier}
                   className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-surface-container-low/40 transition-colors bg-surface-container-lowest"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-[20px] text-secondary">
-                        category
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => {
+                      setSelectedCategoryForModal(cat.name);
+                      setIsCategoryModalOpen(true);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedCategoryForModal(cat.name);
+                        setIsCategoryModalOpen(true);
+                      }
+                    }}
+                    className="flex items-center gap-3 cursor-pointer group/item select-none text-left"
+                    title={isBangla ? `${cat.name} এর বিস্তারিত বিবরণ দেখুন` : `View details for ${cat.name}`}
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center shrink-0 group-hover/item:bg-secondary-container group-hover/item:text-on-secondary-container transition-colors">
+                      <span className="material-symbols-outlined text-[20px] text-secondary group-hover/item:text-on-secondary-container">
+                        {catIcon}
                       </span>
                     </div>
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">
-                        <span className="font-title-md text-sm text-on-surface font-bold">
+                        <span className="font-title-md text-sm text-on-surface font-bold group-hover/item:text-secondary transition-colors">
                           {cat.name}
                         </span>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-secondary/10 text-secondary border border-secondary/20">
@@ -701,8 +729,8 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                       <span className="text-[11px] text-outline">
                         {txCount > 0
                           ? isBangla
-                            ? `${txCount} টি লেনদেনে ব্যবহৃত`
-                            : `Used in ${txCount} transaction(s)`
+                            ? `${txCount} টি লেনদেনে ব্যবহৃত • বিস্তারিত দেখতে ক্লিক করুন`
+                            : `Used in ${txCount} transaction(s) • Click to inspect`
                           : isBangla
                           ? 'কোনো লেনদেনে ব্যবহৃত হয়নি'
                           : 'Not used in any transactions'}
@@ -712,6 +740,22 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 self-end sm:self-auto">
+                    {/* View Details Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategoryForModal(cat.name);
+                        setIsCategoryModalOpen(true);
+                      }}
+                      className="p-1.5 rounded-lg text-outline hover:text-secondary hover:bg-secondary/10 transition-colors flex items-center gap-1 text-xs"
+                      title={isBangla ? 'বিস্তারিত বিবরণ দেখুন' : 'View category details'}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                      <span className="hidden sm:inline font-medium">
+                        {isBangla ? 'বিস্তারিত' : 'Details'}
+                      </span>
+                    </button>
+
                     {isConfirming ? (
                       <div className="flex items-center gap-1.5 animate-in fade-in duration-150">
                         <span className="text-[11px] text-error font-medium">
@@ -800,38 +844,41 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
           {overview.categories.map((cat) => {
             const isFood = cat.category === 'Food & Groceries';
             const isCashOut = cat.category === 'Cash-out & Bank Fees';
+            const iconName = getCategoryIcon(cat.category);
             return (
               <div
                 key={cat.category}
-                className="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow relative border border-outline-variant/20"
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setSelectedCategoryForModal(cat.category);
+                  setIsCategoryModalOpen(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedCategoryForModal(cat.category);
+                    setIsCategoryModalOpen(true);
+                  }
+                }}
+                className="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between hover:shadow-md hover:border-secondary/50 transition-all cursor-pointer relative border border-outline-variant/20 active:scale-[0.995] group select-none focus:outline-none focus:ring-2 focus:ring-secondary/40"
+                title={isBangla ? `${cat.category} এর বিস্তারিত বিবরণ দেখুন` : `View details for ${cat.category}`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-space-sm">
                     <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 ${
                         isFood || isCashOut
                           ? 'bg-error-container/40 text-error'
                           : 'bg-surface-container-high text-on-surface'
                       }`}
                     >
                       <span className="material-symbols-outlined text-[22px]">
-                        {isFood
-                          ? 'restaurant'
-                          : isCashOut
-                          ? 'price_change'
-                          : cat.category === 'Shopping & Gadgets'
-                          ? 'shopping_bag'
-                          : cat.category === 'Utility & Fixed Costs'
-                          ? 'bolt'
-                          : cat.category === 'Transportation'
-                          ? 'directions_subway'
-                          : cat.category === 'Entertainment & Others'
-                          ? 'movie'
-                          : 'category'}
+                        {iconName}
                       </span>
                     </div>
                     <div>
-                      <h3 className="font-title-lg text-title-lg text-on-surface font-bold">
+                      <h3 className="font-title-lg text-title-lg text-on-surface font-bold group-hover:text-secondary transition-colors">
                         {cat.category}
                       </h3>
                       <span className="font-label-sm text-label-sm text-outline">
@@ -894,7 +941,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                   </div>
                 </div>
 
-                <div className="pt-space-sm bg-surface-container-low/40 -mx-space-lg -mb-space-lg p-space-md rounded-b-xl flex items-center justify-between text-on-surface-variant font-body-sm text-body-sm border-t border-outline-variant/15">
+                <div className="pt-space-sm bg-surface-container-low/40 -mx-space-lg -mb-space-lg p-space-md rounded-b-xl flex items-center justify-between text-on-surface-variant font-body-sm text-body-sm border-t border-outline-variant/15 group-hover:bg-surface-container-low transition-colors">
                   <span className="truncate">
                     Top:{' '}
                     <strong>
@@ -907,7 +954,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                         : 'Standard merchants'}
                     </strong>
                   </span>
-                  <span className="material-symbols-outlined text-[16px] text-outline">
+                  <span className="material-symbols-outlined text-[16px] text-outline group-hover:text-secondary group-hover:translate-x-1 transition-all">
                     chevron_right
                   </span>
                 </div>
@@ -1300,6 +1347,25 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
             </button>
           </div>
         </div>
+      )}
+
+      {/* Dynamic Category Details Modal */}
+      {isCategoryModalOpen && selectedCategoryForModal && (
+        <CategoryDetailsModal
+          isOpen={isCategoryModalOpen}
+          onClose={() => {
+            setIsCategoryModalOpen(false);
+            setSelectedCategoryForModal(null);
+          }}
+          categoryName={selectedCategoryForModal}
+          transactions={transactions}
+          user={user}
+          selectedMonth={selectedMonth}
+          onSelectMonth={setSelectedMonth}
+          onSelectTransactionForEdit={onSelectTransactionForEdit}
+          onOpenAddTransaction={onOpenAddTransaction}
+          isBangla={isBangla}
+        />
       )}
     </div>
   );
