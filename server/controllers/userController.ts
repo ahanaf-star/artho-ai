@@ -310,7 +310,7 @@ export async function getWalletAccounts(req: Request, res: Response) {
  */
 export async function addWalletAccount(req: Request, res: Response) {
   const { id } = req.params;
-  const { accountType, provider, displayName, accountNumber, balance, notes } = req.body;
+  const { accountType, provider, displayName, accountNumber, currency, balance, notes } = req.body;
 
   const authUser = (req as any).user;
   if (authUser) {
@@ -339,6 +339,8 @@ export async function addWalletAccount(req: Request, res: Response) {
     parsedBalance = num;
   }
 
+  const accountCurrency = currency && typeof currency === 'string' ? normalizeCurrency(currency) : 'BDT';
+
   const newAccount = {
     id: `wlt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     userId: id,
@@ -346,6 +348,7 @@ export async function addWalletAccount(req: Request, res: Response) {
     provider: provider.trim(),
     displayName: displayName ? String(displayName).trim() : '',
     accountNumber: accountNumber ? String(accountNumber).trim() : '',
+    currency: accountCurrency,
     balance: parsedBalance !== undefined ? parsedBalance : 0,
     notes: notes ? String(notes).trim() : '',
     createdAt: new Date().toISOString(),
@@ -418,6 +421,14 @@ export async function updateWalletAccount(req: Request, res: Response) {
     return res.status(400).json({ error: 'Provider / Institution name cannot be empty' });
   }
 
+  if (updates.currency !== undefined) {
+    if (typeof updates.currency === 'string' && isValidCurrency(updates.currency)) {
+      updates.currency = normalizeCurrency(updates.currency);
+    } else {
+      delete updates.currency;
+    }
+  }
+
   if (!isDbConnected()) {
     const list = fallbackWalletsByUser.get(id) || [];
     const idx = list.findIndex((a) => a.id === accountId);
@@ -457,6 +468,7 @@ export async function updateWalletAccount(req: Request, res: Response) {
     if (updates.provider !== undefined) account.provider = String(updates.provider).trim();
     if (updates.displayName !== undefined) account.displayName = String(updates.displayName).trim();
     if (updates.accountNumber !== undefined) account.accountNumber = String(updates.accountNumber).trim();
+    if (updates.currency !== undefined) account.currency = updates.currency;
     if (updates.balance !== undefined) account.balance = Number(updates.balance);
     if (updates.notes !== undefined) account.notes = String(updates.notes).trim();
     account.updatedAt = new Date().toISOString();

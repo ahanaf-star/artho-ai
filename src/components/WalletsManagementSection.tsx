@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { WalletAccount } from '../types/financial';
-import { formatCurrency, convertAmount, normalizeCurrencyCode } from '../services/currencyService';
+import {
+  formatCurrency,
+  convertAmount,
+  normalizeCurrencyCode,
+  SUPPORTED_CURRENCIES,
+  getCurrencyConfig,
+} from '../services/currencyService';
 import { apiService } from '../services/apiService';
 
 export const COMMON_PROVIDERS = [
@@ -53,27 +59,27 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
   const [editingAccount, setEditingAccount] = useState<WalletAccount | null>(null);
   const [deletingAccount, setDeletingAccount] = useState<WalletAccount | null>(null);
 
+  const displayCurrency = normalizeCurrencyCode(currency);
+
   // Form State
   const [accountType, setAccountType] = useState<string>('Mobile Financial Service (MFS)');
   const [providerSelect, setProviderSelect] = useState<string>('bKash');
   const [customProvider, setCustomProvider] = useState<string>('');
   const [displayName, setDisplayName] = useState<string>('');
   const [accountNumber, setAccountNumber] = useState<string>('');
+  const [accountCurrency, setAccountCurrency] = useState<string>(displayCurrency);
   const [balance, setBalance] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [formError, setFormError] = useState<string | null>(null);
 
-  const displayCurrency = normalizeCurrencyCode(currency);
-  const formatMoney = (amountInBDT: number) => {
-    const converted = convertAmount(amountInBDT, 'BDT', displayCurrency);
-    return formatCurrency(converted, displayCurrency);
-  };
-
-  // Compute total of accounts with known, non-negative balances
+  // Compute total of accounts converted to active display currency
   const accountsWithBalance = walletAccounts.filter(
     (a) => a.balance !== undefined && a.balance !== null && !isNaN(a.balance)
   );
-  const totalManualBalance = accountsWithBalance.reduce((sum, a) => sum + (a.balance || 0), 0);
+  const totalManualBalance = accountsWithBalance.reduce((sum, a) => {
+    const accCurr = normalizeCurrencyCode(a.currency || 'BDT');
+    return sum + convertAmount(a.balance || 0, accCurr, displayCurrency);
+  }, 0);
 
   const openAddModal = () => {
     setEditingAccount(null);
@@ -82,6 +88,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
     setCustomProvider('');
     setDisplayName('');
     setAccountNumber('');
+    setAccountCurrency(displayCurrency);
     setBalance('');
     setNotes('');
     setFormError(null);
@@ -103,6 +110,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
 
     setDisplayName(account.displayName || '');
     setAccountNumber(account.accountNumber || '');
+    setAccountCurrency(normalizeCurrencyCode(account.currency || displayCurrency));
     setBalance(account.balance !== undefined && account.balance !== null ? account.balance.toString() : '');
     setNotes(account.notes || '');
     setFormError(null);
@@ -148,6 +156,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
         provider: effectiveProvider,
         displayName: displayName.trim() || undefined,
         accountNumber: accountNumber.trim() || undefined,
+        currency: accountCurrency,
         balance: parsedBalance,
         notes: notes.trim() || undefined,
         updatedAt: new Date().toISOString(),
@@ -172,6 +181,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
         provider: effectiveProvider,
         displayName: displayName.trim() || undefined,
         accountNumber: accountNumber.trim() || undefined,
+        currency: accountCurrency,
         balance: parsedBalance,
         notes: notes.trim() || undefined,
         createdAt: new Date().toISOString(),
@@ -281,7 +291,9 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
               <span className="text-outline text-[11px] uppercase tracking-wider font-semibold">
                 {isBangla ? 'ম্যানুয়াল মোট:' : 'Manual Total:'}
               </span>
-              <span className="font-bold text-secondary font-mono">{formatMoney(totalManualBalance)}</span>
+              <span className="font-bold text-secondary font-mono">
+                {formatCurrency(totalManualBalance, displayCurrency)}
+              </span>
             </div>
           )}
 
@@ -325,6 +337,14 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
         <div className="divide-y divide-outline-variant/15">
           {walletAccounts.map((acc) => {
             const maskedId = maskAccountIdentifier(acc.accountNumber);
+            const accCurrency = normalizeCurrencyCode(acc.currency || 'BDT');
+            const isDifferentFromDisplay = accCurrency !== displayCurrency;
+            const convertedToDisplay =
+              acc.balance !== undefined && acc.balance !== null
+                ? convertAmount(acc.balance, accCurrency, displayCurrency)
+                : null;
+            const currConfig = getCurrencyConfig(accCurrency);
+
             return (
               <div
                 key={acc.id}
@@ -346,6 +366,9 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">
                         {acc.accountType}
                       </span>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-secondary-container/50 text-on-secondary-container border border-secondary/20 font-mono">
+                        {currConfig.flag} {accCurrency}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 text-xs text-outline flex-wrap font-mono">
                       {maskedId && <span>A/C {maskedId}</span>}
@@ -365,8 +388,16 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
                     {acc.balance !== undefined && acc.balance !== null ? (
                       <>
                         <span className="font-title-md text-sm text-on-surface font-bold font-mono">
-                          {formatMoney(acc.balance)}
+                          {formatCurrency(acc.balance, accCurrency)}
                         </span>
+                        {isDifferentFromDisplay && convertedToDisplay !== null && (
+                          <span
+                            className="text-[11px] text-secondary font-medium font-mono"
+                            title={`${accCurrency} converted to ${displayCurrency}`}
+                          >
+                            ≈ {formatCurrency(convertedToDisplay, displayCurrency)}
+                          </span>
+                        )}
                         <span className="text-[10px] text-outline">
                           {isBangla ? 'ম্যানুয়াল ব্যালেন্স' : 'Manual Balance'}
                         </span>
@@ -524,31 +555,60 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
                 </p>
               </div>
 
-              {/* Current Balance */}
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                  {isBangla ? 'বর্তমান ব্যালেন্স (BDT, ঐচ্ছিক)' : 'Current Balance (BDT, Optional)'}
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-secondary">
-                    ৳
-                  </span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    value={balance}
-                    onChange={(e) => setBalance(e.target.value)}
-                    placeholder="e.g. 15000"
-                    className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary font-mono"
-                  />
+              {/* Account Currency & Current Balance */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Account Currency */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-outline uppercase tracking-wider">
+                    {isBangla ? 'অ্যাকাউন্টের মুদ্রা' : 'Account Currency'} *
+                  </label>
+                  <select
+                    value={accountCurrency}
+                    onChange={(e) => setAccountCurrency(normalizeCurrencyCode(e.target.value))}
+                    className="p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary cursor-pointer"
+                  >
+                    {SUPPORTED_CURRENCIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.flag} {c.code} ({c.displaySymbol}) — {isBangla ? c.nameBn : c.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <p className="text-[11px] text-outline">
-                  {isBangla
-                    ? 'এটি আপনার দেওয়া ম্যানুয়াল হিসাব; কোনো অফিসিয়াল ব্যাংক কানেকশন দাবি করা হয় না।'
-                    : 'Manually maintained for personal tracking; not an automated bank integration.'}
-                </p>
+
+                {/* Current Balance */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-outline uppercase tracking-wider">
+                    {isBangla
+                      ? `বর্তমান ব্যালেন্স (${accountCurrency}, ঐচ্ছিক)`
+                      : `Current Balance (${accountCurrency}, Optional)`}
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-secondary pointer-events-none select-none">
+                      {getCurrencyConfig(accountCurrency).displaySymbol}
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={balance}
+                      onChange={(e) => setBalance(e.target.value)}
+                      placeholder={
+                        accountCurrency === 'JPY'
+                          ? '50000'
+                          : accountCurrency === 'USD' || accountCurrency === 'EUR' || accountCurrency === 'GBP' || accountCurrency === 'CAD' || accountCurrency === 'AUD'
+                          ? '1500'
+                          : '15000'
+                      }
+                      className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary font-mono"
+                    />
+                  </div>
+                </div>
               </div>
+              <p className="text-[11px] text-outline">
+                {isBangla
+                  ? 'ব্যালেন্স নির্বাচিত মুদ্রায় সংরক্ষিত হবে এবং অ্যাপের মূল মুদ্রায় স্বয়ংক্রিয়ভাবে রূপান্তরিত হবে।'
+                  : 'Balances in foreign currencies are automatically converted using live exchange rates in summaries.'}
+              </p>
 
               {/* Notes */}
               <div className="flex flex-col gap-1">
@@ -638,3 +698,4 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
     </div>
   );
 };
+

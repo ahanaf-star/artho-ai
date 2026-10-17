@@ -95,6 +95,7 @@ export interface WalletAccount {
   provider: string;
   displayName?: string;
   accountNumber?: string;
+  currency?: string;
   balance?: number;
   notes?: string;
   createdAt?: string;

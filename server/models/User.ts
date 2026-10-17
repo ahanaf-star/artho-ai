@@ -30,6 +30,7 @@ export interface IUser extends Document {
     provider: string;
     displayName?: string;
     accountNumber?: string;
+    currency?: string;
     balance?: number;
     notes?: string;
     createdAt?: string;
@@ -143,6 +144,7 @@ const UserSchema = new Schema<IUser>(
         provider: { type: String, required: true },
         displayName: { type: String, default: '' },
         accountNumber: { type: String, default: '' },
+        currency: { type: String, default: 'BDT' },
         balance: { type: Number, default: 0 },
         notes: { type: String, default: '' },
         createdAt: { type: String },

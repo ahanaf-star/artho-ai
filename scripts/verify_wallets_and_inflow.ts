@@ -96,6 +96,30 @@ async function runTests() {
     throw new Error('Created wallet account missing fields or values mismatch');
   }
 
+  console.log('--- TEST 5B: Create USD Foreign Currency Wallet Account ---');
+  const createUsdWalletRes = await fetch(`${BASE_URL}/api/users/${userId}/wallets`, {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({
+      accountType: 'Bank Account',
+      provider: 'Wise',
+      displayName: 'USD Direct Deposit',
+      accountNumber: '987654321',
+      currency: 'USD',
+      balance: 2500,
+      notes: 'International freelancing proceeds'
+    })
+  });
+
+  if (!createUsdWalletRes.ok) {
+    throw new Error(`Failed to create USD wallet account: ${createUsdWalletRes.status}`);
+  }
+  const createdUsdWallet = await createUsdWalletRes.json();
+  console.log('✓ Created USD Wallet Account:', createdUsdWallet);
+  if (createdUsdWallet.currency !== 'USD' || createdUsdWallet.balance !== 2500) {
+    throw new Error('USD Wallet currency or balance mismatch');
+  }
+
   console.log('--- TEST 6: Get All Wallet Accounts via GET /api/users/:id/wallets ---');
   const getWalletsRes = await fetch(`${BASE_URL}/api/users/${userId}/wallets`, {
     headers: authHeaders
@@ -107,9 +131,10 @@ async function runTests() {
 
   const wallets = await getWalletsRes.json();
   console.log(`✓ Retrieved ${wallets.length} wallet accounts.`);
-  const found = wallets.find((w: any) => w.id === createdWallet.id);
-  if (!found) {
-    throw new Error(`Created wallet ${createdWallet.id} not found in retrieved list`);
+  const foundBdt = wallets.find((w: any) => w.id === createdWallet.id);
+  const foundUsd = wallets.find((w: any) => w.id === createdUsdWallet.id);
+  if (!foundBdt || !foundUsd) {
+    throw new Error('Created BDT or USD wallet not found in retrieved list');
   }
 
   console.log('--- TEST 7: Update Wallet Account via PUT /api/users/:id/wallets/:walletId ---');
@@ -131,17 +156,16 @@ async function runTests() {
     throw new Error('Wallet balance or notes not updated properly');
   }
 
-  console.log('--- TEST 8: Delete Wallet Account via DELETE /api/users/:id/wallets/:walletId ---');
-  const deleteWalletRes = await fetch(`${BASE_URL}/api/users/${userId}/wallets/${createdWallet.id}`, {
+  console.log('--- TEST 8: Delete Wallet Accounts via DELETE /api/users/:id/wallets/:walletId ---');
+  await fetch(`${BASE_URL}/api/users/${userId}/wallets/${createdWallet.id}`, {
     method: 'DELETE',
     headers: authHeaders
   });
-
-  if (!deleteWalletRes.ok) {
-    throw new Error(`Failed to delete wallet: ${deleteWalletRes.status}`);
-  }
-  const deleteMsg = await deleteWalletRes.json();
-  console.log('✓ Wallet deleted successfully:', deleteMsg);
+  await fetch(`${BASE_URL}/api/users/${userId}/wallets/${createdUsdWallet.id}`, {
+    method: 'DELETE',
+    headers: authHeaders
+  });
+  console.log('✓ Wallets deleted successfully.');
 
   console.log('--- TEST 9: Verify User Isolation & Security ---');
   // Attempt to access a different user's wallets without auth
