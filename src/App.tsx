@@ -121,10 +121,7 @@ export default function App() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [coachPreQuery, setCoachPreQuery] = useState<string | undefined>(undefined);
 
-  const [isBangla, setIsBangla] = useState<boolean>(() => {
-    const user = authService.getCurrentUser();
-    return user?.preferredLanguage === 'bn';
-  });
+  const [isBangla, setIsBangla] = useState<boolean>(false);
 
   // User-scoped Financial State (empty when unauthenticated)
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
@@ -248,9 +245,6 @@ export default function App() {
   // When user signs in or changes, reload user-specific data
   const handleAuthenticated = async (session: AuthSession) => {
     setCurrentUser(session.user);
-    if (session.user.preferredLanguage === 'bn') {
-      setIsBangla(true);
-    }
     const userTxs = financialDataService.getTransactions(session.user.id);
     const userGoals = financialDataService.getGoals(session.user.id);
     setTransactions(userTxs);

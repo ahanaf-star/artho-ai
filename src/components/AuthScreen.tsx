@@ -89,29 +89,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         </button>
       )}
 
-      {/* Language Switch floating top-right */}
-      <div className="absolute top-6 right-6 inline-flex p-0.5 rounded-full bg-surface-container-low text-on-surface shadow-xs border border-outline-variant/30">
-        <button
-          type="button"
-          onClick={() => onToggleBangla(false)}
-          className={`px-3 py-1 rounded-full font-label-sm text-label-sm font-semibold transition-all ${!isBangla
-              ? 'bg-surface-container-lowest shadow-sm text-on-surface'
-              : 'text-on-surface-variant hover:text-on-surface'
-            }`}
-        >
-          EN
-        </button>
-        <button
-          type="button"
-          onClick={() => onToggleBangla(true)}
-          className={`px-3 py-1 rounded-full font-label-sm text-label-sm font-semibold transition-all ${isBangla
-              ? 'bg-surface-container-lowest shadow-sm text-on-surface'
-              : 'text-on-surface-variant hover:text-on-surface'
-            }`}
-        >
-          বাং
-        </button>
-      </div>
+
 
       <div className="w-full max-w-md flex flex-col gap-6">
         {/* Brand Header */}

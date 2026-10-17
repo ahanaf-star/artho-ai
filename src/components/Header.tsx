@@ -26,11 +26,9 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const searchRef = useRef<HTMLDivElement>(null);
-  const notifRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Close popovers on outside click
@@ -38,9 +36,6 @@ export const Header: React.FC<HeaderProps> = ({
     function handleClickOutside(e: MouseEvent) {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setIsSearchOpen(false);
-      }
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
-        setShowNotifications(false);
       }
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setShowUserMenu(false);
@@ -214,30 +209,6 @@ export const Header: React.FC<HeaderProps> = ({
           <span>{isBangla ? 'হোম' : 'Home'}</span>
         </button>
 
-        {/* Language switch */}
-        <div className="inline-flex p-0.5 rounded-full bg-surface-container-low text-on-surface">
-          <button
-            onClick={() => onToggleBangla(false)}
-            className={`px-2.5 py-1 rounded-full font-label-sm text-label-sm font-semibold transition-all ${
-              !isBangla
-                ? 'bg-surface-container-lowest shadow-sm text-on-surface'
-                : 'text-on-surface-variant hover:text-on-surface'
-            }`}
-          >
-            EN
-          </button>
-          <button
-            onClick={() => onToggleBangla(true)}
-            className={`px-2.5 py-1 rounded-full font-label-sm text-label-sm font-semibold transition-all ${
-              isBangla
-                ? 'bg-surface-container-lowest shadow-sm text-on-surface'
-                : 'text-on-surface-variant hover:text-on-surface'
-            }`}
-          >
-            বাং
-          </button>
-        </div>
-
         {/* Ask ArthoBachao AI Action Button */}
         <button
           onClick={() => onNavigate('ai-coach')}
@@ -250,104 +221,6 @@ export const Header: React.FC<HeaderProps> = ({
             {isBangla ? 'পরামর্শ নিন' : 'Ask ArthoBachao AI'}
           </span>
         </button>
-
-        {/* Notifications Popover */}
-        <div className="relative" ref={notifRef}>
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="relative p-2 rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors"
-            title="Notifications & Insights"
-          >
-            <span className="material-symbols-outlined text-[22px]">notifications</span>
-            <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-error text-on-error font-label-sm text-[10px] flex items-center justify-center font-bold">
-              3
-            </span>
-          </button>
-
-          {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-surface-container-lowest shadow-2xl border border-outline-variant/30 p-space-md z-50 flex flex-col gap-3">
-              <div className="flex items-center justify-between pb-2 border-b border-outline-variant/20">
-                <span className="font-title-md text-title-md text-on-surface">
-                  Notifications &amp; AI Alerts
-                </span>
-                <span className="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-bold">
-                  3 New
-                </span>
-              </div>
-              <div className="flex flex-col gap-2">
-                <div
-                  onClick={() => {
-                    onNavigate('spending-analysis');
-                    setShowNotifications(false);
-                  }}
-                  className="p-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors flex items-start gap-2"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-error-container/60 text-error flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="material-symbols-outlined text-[18px]">trending_up</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-on-surface">
-                      Food &amp; Dining Surge (+14%)
-                    </span>
-                    <span className="text-[11px] text-on-surface-variant">
-                      Weekend deliveries reached ৳8,200. Review recommended budget cap.
-                    </span>
-                  </div>
-                </div>
-
-                <div
-                  onClick={() => {
-                    onNavigate('cash-flow-forecast');
-                    setShowNotifications(false);
-                  }}
-                  className="p-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors flex items-start gap-2"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="material-symbols-outlined text-[18px]">event</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-on-surface">
-                      Pressure Zone on Oct 27
-                    </span>
-                    <span className="text-[11px] text-on-surface-variant">
-                      Rent ৳16,000 + utilities due in 13 days. Lock ৳4,500 buffer.
-                    </span>
-                  </div>
-                </div>
-
-                <div
-                  onClick={() => {
-                    onNavigate('ai-coach');
-                    setShowNotifications(false);
-                  }}
-                  className="p-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors flex items-start gap-2"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="material-symbols-outlined text-[18px]">lightbulb</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-on-surface">
-                      Save ৳420 on MFS Fees
-                    </span>
-                    <span className="text-[11px] text-on-surface-variant">
-                      Switch bKash cashouts to City Bank ATMs to avoid 1.85% fee.
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={() => {
-                  onNavigate('insights-alerts');
-                  setShowNotifications(false);
-                }}
-                className="w-full py-2 rounded-xl bg-surface-container text-on-surface text-xs font-semibold hover:bg-surface-container-high transition-colors"
-              >
-                View All Alerts &amp; History
-              </button>
-            </div>
-          )}
-        </div>
 
         {/* User Profile Avatar with Dropdown */}
         <div className="relative" ref={userMenuRef}>

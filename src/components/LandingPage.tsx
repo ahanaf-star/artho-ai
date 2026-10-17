@@ -79,31 +79,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Language Switch */}
-          <div className="inline-flex p-0.5 rounded-full bg-surface-container-low text-on-surface border border-outline-variant/30 text-xs">
-            <button
-              type="button"
-              onClick={() => onToggleBangla(false)}
-              className={`px-2.5 py-1 rounded-full font-label-sm font-semibold transition-all ${
-                !isBangla
-                  ? 'bg-surface-container-lowest shadow-xs text-on-surface'
-                  : 'text-on-surface-variant hover:text-on-surface'
-              }`}
-            >
-              EN
-            </button>
-            <button
-              type="button"
-              onClick={() => onToggleBangla(true)}
-              className={`px-2.5 py-1 rounded-full font-label-sm font-semibold transition-all ${
-                isBangla
-                  ? 'bg-surface-container-lowest shadow-xs text-on-surface'
-                  : 'text-on-surface-variant hover:text-on-surface'
-              }`}
-            >
-              বাং
-            </button>
-          </div>
 
           {isAuthenticated ? (
             <button
