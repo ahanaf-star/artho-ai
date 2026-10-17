@@ -142,23 +142,143 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
     }
   };
 
+  const renderIntroBox = () => (
+    <div className="rounded-2xl bg-surface-container-lowest p-space-lg shadow-sm border border-outline-variant/20 relative overflow-hidden">
+      {/* Subtle decorative background accent */}
+      <div className="absolute -right-16 -top-16 w-48 h-48 rounded-full bg-secondary-container/20 blur-2xl pointer-events-none"></div>
+
+      <div className="relative">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="w-2 h-2 rounded-full bg-secondary"></span>
+          <span className="font-label-sm text-label-sm font-bold uppercase tracking-wider text-secondary">
+            {isBangla ? 'সেভিংস গাইড' : 'Savings Guide'}
+          </span>
+        </div>
+        <h2 className="font-title-lg sm:font-headline-sm text-title-lg sm:text-headline-sm text-on-surface font-bold tracking-tight">
+          {isBangla ? 'আপনার সঞ্চয় পরিকল্পনা করুন, লক্ষ্য অর্জন করুন' : 'Plan Your Savings, Achieve Your Goals'}
+        </h2>
+        <p className="font-body-md text-body-md text-on-surface-variant mt-1.5 max-w-3xl leading-relaxed">
+          {isBangla
+            ? 'সেভিংস গোল আপনাকে আপনার জন্য গুরুত্বপূর্ণ বিষয়গুলোর জন্য অর্থ পরিকল্পনা ও ট্র্যাক করতে সাহায্য করে। একটি লক্ষ্য পরিমাণ নির্ধারণ করুন, একটি নির্দিষ্ট তারিখ বেছে নিন এবং সঞ্চয় করার সাথে সাথে আপনার অগ্রগতি ট্র্যাক করুন।'
+            : 'Savings Goals helps you plan and track money for the things that matter to you. Set a target amount, choose a target date, and track your progress as you save.'}
+        </p>
+
+        {/* Three Steps Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-space-md mt-space-md">
+          {/* Step 1 */}
+          <div className="rounded-xl bg-surface-container-low/50 p-space-md border border-outline-variant/20 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2.5 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[18px]">flag</span>
+                </div>
+                <div>
+                  <span className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-secondary block leading-none">
+                    {isBangla ? 'ধাপ ১' : 'STEP 1'}
+                  </span>
+                  <h3 className="font-title-md text-title-md font-bold text-on-surface leading-tight mt-0.5">
+                    {isBangla ? 'লক্ষ্য নির্ধারণ করুন' : 'Set Your Goal'}
+                  </h3>
+                </div>
+              </div>
+              <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                {isBangla
+                  ? 'আপনি কিসের জন্য সঞ্চয় করছেন তা বেছে নিন, যেমন ল্যাপটপ, জরুরি তহবিল, শিক্ষা বা ভ্রমণ।'
+                  : 'Choose what you are saving for, such as a laptop, emergency fund, education, or a trip.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Step 2 */}
+          <div className="rounded-xl bg-surface-container-low/50 p-space-md border border-outline-variant/20 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2.5 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[18px]">calendar_today</span>
+                </div>
+                <div>
+                  <span className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-secondary block leading-none">
+                    {isBangla ? 'ধাপ ২' : 'STEP 2'}
+                  </span>
+                  <h3 className="font-title-md text-title-md font-bold text-on-surface leading-tight mt-0.5">
+                    {isBangla ? 'টার্গেট সেট করুন' : 'Set Your Target'}
+                  </h3>
+                </div>
+              </div>
+              <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                {isBangla
+                  ? 'আপনি যে পরিমাণ সঞ্চয় করতে চান এবং আপনার লক্ষ্য তারিখ লিখুন।'
+                  : 'Enter the amount you want to save and your target date.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Step 3 */}
+          <div className="rounded-xl bg-surface-container-low/50 p-space-md border border-outline-variant/20 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2.5 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[18px]">trending_up</span>
+                </div>
+                <div>
+                  <span className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-secondary block leading-none">
+                    {isBangla ? 'ধাপ ৩' : 'STEP 3'}
+                  </span>
+                  <h3 className="font-title-md text-title-md font-bold text-on-surface leading-tight mt-0.5">
+                    {isBangla ? 'অগ্রগতি ট্র্যাক করুন' : 'Track Your Progress'}
+                  </h3>
+                </div>
+              </div>
+              <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                {isBangla
+                  ? 'আপনি সঞ্চয় জমা করার সাথে সাথে আপনার সঞ্চয় আপডেট করুন এবং লক্ষ্য অর্জনের কতটা কাছাকাছি আছেন তা পর্যবেক্ষণ করুন।'
+                  : 'Update your savings as you contribute and monitor how close you are to reaching your target.'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Helpful Note / Tip */}
+        <div className="mt-space-md p-3.5 rounded-xl bg-secondary-container/20 border border-secondary/20 flex items-start gap-2.5 text-on-surface">
+          <span className="material-symbols-outlined text-[20px] text-secondary shrink-0 mt-0.5">
+            lightbulb
+          </span>
+          <p className="font-body-sm text-body-sm text-on-surface leading-relaxed">
+            <strong className="text-secondary font-semibold">
+              {isBangla ? 'পরামর্শ: ' : 'Tip: '}
+            </strong>
+            {isBangla
+              ? 'বাস্তবসম্মত লক্ষ্য নির্ধারণ করুন এবং নিয়মিত সঞ্চয় করুন। আপনার অগ্রগতি যেন আপনার প্রকৃত সঞ্চয়কে প্রতিফলিত করে।'
+              : 'Set realistic targets and contribute regularly. Your progress should reflect your actual savings.'}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
   if (!heroGoal) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 rounded-3xl bg-surface-container-lowest border border-outline-variant/30 text-center max-w-lg mx-auto my-12 shadow-sm">
-        <div className="w-16 h-16 rounded-2xl bg-secondary-container text-on-secondary-container flex items-center justify-center text-3xl mb-4 shadow-sm">
-          🛡️
-        </div>
-        <h3 className="font-headline-md text-2xl font-bold text-on-surface">No Savings Goals Active</h3>
-        <p className="font-body-md text-on-surface-variant mt-2 max-w-sm">
-          You currently have no active goals in your savings vault. Create your first goal or restore starter demo targets.
-        </p>
-        <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
-          <button
-            onClick={onOpenCreateGoal}
-            className="px-6 py-2.5 bg-primary text-on-primary font-title-md rounded-xl shadow-sm hover:opacity-95 active:scale-95"
-          >
-            + Create New Goal
-          </button>
+      <div className="flex flex-col w-full gap-space-lg pb-space-xl">
+        {/* Savings Goals Introduction Box */}
+        {renderIntroBox()}
+
+        {/* Existing No Savings Goals Active empty state */}
+        <div className="flex flex-col items-center justify-center p-12 rounded-3xl bg-surface-container-lowest border border-outline-variant/30 text-center max-w-lg mx-auto my-4 shadow-sm">
+          <div className="w-16 h-16 rounded-2xl bg-secondary-container text-on-secondary-container flex items-center justify-center text-3xl mb-4 shadow-sm">
+            🛡️
+          </div>
+          <h3 className="font-headline-md text-2xl font-bold text-on-surface">No Savings Goals Active</h3>
+          <p className="font-body-md text-on-surface-variant mt-2 max-w-sm">
+            You currently have no active goals in your savings vault. Create your first goal or restore starter demo targets.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
+            <button
+              onClick={onOpenCreateGoal}
+              className="px-6 py-2.5 bg-primary text-on-primary font-title-md rounded-xl shadow-sm hover:opacity-95 active:scale-95"
+            >
+              + Create New Goal
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -230,6 +350,9 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Savings Goals Introduction Box */}
+      {renderIntroBox()}
 
       {/* Main Workspace Layout */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-space-lg items-start">
