@@ -50,7 +50,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Dynamic calculations based on live synthetic state
   const activeMonth = getLatestTransactionMonth(transactions);
   const overview = calculateMonthlyOverview(transactions, activeMonth);
-  const healthMetrics = calculateFinancialHealthScore(transactions, goals, user.monthlyIncome, activeMonth);
+  const healthMetrics = calculateFinancialHealthScore(
+    transactions,
+    goals,
+    user.monthlyIncome,
+    activeMonth,
+    user.monthlyIncomeCurrency
+  );
 
   const userCurrency = normalizeCurrencyCode(user?.currency);
   const formatMoney = (amountInBDT: number, opts?: { decimals?: number; roundWhole?: boolean }) => {

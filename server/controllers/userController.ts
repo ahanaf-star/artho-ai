@@ -128,6 +128,8 @@ export async function updateUser(req: Request, res: Response) {
       });
     }
     updates.monthlyIncome = num;
+  } else if (updates.monthlyIncome === '' || updates.monthlyIncome === null) {
+    updates.monthlyIncome = null;
   }
 
   const authUser = (req as any).user;
@@ -145,7 +147,10 @@ export async function updateUser(req: Request, res: Response) {
   }
 
   if (!isDbConnected()) {
-    // If DB is offline, return synthetic updated object for demo
+    // If DB is offline, update in-memory object and return synthetic updated object for demo
+    if (id === 'usr-ahmed-01' || id === INITIAL_USER.email) {
+      Object.assign(INITIAL_USER, updates);
+    }
     return res.json({
       ...(id === 'usr-ahmed-01' ? INITIAL_USER : {}),
       ...updates,

@@ -667,7 +667,13 @@ export default function App() {
   }
 
   // Calculate health metrics for current user
-  const healthMetrics = calculateFinancialHealthScore(transactions, goals, currentUser.monthlyIncome);
+  const healthMetrics = calculateFinancialHealthScore(
+    transactions,
+    goals,
+    currentUser.monthlyIncome,
+    undefined,
+    currentUser.monthlyIncomeCurrency
+  );
 
   // Authenticated user view routing: never render blank if screen is login/signup or unrecognized
   const resolvedScreen: NavScreen =

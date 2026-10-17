@@ -1,5 +1,7 @@
 import { maskAccountIdentifier, COMMON_PROVIDERS, ACCOUNT_TYPES } from '../src/components/WalletsManagementSection';
 import { SUPPORTED_CURRENCIES, convertAmount, normalizeCurrencyCode } from '../src/services/currencyService';
+import { calculateFinancialHealthScore } from '../src/services/financialCalculations';
+import { Transaction, SavingsGoal } from '../src/types/financial';
 
 async function runTests() {
   console.log('=== TEST 1: Unit Test maskAccountIdentifier ===');
@@ -20,15 +22,31 @@ async function runTests() {
   }
   console.log('✓ maskAccountIdentifier tests passed successfully.');
 
-  console.log('=== TEST 2: Supported Currencies & Providers Verification ===');
-  const expectedCurrencies = ['BDT', 'USD', 'EUR', 'GBP', 'INR', 'AUD', 'CAD', 'JPY', 'SAR'];
-  const availableCodes = SUPPORTED_CURRENCIES.map((c) => c.code);
-  for (const code of expectedCurrencies) {
-    if (!availableCodes.includes(code)) {
-      throw new Error(`Missing expected currency in SUPPORTED_CURRENCIES: ${code}`);
+  console.log('=== TEST 2: Supported Currencies & Exact Display Formats Verification ===');
+  const requiredCurrencies = [
+    { code: 'BDT', display: 'Bangladeshi Taka (৳)' },
+    { code: 'USD', display: 'US Dollar ($)' },
+    { code: 'EUR', display: 'Euro (€)' },
+    { code: 'GBP', display: 'British Pound (£)' },
+    { code: 'INR', display: 'Indian Rupee (₹)' },
+    { code: 'AUD', display: 'Australian Dollar (A$)' },
+    { code: 'CAD', display: 'Canadian Dollar (C$)' },
+    { code: 'JPY', display: 'Japanese Yen (¥)' },
+    { code: 'SAR', display: 'Saudi Riyal (SAR)' },
+  ];
+
+  for (const item of requiredCurrencies) {
+    const config = SUPPORTED_CURRENCIES.find((c) => c.code === item.code);
+    if (!config) {
+      throw new Error(`Missing expected currency in SUPPORTED_CURRENCIES: ${item.code}`);
+    }
+    const displayStr = `${config.name} (${config.displaySymbol})`;
+    if (displayStr !== item.display) {
+      throw new Error(`Currency display mismatch for ${item.code}: expected "${item.display}", got "${displayStr}"`);
     }
   }
-  console.log(`✓ All expected currencies available: ${availableCodes.join(', ')}`);
+  console.log(`✓ All 9 required currencies verified with exact display matching:`);
+  requiredCurrencies.forEach((c) => console.log(`   - ${c.code}: ${c.display}`));
 
   const BASE_URL = 'http://localhost:3000';
   const userId = 'usr-ahmed-01';
@@ -36,42 +54,79 @@ async function runTests() {
     'Content-Type': 'application/json',
   };
 
-  console.log('=== TEST 3: Monthly Inflow Baseline Multi-Currency Tests ===');
-  // A. Save Monthly Inflow with USD currency
-  const updateIncomeRes = await fetch(`${BASE_URL}/api/users/${userId}`, {
+  console.log('=== TEST 3: Monthly Inflow Baseline Multi-Currency & Persistence Tests ===');
+
+  // Initial user state check
+  const getUserRes = await fetch(`${BASE_URL}/api/users/${userId}`);
+  const initialUser = await getUserRes.json();
+  const initialDisplayCurrency = initialUser.currency || 'BDT';
+  console.log(`✓ User initial display currency: ${initialDisplayCurrency}`);
+
+  // A. Test BDT, USD, EUR, INR selections, saving, and reloading
+  const testCurrencyCases = [
+    { amount: 50000, currency: 'BDT' },
+    { amount: 3500, currency: 'USD' },
+    { amount: 3200, currency: 'EUR' },
+    { amount: 150000, currency: 'INR' },
+  ];
+
+  for (const tc of testCurrencyCases) {
+    const updateRes = await fetch(`${BASE_URL}/api/users/${userId}`, {
+      method: 'PUT',
+      headers: authHeaders,
+      body: JSON.stringify({
+        monthlyIncome: tc.amount,
+        monthlyIncomeCurrency: tc.currency,
+      }),
+    });
+    if (!updateRes.ok) {
+      throw new Error(`Failed to update baseline for ${tc.currency}: ${updateRes.status}`);
+    }
+    const updated = await updateRes.json();
+    if (updated.monthlyIncome !== tc.amount || updated.monthlyIncomeCurrency !== tc.currency) {
+      throw new Error(`Update mismatch for ${tc.currency}: expected amount ${tc.amount}, currency ${tc.currency}`);
+    }
+
+    // Reload from server (GET) to verify persistent reload
+    const reloadRes = await fetch(`${BASE_URL}/api/users/${userId}`);
+    const reloaded = await reloadRes.json();
+    if (reloaded.monthlyIncome !== tc.amount || reloaded.monthlyIncomeCurrency !== tc.currency) {
+      throw new Error(`Reload mismatch for ${tc.currency}: expected amount ${tc.amount}, currency ${tc.currency}`);
+    }
+    console.log(`✓ Persisted and reloaded baseline for ${tc.currency}: ${reloaded.monthlyIncome} ${reloaded.monthlyIncomeCurrency}`);
+  }
+
+  // B. Verify changing baseline currency does NOT change Display & Base Currency setting
+  const baselineCurrencyChangeRes = await fetch(`${BASE_URL}/api/users/${userId}`, {
     method: 'PUT',
     headers: authHeaders,
     body: JSON.stringify({
-      monthlyIncome: 3500,
+      monthlyIncome: 4000,
       monthlyIncomeCurrency: 'USD',
     }),
   });
-
-  if (!updateIncomeRes.ok) {
-    throw new Error(`Failed to update monthly inflow: ${updateIncomeRes.status}`);
+  const afterBaselineChange = await baselineCurrencyChangeRes.json();
+  if (afterBaselineChange.currency !== initialDisplayCurrency) {
+    throw new Error('Changing monthlyIncomeCurrency must not change Display & Base Currency preference');
   }
-  const updatedUser = await updateIncomeRes.json();
-  console.log(`✓ Monthly Inflow updated: amount = ${updatedUser.monthlyIncome}, currency = ${updatedUser.monthlyIncomeCurrency}`);
-  if (updatedUser.monthlyIncome !== 3500 || updatedUser.monthlyIncomeCurrency !== 'USD') {
-    throw new Error('Monthly inflow amount or currency did not persist as expected');
-  }
+  console.log(`✓ Changing baseline currency did not touch Display & Base Currency (${afterBaselineChange.currency}).`);
 
-  // B. Change currency independently without altering amount
-  const changeCurrencyRes = await fetch(`${BASE_URL}/api/users/${userId}`, {
+  // C. Verify changing currency does NOT silently alter the numeric amount
+  const switchCurrencyRes = await fetch(`${BASE_URL}/api/users/${userId}`, {
     method: 'PUT',
     headers: authHeaders,
     body: JSON.stringify({
-      monthlyIncome: 3500,
+      monthlyIncome: 4000,
       monthlyIncomeCurrency: 'EUR',
     }),
   });
-  const userAfterCurrencyChange = await changeCurrencyRes.json();
-  if (userAfterCurrencyChange.monthlyIncome !== 3500 || userAfterCurrencyChange.monthlyIncomeCurrency !== 'EUR') {
-    throw new Error('Currency change should preserve the exact numeric amount without accidental conversion');
+  const switchedUser = await switchCurrencyRes.json();
+  if (switchedUser.monthlyIncome !== 4000 || switchedUser.monthlyIncomeCurrency !== 'EUR') {
+    throw new Error('Switching baseline currency must preserve exact numeric amount (4000)');
   }
-  console.log(`✓ Currency changed to EUR independently; amount preserved at ${userAfterCurrencyChange.monthlyIncome}`);
+  console.log('✓ Switching currency preserved amount at 4000 without accidental conversion.');
 
-  // C. Test zero baseline value
+  // D. Test zero baseline value
   const zeroIncomeRes = await fetch(`${BASE_URL}/api/users/${userId}`, {
     method: 'PUT',
     headers: authHeaders,
@@ -86,7 +141,22 @@ async function runTests() {
   }
   console.log('✓ Zero monthly income baseline accepted.');
 
-  // D. Test negative value rejection
+  // E. Test empty/null baseline value (optional field)
+  const emptyIncomeRes = await fetch(`${BASE_URL}/api/users/${userId}`, {
+    method: 'PUT',
+    headers: authHeaders,
+    body: JSON.stringify({
+      monthlyIncome: null,
+      monthlyIncomeCurrency: 'USD',
+    }),
+  });
+  const userEmptyIncome = await emptyIncomeRes.json();
+  if (userEmptyIncome.monthlyIncome !== null && userEmptyIncome.monthlyIncome !== undefined) {
+    throw new Error('Empty monthly income should be accepted as null/unset');
+  }
+  console.log('✓ Empty baseline value saved successfully as null/unset.');
+
+  // F. Test negative value rejection
   const negativeIncomeRes = await fetch(`${BASE_URL}/api/users/${userId}`, {
     method: 'PUT',
     headers: authHeaders,
@@ -99,7 +169,20 @@ async function runTests() {
   }
   console.log('✓ Negative monthly income rejected with status 400.');
 
-  // E. Test invalid currency code rejection
+  // G. Test invalid string amount rejection
+  const invalidAmountRes = await fetch(`${BASE_URL}/api/users/${userId}`, {
+    method: 'PUT',
+    headers: authHeaders,
+    body: JSON.stringify({
+      monthlyIncome: 'invalid-not-a-number',
+    }),
+  });
+  if (invalidAmountRes.status !== 400) {
+    throw new Error(`Expected 400 Bad Request for invalid monthlyIncome string, got ${invalidAmountRes.status}`);
+  }
+  console.log('✓ Invalid string monthly income rejected with status 400.');
+
+  // H. Test invalid currency code rejection
   const invalidCurrencyRes = await fetch(`${BASE_URL}/api/users/${userId}`, {
     method: 'PUT',
     headers: authHeaders,
@@ -111,6 +194,49 @@ async function runTests() {
     throw new Error(`Expected 400 Bad Request for invalid currency, got ${invalidCurrencyRes.status}`);
   }
   console.log('✓ Invalid currency code rejected with status 400.');
+
+  // I. Test Financial Calculation Safety: calculateFinancialHealthScore with USD vs BDT
+  const dummyTx: Transaction = {
+    id: 'tx-test-1',
+    description: 'Test Grocery',
+    merchant: 'Super Shop',
+    amount: 10000,
+    category: 'Food & Groceries',
+    type: 'expense',
+    date: '2026-10-01',
+    account: 'bKash',
+    paymentMethod: 'bKash QR Direct',
+    classification: 'essential',
+  };
+  const dummyGoals: SavingsGoal[] = [
+    {
+      id: 'goal-emergency-1',
+      title: 'Emergency Fund',
+      targetAmount: 100000,
+      currentAmount: 50000,
+      deadline: '2027-12-31',
+      category: 'Emergency',
+      icon: 'savings',
+      monthlyPace: 5000,
+      accountVault: 'bKash',
+      status: 'On Track',
+    },
+  ];
+
+  // USD income $1,000 -> in BDT is approx ৳122,000 (well above ৳10,000 expense, resulting in positive savings rate)
+  const healthUSD = calculateFinancialHealthScore({
+    transactions: [dummyTx],
+    goals: dummyGoals,
+    monthlyIncome: 1000,
+    monthlyIncomeCurrency: 'USD',
+  });
+
+  // If USD was mistakenly treated as 1,000 BDT, expense of 10,000 BDT would mean severe deficit (effectiveIncome <= 0 or deficit)
+  const savingsComp = healthUSD.components?.find((c) => c.key === 'savings_rate');
+  if (!savingsComp || savingsComp.status === 'zero_income' || (savingsComp.score ?? 0) < 50) {
+    throw new Error(`USD $1,000 must be converted to BDT (~৳122,000) for health score calculation, but got score: ${savingsComp?.score}`);
+  }
+  console.log(`✓ Financial calculation safety verified: USD $1,000 properly converted to BDT for health calculation (savings rate score = ${savingsComp.score}/100).`);
 
   console.log('=== TEST 4: Wallets & Banking Accounts Multi-Currency CRUD ===');
   // A. Create BDT MFS account (bKash)

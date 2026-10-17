@@ -81,13 +81,20 @@ export const CategoryDetailsModal: React.FC<CategoryDetailsModalProps> = ({
   // Reusable dynamic calculation
   const details = useMemo(() => {
     if (!categoryName) return null;
+    const rawIncome = user?.monthlyIncome || 38500;
+    const incomeCurrency = user?.monthlyIncomeCurrency || 'BDT';
+    const effectiveIncome =
+      user?.monthlyIncome && incomeCurrency !== 'BDT'
+        ? convertAmount(rawIncome, incomeCurrency, 'BDT')
+        : rawIncome;
+
     return computeCategoryDetails(
       transactions,
       categoryName,
       activeMonth,
-      user?.monthlyIncome || 38500
+      effectiveIncome
     );
-  }, [transactions, categoryName, activeMonth, user?.monthlyIncome]);
+  }, [transactions, categoryName, activeMonth, user?.monthlyIncome, user?.monthlyIncomeCurrency]);
 
   if (!isOpen || !categoryName || !details) return null;
 

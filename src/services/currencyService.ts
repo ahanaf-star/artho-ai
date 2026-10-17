@@ -59,7 +59,7 @@ export const SUPPORTED_CURRENCIES: CurrencyConfig[] = [
   },
   {
     code: 'GBP',
-    name: 'Pound Sterling',
+    name: 'British Pound',
     nameBn: 'ব্রিটিশ পাউন্ড',
     symbol: '£',
     displaySymbol: '£',

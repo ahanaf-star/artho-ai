@@ -47,7 +47,8 @@ export const MonthlyReportModal: React.FC<MonthlyReportModalProps> = ({
     transactions,
     goals,
     user.monthlyIncome,
-    selectedMonth
+    selectedMonth,
+    user.monthlyIncomeCurrency
   );
 
   const userCurrency = normalizeCurrencyCode(user?.currency);

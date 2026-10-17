@@ -103,7 +103,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
       email: email.trim(),
       profileImage: profileImage.trim() || undefined,
       monthlyIncome: parsedIncome,
-      monthlyIncomeCurrency: parsedIncome !== undefined ? monthlyIncomeCurrency : undefined,
+      monthlyIncomeCurrency,
       currency,
     };
     onUpdateUser(updated);
@@ -255,16 +255,18 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
             <div className="flex items-center gap-2">
               {/* Currency Selector */}
               <select
+                id="monthlyIncomeCurrency"
+                aria-label="Monthly inflow baseline currency"
                 value={monthlyIncomeCurrency}
                 onChange={(e) => {
                   setMonthlyIncomeCurrency(normalizeCurrencyCode(e.target.value));
                 }}
-                className="w-32 sm:w-36 p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-body-md text-sm cursor-pointer shrink-0 font-medium"
+                className="w-44 sm:w-56 p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-body-md text-sm cursor-pointer shrink-0 font-medium"
                 title={isBangla ? 'আয়ের মুদ্রা নির্বাচন করুন' : 'Select baseline currency'}
               >
                 {SUPPORTED_CURRENCIES.map((c) => (
                   <option key={c.code} value={c.code}>
-                    {c.flag} {c.code} ({c.displaySymbol})
+                    {isBangla ? `${c.nameBn} (${c.displaySymbol})` : `${c.name} (${c.displaySymbol})`}
                   </option>
                 ))}
               </select>
@@ -275,6 +277,8 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
                   {getCurrencyConfig(monthlyIncomeCurrency).displaySymbol}
                 </span>
                 <input
+                  id="monthlyIncome"
+                  aria-label="Monthly inflow baseline amount"
                   type="number"
                   min="0"
                   step="any"
@@ -294,13 +298,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
                       }
                     }
                   }}
-                  placeholder={
-                    monthlyIncomeCurrency === 'JPY'
-                      ? '50000'
-                      : monthlyIncomeCurrency === 'USD' || monthlyIncomeCurrency === 'EUR' || monthlyIncomeCurrency === 'GBP' || monthlyIncomeCurrency === 'CAD' || monthlyIncomeCurrency === 'AUD'
-                      ? '3500'
-                      : '35000'
-                  }
+                  placeholder={isBangla ? 'যেমন: ৩৫০০০ (ঐচ্ছিক আয়)' : 'e.g. 35000 (Optional baseline)'}
                   className={`w-full pl-8 pr-3 py-3 rounded-xl border bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 font-body-md text-sm transition-all ${
                     monthlyIncomeError
                       ? 'border-error focus:ring-error text-error'
@@ -317,8 +315,8 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
             ) : (
               <span className="text-[11px] text-outline">
                 {isBangla
-                  ? `${monthlyIncomeCurrency} মুদ্রায় বাজেট এবং নগদ প্রবাহ হিসাবের ভিত্তি হিসেবে ব্যবহৃত হবে।`
-                  : `Denominated in ${monthlyIncomeCurrency}; used for liquidity buffer and cash flow projections.`}
+                  ? 'বাজেট এবং নগদ প্রবাহ হিসাবের ভিত্তি হিসেবে ব্যবহৃত হবে।'
+                  : 'Used for liquidity buffer and cash flow projections.'}
               </span>
             )}
           </div>

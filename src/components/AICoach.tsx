@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Transaction, SavingsGoal, CoachMessage, User } from '../types/financial';
 import { askFinancialCoach } from '../services/aiService';
+import { convertAmount } from '../services/currencyService';
 import { NavScreen } from './Sidebar';
 
 interface AICoachProps {
@@ -61,7 +62,12 @@ export const AICoach: React.FC<AICoachProps> = ({
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
 
   const effectiveUserName = user?.name || userName;
-  const effectiveIncome = monthlyIncome !== undefined ? monthlyIncome : user?.monthlyIncome;
+  const rawIncome = monthlyIncome !== undefined ? monthlyIncome : user?.monthlyIncome;
+  const incomeCurrency = user?.monthlyIncomeCurrency || 'BDT';
+  const effectiveIncome =
+    rawIncome !== undefined && rawIncome > 0 && incomeCurrency !== 'BDT'
+      ? convertAmount(rawIncome, incomeCurrency, 'BDT')
+      : rawIncome;
   const hasData = (transactions && transactions.length > 0) || (goals && goals.length > 0);
 
   // Initialize conversation stream with authentic data
