@@ -588,7 +588,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           onClick={() => onNavigate('dashboard')}
           className="mt-2 px-8 py-3.5 rounded-xl bg-secondary-container text-on-secondary-container font-title-lg font-bold hover:opacity-95 active:scale-95 transition-all shadow-md flex items-center gap-2"
         >
-          <span>{isBangla ? 'ড্যাশবোর্ডে প্রবেশ করুন' : 'Launch FinMate AI Dashboard'}</span>
+          <span>{isBangla ? 'ড্যাশবোর্ডে প্রবেশ করুন' : 'Launch ArthoBachao AI Dashboard'}</span>
           <span className="material-symbols-outlined text-[20px]">rocket_launch</span>
         </button>
       </section>
