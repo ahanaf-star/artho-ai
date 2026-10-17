@@ -404,13 +404,15 @@ export function calculateFinancialHealthScore(
   transactions: Transaction[],
   goals: SavingsGoal[],
   monthlyIncome?: number,
-  targetMonth?: string
+  targetMonth?: string,
+  monthlyIncomeCurrency?: string
 ): FinancialHealthMetrics;
 export function calculateFinancialHealthScore(
   arg1: Transaction[] | FinancialHealthInput,
   arg2?: SavingsGoal[],
   arg3?: number,
-  arg4?: string
+  arg4?: string,
+  arg5?: string
 ): FinancialHealthResult | FinancialHealthMetrics {
   const isInputObject = typeof arg1 === 'object' && !Array.isArray(arg1) && 'transactions' in arg1;
 
@@ -441,7 +443,9 @@ export function calculateFinancialHealthScore(
     }
     const effectiveIncome =
       typeof monthlyIncome === 'number' && !isNaN(monthlyIncome) && monthlyIncome > 0
-        ? monthlyIncome
+        ? (input.monthlyIncomeCurrency && input.monthlyIncomeCurrency !== 'BDT'
+            ? convertAmount(monthlyIncome, input.monthlyIncomeCurrency, 'BDT')
+            : monthlyIncome)
         : currentIncome;
 
     const components: HealthScoreComponent[] = [];
@@ -719,16 +723,18 @@ export function calculateFinancialHealthScore(
     };
   }
 
-  // Positional fallback for (transactions, goals, monthlyIncome, targetMonth)
+  // Positional fallback for (transactions, goals, monthlyIncome, targetMonth, monthlyIncomeCurrency)
   const transactions = (arg1 as Transaction[]) || [];
   const goals = arg2 || [];
   const monthlyIncome = arg3 !== undefined ? arg3 : 0;
   const targetMonth = arg4;
+  const monthlyIncomeCurrency = arg5;
 
   const result = calculateFinancialHealthScore({
     transactions,
     goals,
     monthlyIncome,
+    monthlyIncomeCurrency,
     asOfDate: targetMonth ? `${targetMonth}-01` : undefined,
   });
 

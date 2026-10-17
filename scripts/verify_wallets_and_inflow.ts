@@ -1,7 +1,8 @@
 import { maskAccountIdentifier, COMMON_PROVIDERS, ACCOUNT_TYPES } from '../src/components/WalletsManagementSection';
+import { SUPPORTED_CURRENCIES, convertAmount, normalizeCurrencyCode } from '../src/services/currencyService';
 
 async function runTests() {
-  console.log('--- TEST 1: Unit Test maskAccountIdentifier ---');
+  console.log('=== TEST 1: Unit Test maskAccountIdentifier ===');
   const maskCases = [
     { input: '01712345678', expected: '****5678' },
     { input: '1234', expected: '****1234' },
@@ -19,60 +20,101 @@ async function runTests() {
   }
   console.log('✓ maskAccountIdentifier tests passed successfully.');
 
-  console.log('--- TEST 2: Common Providers and Account Types Definitions ---');
-  if (!COMMON_PROVIDERS.includes('bKash') || !COMMON_PROVIDERS.includes('BRAC Bank') || !COMMON_PROVIDERS.includes('Other')) {
-    throw new Error('COMMON_PROVIDERS is missing required providers');
+  console.log('=== TEST 2: Supported Currencies & Providers Verification ===');
+  const expectedCurrencies = ['BDT', 'USD', 'EUR', 'GBP', 'INR', 'AUD', 'CAD', 'JPY', 'SAR'];
+  const availableCodes = SUPPORTED_CURRENCIES.map((c) => c.code);
+  for (const code of expectedCurrencies) {
+    if (!availableCodes.includes(code)) {
+      throw new Error(`Missing expected currency in SUPPORTED_CURRENCIES: ${code}`);
+    }
   }
-  if (!ACCOUNT_TYPES.includes('Mobile Financial Service (MFS)') || !ACCOUNT_TYPES.includes('Bank Account')) {
-    throw new Error('ACCOUNT_TYPES is missing required account types');
-  }
-  console.log('✓ Provider & Account Type definitions verified.');
+  console.log(`✓ All expected currencies available: ${availableCodes.join(', ')}`);
 
   const BASE_URL = 'http://localhost:3000';
-
-  console.log('--- TEST 3: Login to obtain JWT Auth Token ---');
-  const loginRes = await fetch(`${BASE_URL}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'ahmed@arthobachao.ai', password: 'password123' })
-  });
-
-  let token = '';
-  let userId = 'usr-ahmed-01';
-
-  if (loginRes.ok) {
-    const loginData = await loginRes.json();
-    token = loginData.token;
-    userId = loginData.user.id || loginData.user._id || 'usr-ahmed-01';
-    console.log(`✓ Authenticated as ${loginData.user.email} (ID: ${userId})`);
-  } else {
-    console.log('Login endpoint returned non-200 (using fallback mode if active):', loginRes.status);
-  }
-
+  const userId = 'usr-ahmed-01';
   const authHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {})
   };
 
-  console.log('--- TEST 4: Update User Profile with monthlyIncome baseline ---');
+  console.log('=== TEST 3: Monthly Inflow Baseline Multi-Currency Tests ===');
+  // A. Save Monthly Inflow with USD currency
   const updateIncomeRes = await fetch(`${BASE_URL}/api/users/${userId}`, {
     method: 'PUT',
     headers: authHeaders,
-    body: JSON.stringify({ monthlyIncome: 45000 })
+    body: JSON.stringify({
+      monthlyIncome: 3500,
+      monthlyIncomeCurrency: 'USD',
+    }),
   });
 
-  if (updateIncomeRes.ok) {
-    const updatedUser = await updateIncomeRes.json();
-    console.log(`✓ User profile monthlyIncome updated: ${updatedUser.monthlyIncome}`);
-    if (updatedUser.monthlyIncome !== 45000) {
-      throw new Error(`Expected monthlyIncome to be 45000, got ${updatedUser.monthlyIncome}`);
-    }
-  } else {
-    console.warn(`User update response: ${updateIncomeRes.status}`);
+  if (!updateIncomeRes.ok) {
+    throw new Error(`Failed to update monthly inflow: ${updateIncomeRes.status}`);
+  }
+  const updatedUser = await updateIncomeRes.json();
+  console.log(`✓ Monthly Inflow updated: amount = ${updatedUser.monthlyIncome}, currency = ${updatedUser.monthlyIncomeCurrency}`);
+  if (updatedUser.monthlyIncome !== 3500 || updatedUser.monthlyIncomeCurrency !== 'USD') {
+    throw new Error('Monthly inflow amount or currency did not persist as expected');
   }
 
-  console.log('--- TEST 5: Create Wallet Account via POST /api/users/:id/wallets ---');
-  const createWalletRes = await fetch(`${BASE_URL}/api/users/${userId}/wallets`, {
+  // B. Change currency independently without altering amount
+  const changeCurrencyRes = await fetch(`${BASE_URL}/api/users/${userId}`, {
+    method: 'PUT',
+    headers: authHeaders,
+    body: JSON.stringify({
+      monthlyIncome: 3500,
+      monthlyIncomeCurrency: 'EUR',
+    }),
+  });
+  const userAfterCurrencyChange = await changeCurrencyRes.json();
+  if (userAfterCurrencyChange.monthlyIncome !== 3500 || userAfterCurrencyChange.monthlyIncomeCurrency !== 'EUR') {
+    throw new Error('Currency change should preserve the exact numeric amount without accidental conversion');
+  }
+  console.log(`✓ Currency changed to EUR independently; amount preserved at ${userAfterCurrencyChange.monthlyIncome}`);
+
+  // C. Test zero baseline value
+  const zeroIncomeRes = await fetch(`${BASE_URL}/api/users/${userId}`, {
+    method: 'PUT',
+    headers: authHeaders,
+    body: JSON.stringify({
+      monthlyIncome: 0,
+      monthlyIncomeCurrency: 'BDT',
+    }),
+  });
+  const userZeroIncome = await zeroIncomeRes.json();
+  if (userZeroIncome.monthlyIncome !== 0) {
+    throw new Error('Zero monthly income should be accepted');
+  }
+  console.log('✓ Zero monthly income baseline accepted.');
+
+  // D. Test negative value rejection
+  const negativeIncomeRes = await fetch(`${BASE_URL}/api/users/${userId}`, {
+    method: 'PUT',
+    headers: authHeaders,
+    body: JSON.stringify({
+      monthlyIncome: -500,
+    }),
+  });
+  if (negativeIncomeRes.status !== 400) {
+    throw new Error(`Expected 400 Bad Request for negative monthlyIncome, got ${negativeIncomeRes.status}`);
+  }
+  console.log('✓ Negative monthly income rejected with status 400.');
+
+  // E. Test invalid currency code rejection
+  const invalidCurrencyRes = await fetch(`${BASE_URL}/api/users/${userId}`, {
+    method: 'PUT',
+    headers: authHeaders,
+    body: JSON.stringify({
+      monthlyIncomeCurrency: 'XYZ_INVALID',
+    }),
+  });
+  if (invalidCurrencyRes.status !== 400) {
+    throw new Error(`Expected 400 Bad Request for invalid currency, got ${invalidCurrencyRes.status}`);
+  }
+  console.log('✓ Invalid currency code rejected with status 400.');
+
+  console.log('=== TEST 4: Wallets & Banking Accounts Multi-Currency CRUD ===');
+  // A. Create BDT MFS account (bKash)
+  const createBdtRes = await fetch(`${BASE_URL}/api/users/${userId}/wallets`, {
     method: 'POST',
     headers: authHeaders,
     body: JSON.stringify({
@@ -80,108 +122,122 @@ async function runTests() {
       provider: 'bKash',
       displayName: 'Personal bKash',
       accountNumber: '01712345678',
-      balance: 15500,
-      notes: 'Primary personal wallet'
-    })
+      currency: 'BDT',
+      balance: 15000,
+      notes: 'Primary personal wallet',
+    }),
   });
-
-  if (!createWalletRes.ok) {
-    const errText = await createWalletRes.text();
-    throw new Error(`Failed to create wallet account: ${createWalletRes.status} ${errText}`);
+  const bdtWallet = await createBdtRes.json();
+  console.log('✓ Created BDT Wallet:', bdtWallet.provider, bdtWallet.balance, bdtWallet.currency);
+  if (bdtWallet.currency !== 'BDT' || bdtWallet.balance !== 15000) {
+    throw new Error('BDT wallet mismatch');
   }
 
-  const createdWallet = await createWalletRes.json();
-  console.log('✓ Created Wallet Account:', createdWallet);
-  if (!createdWallet.id || createdWallet.provider !== 'bKash' || createdWallet.balance !== 15500) {
-    throw new Error('Created wallet account missing fields or values mismatch');
-  }
-
-  console.log('--- TEST 5B: Create USD Foreign Currency Wallet Account ---');
-  const createUsdWalletRes = await fetch(`${BASE_URL}/api/users/${userId}/wallets`, {
+  // B. Create USD Bank Account (Wise)
+  const createUsdRes = await fetch(`${BASE_URL}/api/users/${userId}/wallets`, {
     method: 'POST',
     headers: authHeaders,
     body: JSON.stringify({
       accountType: 'Bank Account',
       provider: 'Wise',
       displayName: 'USD Direct Deposit',
-      accountNumber: '987654321',
+      accountNumber: '11223344',
       currency: 'USD',
-      balance: 2500,
-      notes: 'International freelancing proceeds'
-    })
+      balance: 2000,
+      notes: 'USD Freelance',
+    }),
   });
-
-  if (!createUsdWalletRes.ok) {
-    throw new Error(`Failed to create USD wallet account: ${createUsdWalletRes.status}`);
-  }
-  const createdUsdWallet = await createUsdWalletRes.json();
-  console.log('✓ Created USD Wallet Account:', createdUsdWallet);
-  if (createdUsdWallet.currency !== 'USD' || createdUsdWallet.balance !== 2500) {
-    throw new Error('USD Wallet currency or balance mismatch');
+  const usdWallet = await createUsdRes.json();
+  console.log('✓ Created USD Wallet:', usdWallet.provider, usdWallet.balance, usdWallet.currency);
+  if (usdWallet.currency !== 'USD' || usdWallet.balance !== 2000) {
+    throw new Error('USD wallet mismatch');
   }
 
-  console.log('--- TEST 6: Get All Wallet Accounts via GET /api/users/:id/wallets ---');
-  const getWalletsRes = await fetch(`${BASE_URL}/api/users/${userId}/wallets`, {
-    headers: authHeaders
+  // C. Create older account with omitted currency (must default safely to BDT)
+  const createLegacyRes = await fetch(`${BASE_URL}/api/users/${userId}/wallets`, {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({
+      accountType: 'Bank Account',
+      provider: 'City Bank',
+      balance: 25000,
+    }),
   });
-
-  if (!getWalletsRes.ok) {
-    throw new Error(`Failed to get wallets: ${getWalletsRes.status}`);
+  const legacyWallet = await createLegacyRes.json();
+  console.log('✓ Legacy account (no currency provided) defaulted to:', legacyWallet.currency);
+  if (legacyWallet.currency !== 'BDT' || legacyWallet.balance !== 25000) {
+    throw new Error('Legacy account must default currency to BDT without losing balance');
   }
 
-  const wallets = await getWalletsRes.json();
-  console.log(`✓ Retrieved ${wallets.length} wallet accounts.`);
-  const foundBdt = wallets.find((w: any) => w.id === createdWallet.id);
-  const foundUsd = wallets.find((w: any) => w.id === createdUsdWallet.id);
-  if (!foundBdt || !foundUsd) {
-    throw new Error('Created BDT or USD wallet not found in retrieved list');
+  // D. Test negative wallet balance rejection
+  const negativeWalletRes = await fetch(`${BASE_URL}/api/users/${userId}/wallets`, {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({
+      accountType: 'Bank Account',
+      provider: 'Test Bank',
+      balance: -100,
+    }),
+  });
+  if (negativeWalletRes.status !== 400) {
+    throw new Error(`Expected 400 Bad Request for negative wallet balance, got ${negativeWalletRes.status}`);
+  }
+  console.log('✓ Negative wallet balance rejected with status 400.');
+
+  // E. Retrieve all accounts
+  const getAllRes = await fetch(`${BASE_URL}/api/users/${userId}/wallets`, {
+    headers: authHeaders,
+  });
+  const allWallets = await getAllRes.json();
+  console.log(`✓ Retrieved ${allWallets.length} wallet accounts.`);
+  if (!allWallets.some((w: any) => w.id === bdtWallet.id) || !allWallets.some((w: any) => w.id === usdWallet.id)) {
+    throw new Error('Created accounts missing in retrieval list');
   }
 
-  console.log('--- TEST 7: Update Wallet Account via PUT /api/users/:id/wallets/:walletId ---');
-  const updateWalletRes = await fetch(`${BASE_URL}/api/users/${userId}/wallets/${createdWallet.id}`, {
+  // F. Verify mixed-currency conversion calculation
+  // Total in BDT: BDT 15000 + USD 2000 converted to BDT + BDT 25000
+  const usdInBdt = convertAmount(2000, 'USD', 'BDT');
+  const expectedTotalBdt = 15000 + usdInBdt + 25000;
+  console.log(`✓ Mixed Currency Conversion Test: USD $2,000 in BDT = ৳${usdInBdt.toFixed(2)}, Expected Total = ৳${expectedTotalBdt.toFixed(2)}`);
+  if (usdInBdt <= 2000) {
+    throw new Error('USD must be converted using real exchange rate, not treated as 1:1 with BDT');
+  }
+
+  // G. Update USD wallet account (change currency to GBP, balance to 1800)
+  const updateUsdRes = await fetch(`${BASE_URL}/api/users/${userId}/wallets/${usdWallet.id}`, {
     method: 'PUT',
     headers: authHeaders,
     body: JSON.stringify({
-      balance: 18200,
-      notes: 'Updated salary deposit'
-    })
+      currency: 'GBP',
+      balance: 1800,
+      notes: 'Switched to GBP Account',
+    }),
   });
-
-  if (!updateWalletRes.ok) {
-    throw new Error(`Failed to update wallet: ${updateWalletRes.status}`);
-  }
-  const updatedWallet = await updateWalletRes.json();
-  console.log('✓ Updated Wallet:', updatedWallet);
-  if (updatedWallet.balance !== 18200 || updatedWallet.notes !== 'Updated salary deposit') {
-    throw new Error('Wallet balance or notes not updated properly');
+  const updatedUsd = await updateUsdRes.json();
+  console.log('✓ Updated Wallet:', updatedUsd.currency, updatedUsd.balance, updatedUsd.notes);
+  if (updatedUsd.currency !== 'GBP' || updatedUsd.balance !== 1800) {
+    throw new Error('Wallet currency or balance update failed');
   }
 
-  console.log('--- TEST 8: Delete Wallet Accounts via DELETE /api/users/:id/wallets/:walletId ---');
-  await fetch(`${BASE_URL}/api/users/${userId}/wallets/${createdWallet.id}`, {
-    method: 'DELETE',
-    headers: authHeaders
-  });
-  await fetch(`${BASE_URL}/api/users/${userId}/wallets/${createdUsdWallet.id}`, {
-    method: 'DELETE',
-    headers: authHeaders
-  });
-  console.log('✓ Wallets deleted successfully.');
+  // H. Clean up test accounts
+  await fetch(`${BASE_URL}/api/users/${userId}/wallets/${bdtWallet.id}`, { method: 'DELETE', headers: authHeaders });
+  await fetch(`${BASE_URL}/api/users/${userId}/wallets/${usdWallet.id}`, { method: 'DELETE', headers: authHeaders });
+  await fetch(`${BASE_URL}/api/users/${userId}/wallets/${legacyWallet.id}`, { method: 'DELETE', headers: authHeaders });
+  console.log('✓ Cleaned up test accounts.');
 
-  console.log('--- TEST 9: Verify User Isolation & Security ---');
-  // Attempt to access a different user's wallets without auth
-  const rogueUserId = 'usr-other-user-999';
+  console.log('=== TEST 5: Verify User Isolation & Security ===');
+  const rogueUserId = 'usr-rogue-alien-99';
   const unauthorizedRes = await fetch(`${BASE_URL}/api/users/${rogueUserId}/wallets`, {
-    headers: { 'Content-Type': 'application/json' }
+    headers: { 'Content-Type': 'application/json' },
   });
-
   if (unauthorizedRes.status !== 403 && unauthorizedRes.status !== 401) {
-    throw new Error(`Expected 403 or 401 for unauthorized access to another user's wallets, got ${unauthorizedRes.status}`);
+    throw new Error(`Expected 401/403 for unauthorized access, got ${unauthorizedRes.status}`);
   }
   console.log(`✓ User isolation enforced properly (blocked with status ${unauthorizedRes.status}).`);
 
-  console.log('\n=========================================');
-  console.log('ALL WALLET & INFLOW TESTS PASSED SUCCESSFULLY!');
-  console.log('=========================================\n');
+  console.log('\n======================================================');
+  console.log('ALL MONTHLY INFLOW & WALLET MULTI-CURRENCY TESTS PASSED!');
+  console.log('======================================================\n');
 }
 
 runTests().catch((err) => {

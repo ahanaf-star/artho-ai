@@ -12,6 +12,7 @@ export interface IUser extends Document {
   timeFormat?: '12h' | '24h';
   lastFinancialUpdate?: string;
   monthlyIncome?: number;
+  monthlyIncomeCurrency?: string;
   riskTolerance?: 'Low' | 'Moderate' | 'Aggressive';
   tagline?: string;
   city?: string;
@@ -102,6 +103,11 @@ const UserSchema = new Schema<IUser>(
     monthlyIncome: {
       type: Number,
       required: false,
+    },
+    monthlyIncomeCurrency: {
+      type: String,
+      default: 'BDT',
+      trim: true,
     },
     riskTolerance: {
       type: String,

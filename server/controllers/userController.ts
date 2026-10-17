@@ -111,6 +111,25 @@ export async function updateUser(req: Request, res: Response) {
     updates.currency = normalizeCurrency(updates.currency);
   }
 
+  if (updates.monthlyIncomeCurrency !== undefined && updates.monthlyIncomeCurrency !== null) {
+    if (typeof updates.monthlyIncomeCurrency !== 'string' || !isValidCurrency(updates.monthlyIncomeCurrency)) {
+      return res.status(400).json({
+        error: `Invalid monthly inflow currency code. Supported currencies: ${SUPPORTED_CURRENCY_CODES.join(', ')}`,
+      });
+    }
+    updates.monthlyIncomeCurrency = normalizeCurrency(updates.monthlyIncomeCurrency);
+  }
+
+  if (updates.monthlyIncome !== undefined && updates.monthlyIncome !== null && updates.monthlyIncome !== '') {
+    const num = Number(updates.monthlyIncome);
+    if (isNaN(num) || !isFinite(num) || num < 0) {
+      return res.status(400).json({
+        error: 'Monthly inflow baseline must be a non-negative number',
+      });
+    }
+    updates.monthlyIncome = num;
+  }
+
   const authUser = (req as any).user;
   if (authUser) {
     const isOwner =

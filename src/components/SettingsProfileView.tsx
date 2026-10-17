@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, Transaction, SavingsGoal } from '../types/financial';
-import { SUPPORTED_CURRENCIES, normalizeCurrencyCode, formatCurrency, convertAmount } from '../services/currencyService';
+import {
+  SUPPORTED_CURRENCIES,
+  normalizeCurrencyCode,
+  formatCurrency,
+  convertAmount,
+  getCurrencyConfig,
+} from '../services/currencyService';
 import { WalletsManagementSection } from './WalletsManagementSection';
 
 interface SettingsProfileViewProps {
@@ -30,6 +36,9 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
   const [monthlyIncome, setMonthlyIncome] = useState<string>(
     user.monthlyIncome !== undefined && user.monthlyIncome !== null ? user.monthlyIncome.toString() : ''
   );
+  const [monthlyIncomeCurrency, setMonthlyIncomeCurrency] = useState<string>(
+    normalizeCurrencyCode(user.monthlyIncomeCurrency || user.currency || 'BDT')
+  );
   const [monthlyIncomeError, setMonthlyIncomeError] = useState<string | null>(null);
   const [currency, setCurrency] = useState(normalizeCurrencyCode(user.currency));
   const [savedMsg, setSavedMsg] = useState(false);
@@ -42,8 +51,19 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
     setMonthlyIncome(
       user.monthlyIncome !== undefined && user.monthlyIncome !== null ? user.monthlyIncome.toString() : ''
     );
+    setMonthlyIncomeCurrency(
+      normalizeCurrencyCode(user.monthlyIncomeCurrency || user.currency || 'BDT')
+    );
     setCurrency(normalizeCurrencyCode(user.currency));
-  }, [user.id, user.name, user.email, user.profileImage, user.monthlyIncome, user.currency]);
+  }, [
+    user.id,
+    user.name,
+    user.email,
+    user.profileImage,
+    user.monthlyIncome,
+    user.monthlyIncomeCurrency,
+    user.currency,
+  ]);
 
   // Quick avatar choices
   const sampleAvatars = [
@@ -83,6 +103,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
       email: email.trim(),
       profileImage: profileImage.trim() || undefined,
       monthlyIncome: parsedIncome,
+      monthlyIncomeCurrency: parsedIncome !== undefined ? monthlyIncomeCurrency : undefined,
       currency,
     };
     onUpdateUser(updated);
@@ -221,47 +242,72 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
             />
           </div>
 
-          {/* Monthly Inflow Baseline (BDT) */}
+          {/* Monthly Inflow Baseline */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
               <label className="font-label-md text-xs font-semibold text-outline uppercase tracking-wider">
-                {isBangla ? 'মাসিক নিয়মিত আয় (BDT)' : 'MONTHLY INFLOW BASELINE (BDT)'}
+                {isBangla ? 'মাসিক নিয়মিত আয়' : 'MONTHLY INFLOW BASELINE'}
               </label>
               <span className="text-[11px] text-outline font-normal">
                 {isBangla ? '(ঐচ্ছিক)' : '(Optional)'}
               </span>
             </div>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-secondary text-sm pointer-events-none select-none">
-                ৳
-              </span>
-              <input
-                type="number"
-                min="0"
-                step="any"
-                value={monthlyIncome}
+            <div className="flex items-center gap-2">
+              {/* Currency Selector */}
+              <select
+                value={monthlyIncomeCurrency}
                 onChange={(e) => {
-                  const val = e.target.value;
-                  setMonthlyIncome(val);
-                  if (monthlyIncomeError) setMonthlyIncomeError(null);
-                  if (val.trim() !== '') {
-                    const num = Number(val);
-                    if (isNaN(num) || !isFinite(num) || num < 0) {
-                      setMonthlyIncomeError(
-                        isBangla
-                          ? 'মান ০ বা তার বেশি হতে হবে।'
-                          : 'Value must be zero or a positive number.'
-                      );
-                    }
-                  }
+                  setMonthlyIncomeCurrency(normalizeCurrencyCode(e.target.value));
                 }}
-                placeholder={isBangla ? 'যেমন: ৩৫০০০ (ঐচ্ছিক আয়)' : 'e.g. 35000 (Optional baseline)'}
-                className={`w-full pl-8 pr-3 py-3 rounded-xl border bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 font-body-md text-sm transition-all ${
-                  monthlyIncomeError
-                    ? 'border-error focus:ring-error text-error'
-                    : 'border-outline-variant/30 focus:ring-secondary'
-                }`}
-              />
+                className="w-32 sm:w-36 p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-body-md text-sm cursor-pointer shrink-0 font-medium"
+                title={isBangla ? 'আয়ের মুদ্রা নির্বাচন করুন' : 'Select baseline currency'}
+              >
+                {SUPPORTED_CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.flag} {c.code} ({c.displaySymbol})
+                  </option>
+                ))}
+              </select>
+
+              {/* Numeric Input */}
+              <div className="relative flex-1">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-secondary text-sm pointer-events-none select-none">
+                  {getCurrencyConfig(monthlyIncomeCurrency).displaySymbol}
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={monthlyIncome}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setMonthlyIncome(val);
+                    if (monthlyIncomeError) setMonthlyIncomeError(null);
+                    if (val.trim() !== '') {
+                      const num = Number(val);
+                      if (isNaN(num) || !isFinite(num) || num < 0) {
+                        setMonthlyIncomeError(
+                          isBangla
+                            ? 'মান ০ বা তার বেশি হতে হবে।'
+                            : 'Value must be zero or a positive number.'
+                        );
+                      }
+                    }
+                  }}
+                  placeholder={
+                    monthlyIncomeCurrency === 'JPY'
+                      ? '50000'
+                      : monthlyIncomeCurrency === 'USD' || monthlyIncomeCurrency === 'EUR' || monthlyIncomeCurrency === 'GBP' || monthlyIncomeCurrency === 'CAD' || monthlyIncomeCurrency === 'AUD'
+                      ? '3500'
+                      : '35000'
+                  }
+                  className={`w-full pl-8 pr-3 py-3 rounded-xl border bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 font-body-md text-sm transition-all ${
+                    monthlyIncomeError
+                      ? 'border-error focus:ring-error text-error'
+                      : 'border-outline-variant/30 focus:ring-secondary'
+                  }`}
+                />
+              </div>
             </div>
             {monthlyIncomeError ? (
               <span className="text-xs text-error font-medium flex items-center gap-1">
@@ -270,7 +316,9 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
               </span>
             ) : (
               <span className="text-[11px] text-outline">
-                {isBangla ? 'বাজেট এবং নগদ প্রবাহ হিসাবের ভিত্তি হিসেবে ব্যবহৃত হবে।' : 'Used for liquidity buffer and cash flow projections.'}
+                {isBangla
+                  ? `${monthlyIncomeCurrency} মুদ্রায় বাজেট এবং নগদ প্রবাহ হিসাবের ভিত্তি হিসেবে ব্যবহৃত হবে।`
+                  : `Denominated in ${monthlyIncomeCurrency}; used for liquidity buffer and cash flow projections.`}
               </span>
             )}
           </div>

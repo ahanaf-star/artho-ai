@@ -110,7 +110,8 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
 
     setDisplayName(account.displayName || '');
     setAccountNumber(account.accountNumber || '');
-    setAccountCurrency(normalizeCurrencyCode(account.currency || displayCurrency));
+    // For older accounts without a stored currency, default safely to BDT
+    setAccountCurrency(account.currency ? normalizeCurrencyCode(account.currency) : 'BDT');
     setBalance(account.balance !== undefined && account.balance !== null ? account.balance.toString() : '');
     setNotes(account.notes || '');
     setFormError(null);
@@ -555,34 +556,28 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
                 </p>
               </div>
 
-              {/* Account Currency & Current Balance */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Account Currency */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                    {isBangla ? 'অ্যাকাউন্টের মুদ্রা' : 'Account Currency'} *
-                  </label>
+              {/* Current Balance & Currency */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-outline uppercase tracking-wider">
+                  {isBangla ? 'বর্তমান ব্যালেন্স (ঐচ্ছিক)' : 'CURRENT BALANCE (OPTIONAL)'}
+                </label>
+                <div className="flex items-center gap-2">
+                  {/* Currency Selector alongside input */}
                   <select
                     value={accountCurrency}
                     onChange={(e) => setAccountCurrency(normalizeCurrencyCode(e.target.value))}
-                    className="p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary cursor-pointer"
+                    className="w-32 sm:w-36 p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary cursor-pointer shrink-0 font-medium"
+                    title={isBangla ? 'অ্যাকাউন্টের মুদ্রা' : 'Account Currency'}
                   >
                     {SUPPORTED_CURRENCIES.map((c) => (
                       <option key={c.code} value={c.code}>
-                        {c.flag} {c.code} ({c.displaySymbol}) — {isBangla ? c.nameBn : c.name}
+                        {c.flag} {c.code} ({c.displaySymbol})
                       </option>
                     ))}
                   </select>
-                </div>
 
-                {/* Current Balance */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                    {isBangla
-                      ? `বর্তমান ব্যালেন্স (${accountCurrency}, ঐচ্ছিক)`
-                      : `Current Balance (${accountCurrency}, Optional)`}
-                  </label>
-                  <div className="relative">
+                  {/* Numeric Balance Input */}
+                  <div className="relative flex-1">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-secondary pointer-events-none select-none">
                       {getCurrencyConfig(accountCurrency).displaySymbol}
                     </span>
@@ -603,12 +598,12 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
                     />
                   </div>
                 </div>
+                <p className="text-[11px] text-outline">
+                  {isBangla
+                    ? `ব্যালেন্স ${accountCurrency} মুদ্রায় সংরক্ষিত হবে এবং সামগ্রিক হিসাবে স্বয়ংক্রিয়ভাবে রূপান্তরিত হবে।`
+                    : `Balance is stored in ${accountCurrency} and converted to reporting currency in summary totals.`}
+                </p>
               </div>
-              <p className="text-[11px] text-outline">
-                {isBangla
-                  ? 'ব্যালেন্স নির্বাচিত মুদ্রায় সংরক্ষিত হবে এবং অ্যাপের মূল মুদ্রায় স্বয়ংক্রিয়ভাবে রূপান্তরিত হবে।'
-                  : 'Balances in foreign currencies are automatically converted using live exchange rates in summaries.'}
-              </p>
 
               {/* Notes */}
               <div className="flex flex-col gap-1">
