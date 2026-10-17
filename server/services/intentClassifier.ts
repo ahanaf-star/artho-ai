@@ -24,11 +24,15 @@ export type CoachIntent =
 
 export interface ParsedSavingsPlan {
   targetAmount: number;
-  monthsDuration: number;
+  monthsDuration?: number;
+  monthlyTarget: number;
+  weeklyTarget: number;
   requiredMonthly: number;
   currentMonthlySurplus: number;
   isFeasible: boolean;
   monthlyGap: number;
+  surplusDiff: number;
+  isRecurringMonthly?: boolean;
 }
 
 export interface IntentResult {
@@ -62,8 +66,9 @@ function normalizeText(text: string): string {
 }
 
 /**
- * Extracts target amount and months duration from queries like:
- * "save ৳30,000 in 6 months", "save 50000 in 10 months", "৬ মাসে ৩০,০০০ টাকা সঞ্চয়"
+ * Extracts target amount and duration or monthly recurring target from queries like:
+ * "save ৳30,000 in 6 months", "save 50000 in 10 months", "৬ মাসে ৩০,০০০ টাকা সঞ্চয়",
+ * "How can I save 6000 tk per month?", "আমি প্রতি মাসে ৬০০০ টাকা কীভাবে সঞ্চয় করব?"
  */
 export function parseSavingsTarget(
   query: string,
@@ -84,9 +89,9 @@ export function parseSavingsTarget(
   };
   const normalizedDigits = query.replace(/[০-৯]/g, (d) => bnToEnDigits[d] || d);
 
-  // Pattern 1: "save [amount] in [months] months" or "save [amount] within [months] months"
+  // Pattern 1: Fixed duration in English: "save [amount] in [months] months"
   const enMatch = normalizedDigits.match(
-    /(?:save|target|reach)\s*(?:bdt|tk|taka|৳|\$)?\s*([0-9,]+)\s*(?:in|within|over|for)?\s*([0-9]+)\s*(?:months?|mas)/i
+    /(?:save|target|reach)\s*(?:bdt|tk|taka|৳|\$)?\s*([0-9,]+)\s*(?:bdt|tk|taka|৳|\$)?\s*(?:in|within|over|for)?\s*([0-9]+)\s*(?:months?|mas)/i
   );
   if (enMatch) {
     const targetAmount = parseInt(enMatch[1].replace(/,/g, ''), 10);
@@ -95,18 +100,23 @@ export function parseSavingsTarget(
       const requiredMonthly = Math.round(targetAmount / monthsDuration);
       const isFeasible = currentNetSavings >= requiredMonthly;
       const monthlyGap = Math.max(0, requiredMonthly - currentNetSavings);
+      const surplusDiff = Math.abs(currentNetSavings - requiredMonthly);
       return {
         targetAmount,
         monthsDuration,
+        monthlyTarget: requiredMonthly,
+        weeklyTarget: Math.round(requiredMonthly / 4),
         requiredMonthly,
         currentMonthlySurplus: currentNetSavings,
         isFeasible,
         monthlyGap,
+        surplusDiff,
+        isRecurringMonthly: false,
       };
     }
   }
 
-  // Pattern 2: "[months] মাসে [amount] টাকা" or "[amount] টাকা [months] মাসে"
+  // Pattern 2: Fixed duration in Bengali: "[months] মাসে [amount] টাকা" or "[amount] টাকা [months] মাসে"
   const bnMatch1 = normalizedDigits.match(/([0-9]+)\s*মাসে\s*([0-9,]+)\s*(?:টাকা)?/);
   if (bnMatch1) {
     const monthsDuration = parseInt(bnMatch1[1], 10);
@@ -115,13 +125,18 @@ export function parseSavingsTarget(
       const requiredMonthly = Math.round(targetAmount / monthsDuration);
       const isFeasible = currentNetSavings >= requiredMonthly;
       const monthlyGap = Math.max(0, requiredMonthly - currentNetSavings);
+      const surplusDiff = Math.abs(currentNetSavings - requiredMonthly);
       return {
         targetAmount,
         monthsDuration,
+        monthlyTarget: requiredMonthly,
+        weeklyTarget: Math.round(requiredMonthly / 4),
         requiredMonthly,
         currentMonthlySurplus: currentNetSavings,
         isFeasible,
         monthlyGap,
+        surplusDiff,
+        isRecurringMonthly: false,
       };
     }
   }
@@ -134,14 +149,77 @@ export function parseSavingsTarget(
       const requiredMonthly = Math.round(targetAmount / monthsDuration);
       const isFeasible = currentNetSavings >= requiredMonthly;
       const monthlyGap = Math.max(0, requiredMonthly - currentNetSavings);
+      const surplusDiff = Math.abs(currentNetSavings - requiredMonthly);
       return {
         targetAmount,
         monthsDuration,
+        monthlyTarget: requiredMonthly,
+        weeklyTarget: Math.round(requiredMonthly / 4),
         requiredMonthly,
         currentMonthlySurplus: currentNetSavings,
         isFeasible,
         monthlyGap,
+        surplusDiff,
+        isRecurringMonthly: false,
       };
+    }
+  }
+
+  // Pattern 3: English monthly recurring savings target (e.g. "save 6000 tk per month", "save ৳6,000 monthly")
+  const isMonthlyEn = /(?:per|each|every|a)\s*month|monthly/i.test(normalizedDigits);
+  if (isMonthlyEn) {
+    const m =
+      normalizedDigits.match(
+        /(?:save|reach|target|stash|accumulate).*?(?:bdt|tk|taka|৳|\$)?\s*([0-9,]+)\s*(?:bdt|tk|taka|৳|\$)?/i
+      ) ||
+      normalizedDigits.match(
+        /(?:bdt|tk|taka|৳|\$)?\s*([0-9,]+)\s*(?:bdt|tk|taka|৳|\$)?.*?(?:(?:per|each|every|a)\s*month|monthly)/i
+      );
+    if (m) {
+      const targetAmount = parseInt(m[1].replace(/,/g, ''), 10);
+      if (targetAmount > 0) {
+        const isFeasible = currentNetSavings >= targetAmount;
+        const monthlyGap = Math.max(0, targetAmount - currentNetSavings);
+        const surplusDiff = Math.abs(currentNetSavings - targetAmount);
+        return {
+          targetAmount,
+          monthlyTarget: targetAmount,
+          weeklyTarget: Math.round(targetAmount / 4),
+          requiredMonthly: targetAmount,
+          currentMonthlySurplus: currentNetSavings,
+          isFeasible,
+          monthlyGap,
+          surplusDiff,
+          isRecurringMonthly: true,
+        };
+      }
+    }
+  }
+
+  // Pattern 4: Bengali monthly recurring savings target (e.g. "প্রতি মাসে ৬০০০ টাকা কীভাবে সঞ্চয় করব", "মাসে ৬০০০ টাকা সঞ্চয়")
+  const isMonthlyBn = /(?:প্রতি\s*মাসে|মাসে|মাসিক)/.test(normalizedDigits);
+  if (isMonthlyBn) {
+    const m =
+      normalizedDigits.match(/(?:প্রতি\s*মাসে|মাসে|মাসিক).*?([0-9,]+)\s*(?:টাকা)?/) ||
+      normalizedDigits.match(/([0-9,]+)\s*(?:টাকা)?.*?(?:প্রতি\s*মাসে|মাসে|মাসিক)/);
+    if (m) {
+      const targetAmount = parseInt(m[1].replace(/,/g, ''), 10);
+      if (targetAmount > 0) {
+        const isFeasible = currentNetSavings >= targetAmount;
+        const monthlyGap = Math.max(0, targetAmount - currentNetSavings);
+        const surplusDiff = Math.abs(currentNetSavings - targetAmount);
+        return {
+          targetAmount,
+          monthlyTarget: targetAmount,
+          weeklyTarget: Math.round(targetAmount / 4),
+          requiredMonthly: targetAmount,
+          currentMonthlySurplus: currentNetSavings,
+          isFeasible,
+          monthlyGap,
+          surplusDiff,
+          isRecurringMonthly: true,
+        };
+      }
     }
   }
 
@@ -807,11 +885,24 @@ export function sliceContext(fullContext: CoachContext, intentResult: IntentResu
       }
       if (parsedPlan) {
         addFact('savingsPlan.parsedTargetAmount', parsedPlan.targetAmount);
-        addFact('savingsPlan.parsedMonthsDuration', parsedPlan.monthsDuration);
+        if (parsedPlan.monthsDuration !== undefined) {
+          addFact('savingsPlan.parsedMonthsDuration', parsedPlan.monthsDuration);
+        }
+        addFact('savingsPlan.targetAmount', parsedPlan.targetAmount);
+        addFact('savingsPlan.monthlyTarget', parsedPlan.monthlyTarget);
+        addFact('savingsPlan.weeklyTarget', parsedPlan.weeklyTarget);
         addFact('savingsPlan.requiredMonthly', parsedPlan.requiredMonthly);
         addFact('savingsPlan.currentMonthlySurplus', parsedPlan.currentMonthlySurplus);
         addFact('savingsPlan.isFeasible', parsedPlan.isFeasible);
         addFact('savingsPlan.monthlyGap', parsedPlan.monthlyGap);
+        addFact('savingsPlan.surplusDiff', parsedPlan.surplusDiff);
+        addFact('savingsPlan.isRecurringMonthly', Boolean(parsedPlan.isRecurringMonthly));
+      }
+      if (fullContext.spending.discretionaryCategories && fullContext.spending.discretionaryCategories.length > 0) {
+        addFact('spending.discretionaryCategories', fullContext.spending.discretionaryCategories);
+      }
+      if (fullContext.snapshot.profileMonthlyIncome !== undefined) {
+        addFact('snapshot.profileMonthlyIncome', fullContext.snapshot.profileMonthlyIncome);
       }
       addFact('cashFlow.recommendedWeeklyReduction', fullContext.cashFlow.recommendedWeeklyReduction);
       break;

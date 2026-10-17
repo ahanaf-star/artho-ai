@@ -51,6 +51,13 @@ export function extractAllowedNumbers(ctx: CoachContext, additionalAllowed: numb
   allowed.add(ctx.snapshot.expenseRatio);
   allowed.add(Math.round(ctx.snapshot.expenseRatio));
   allowed.add(ctx.snapshot.currentBalance);
+  if (ctx.snapshot.profileMonthlyIncome !== undefined) {
+    allowed.add(ctx.snapshot.profileMonthlyIncome);
+  }
+  if (ctx.snapshot.netCashFlow !== undefined) {
+    allowed.add(ctx.snapshot.netCashFlow);
+    allowed.add(Math.abs(ctx.snapshot.netCashFlow));
+  }
 
   // 2. Spending numbers
   allowed.add(ctx.spending.totalSpending);
@@ -79,6 +86,16 @@ export function extractAllowedNumbers(ctx: CoachContext, additionalAllowed: numb
   for (const pct of Object.values(ctx.spending.categoryPercentages)) {
     allowed.add(pct);
     allowed.add(Math.round(pct));
+  }
+  if (ctx.spending.discretionaryCategories) {
+    for (const d of ctx.spending.discretionaryCategories) {
+      allowed.add(d.amount);
+      allowed.add(d.percentage);
+      allowed.add(Math.round(d.percentage));
+    }
+  }
+  if (ctx.spending.discretionaryTotal !== undefined) {
+    allowed.add(ctx.spending.discretionaryTotal);
   }
   if (ctx.spending.merchants) {
     if (ctx.spending.merchants.highestMerchant) {

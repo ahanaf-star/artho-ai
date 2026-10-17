@@ -386,32 +386,185 @@ export function generateDeterministicCoachResponse(
 
     case 'savings_plan': {
       if (parsedPlan) {
-        factsUsed.push(
-          'savingsPlan.parsedTargetAmount',
-          'savingsPlan.parsedMonthsDuration',
-          'savingsPlan.requiredMonthly',
-          'snapshot.netSavings'
-        );
-        if (isBn) {
-          answer = `**${parsedPlan.monthsDuration} মাসে ৳${parsedPlan.targetAmount.toLocaleString()}** সঞ্চয় করতে প্রতি মাসে প্রয়োজন **৳${parsedPlan.requiredMonthly.toLocaleString()}**।\n\nআপনার বর্তমান মাসিক নিট উদ্বৃত্ত ৳${netSavings.toLocaleString()}।${
-            parsedPlan.isFeasible
-              ? ' আপনার বর্তমান উদ্বৃত্ত এই লক্ষ্য পূরণের জন্য যথেষ্ট এবং পরিকল্পনাটি বাস্তবসম্মত।'
-              : ` লক্ষ্যটি সফলভাবে পূরণ করতে প্রতি মাসে অতিরিক্ত ৳${parsedPlan.monthlyGap.toLocaleString()} সাশ্রয় করতে হবে (শীর্ষ খরচের খাত থেকে খরচ হ্রাস করে)।`
-          }`;
+        if (!parsedPlan.isRecurringMonthly && parsedPlan.monthsDuration && parsedPlan.monthsDuration > 1) {
+          factsUsed.push(
+            'savingsPlan.parsedTargetAmount',
+            'savingsPlan.parsedMonthsDuration',
+            'savingsPlan.requiredMonthly',
+            'snapshot.netSavings'
+          );
+          if (isBn) {
+            answer = `**${parsedPlan.monthsDuration} মাসে ৳${parsedPlan.targetAmount.toLocaleString()}** সঞ্চয় করতে প্রতি মাসে প্রয়োজন **৳${parsedPlan.requiredMonthly.toLocaleString()}**।\n\nআপনার বর্তমান মাসিক নিট উদ্বৃত্ত ৳${netSavings.toLocaleString()}।${
+              parsedPlan.isFeasible
+                ? ' আপনার বর্তমান উদ্বৃত্ত এই লক্ষ্য পূরণের জন্য যথেষ্ট এবং পরিকল্পনাটি বাস্তবসম্মত।'
+                : ` লক্ষ্যটি সফলভাবে পূরণ করতে প্রতি মাসে অতিরিক্ত ৳${parsedPlan.monthlyGap.toLocaleString()} সাশ্রয় করতে হবে (শীর্ষ খরচের খাত থেকে খরচ হ্রাস করে)।`
+            }`;
+          } else {
+            answer = `To save **৳${parsedPlan.targetAmount.toLocaleString()} in ${parsedPlan.monthsDuration} months**, you need to save **৳${parsedPlan.requiredMonthly.toLocaleString()}/month**.\n\nYour current monthly net surplus is ৳${netSavings.toLocaleString()}.${
+              parsedPlan.isFeasible
+                ? ' Your current monthly cash flow is sufficient to achieve this goal.'
+                : ` Bridging the monthly gap of ৳${parsedPlan.monthlyGap.toLocaleString()} requires optimizing flexible spending in your top expense categories.`
+            }`;
+          }
         } else {
-          answer = `To save **৳${parsedPlan.targetAmount.toLocaleString()} in ${parsedPlan.monthsDuration} months**, you need to save **৳${parsedPlan.requiredMonthly.toLocaleString()}/month**.\n\nYour current monthly net surplus is ৳${netSavings.toLocaleString()}.${
-            parsedPlan.isFeasible
-              ? ' Your current monthly cash flow is sufficient to achieve this goal.'
-              : ` Bridging the monthly gap of ৳${parsedPlan.monthlyGap.toLocaleString()} requires optimizing flexible spending in your top expense categories.`
-          }`;
+          // Recurring monthly target (e.g. "How can I save 6000 tk per month?")
+          const monthlyTarget = parsedPlan.monthlyTarget ?? parsedPlan.targetAmount;
+          const weeklyTarget = parsedPlan.weeklyTarget ?? Math.round(monthlyTarget / 4);
+          const hasRecordedInc = income > 0;
+          const hasRecordedExp = spending > 0;
+          const profileInc = ctx.snapshot.profileMonthlyIncome || 0;
+          const netCashFlow = ctx.snapshot.netCashFlow !== undefined ? ctx.snapshot.netCashFlow : (income - spending);
+          const currentSurplus = netCashFlow;
+          const fmt = (val: number) => (isBn ? val.toLocaleString('bn-BD') : val.toLocaleString());
+
+          factsUsed.push(
+            'savingsPlan.targetAmount',
+            'savingsPlan.monthlyTarget',
+            'savingsPlan.weeklyTarget',
+            'savingsPlan.requiredMonthly'
+          );
+
+          if (!hasRecordedInc && !hasRecordedExp && profileInc === 0) {
+            // Insufficient data: no income or expense transactions
+            dataGaps.push('No income or expense transactions recorded for the current period');
+            if (isBn) {
+              answer = `চলতি হিসাবকালে আপনার কোনো আয় বা ব্যয়ের লেনদেন রেকর্ড পাওয়া যায়নি। প্রতি মাসে **৳${fmt(monthlyTarget)}** (সাপ্তাহিক প্রায় **৳${fmt(weeklyTarget)}**) সঞ্চয়ের সুনির্দিষ্ট ও বাস্তবমুখী পরিকল্পনা তৈরির জন্য অনুগ্রহ করে আপনার আয় ও দৈনন্দিন খরচের লেনদেন যুক্ত করুন।`;
+            } else {
+              answer = `There are no recorded transactions in your ledger for this period. To build an accurate, personalized savings plan for **৳${fmt(monthlyTarget)}/month** (approximately **৳${fmt(weeklyTarget)}/week**), please log your income and expense transactions.`;
+            }
+          } else if (!hasRecordedInc && profileInc > 0) {
+            // Profile income exists but no recorded income transaction
+            dataGaps.push('Profile benchmark income present, but no recorded income transactions found');
+            factsUsed.push('snapshot.profileMonthlyIncome', 'snapshot.monthlySpending');
+            if (isBn) {
+              answer = `আপনার প্রোফাইল অনুযায়ী নির্দেশিত মাসিক আয় **৳${fmt(profileInc)}**, তবে চলতি মাসে কোনো আয়ের লেনদেন রেকর্ড করা হয়নি। রেকর্ডকৃত লেনদেন অনুযায়ী বর্তমান ব্যয় **৳${fmt(spending)}**।\n\nপ্রতি মাসে **৳${fmt(monthlyTarget)}** (সাপ্তাহিক প্রায় **৳${fmt(weeklyTarget)}**) সঞ্চয়ের লক্ষ্য বাস্তবায়নের জন্য প্রকৃত আয়ের লেনদেন যুক্ত করুন, যেন আপনার প্রকৃত মাসিক নগদ উদ্বৃত্তের ভিত্তিতে সঠিক পরিকল্পনা করা যায়।`;
+            } else {
+              answer = `Your profile indicates an expected monthly income of **৳${fmt(profileInc)}**, but no income transactions have been logged for this period. Based on recorded transactions, current spending is **৳${fmt(spending)}**.\n\nTo construct an authentic savings plan for your **৳${fmt(monthlyTarget)}/month** target (approx. **৳${fmt(weeklyTarget)}/week**), please record your actual income transactions.`;
+            }
+          } else if (!hasRecordedInc && profileInc === 0) {
+            // Income transactions absent, no profile income
+            dataGaps.push('No income transactions recorded for the current period');
+            factsUsed.push('snapshot.monthlySpending');
+            if (isBn) {
+              answer = `চলতি মাসে আপনার মোট ব্যয় **৳${fmt(spending)}** রেকর্ড করা হয়েছে, তবে কোনো আয়ের লেনদেন পাওয়া যায়নি। প্রতি মাসে **৳${fmt(monthlyTarget)}** (সাপ্তাহিক প্রায় **৳${fmt(weeklyTarget)}**) সঞ্চয়ের পরিকল্পনা মূল্যায়ন করতে অনুগ্রহ করে আপনার আয়ের রেকর্ড যুক্ত করুন।`;
+            } else {
+              answer = `Your recorded monthly expenses are **৳${fmt(spending)}**, but no income transactions have been recorded for this period. To evaluate feasibility for saving **৳${fmt(monthlyTarget)}/month** (approximately **৳${fmt(weeklyTarget)}/week**), please log your income.`;
+            }
+          } else if (hasRecordedInc && !hasRecordedExp) {
+            // Expense transactions absent
+            dataGaps.push('No expense transactions recorded for the current period');
+            factsUsed.push('snapshot.monthlyIncome');
+            if (isBn) {
+              answer = `চলতি মাসে আপনার রেকর্ডকৃত আয় **৳${fmt(income)}**, তবে কোনো ব্যয়ের লেনদেন রেকর্ড করা হয়নি। প্রতি মাসে **৳${fmt(monthlyTarget)}** (সাপ্তাহিক প্রায় **৳${fmt(weeklyTarget)}**) সঞ্চয় বাস্তবায়নের পরিকল্পনা দেখতে অনুগ্রহ করে আপনার খরচের লেনদেনগুলো যুক্ত করুন।`;
+            } else {
+              answer = `Your recorded monthly income is **৳${fmt(income)}**, but no expense transactions have been recorded for this period. To evaluate your real net surplus for saving **৳${fmt(monthlyTarget)}/month** (approximately **৳${fmt(weeklyTarget)}/week**), please log your daily expenses.`;
+            }
+          } else {
+            // Both income and spending are recorded
+            factsUsed.push('snapshot.monthlyIncome', 'snapshot.monthlySpending', 'snapshot.netSavings');
+
+            if (currentSurplus >= monthlyTarget) {
+              // State 1: Surplus >= Target (Feasible)
+              const surplusMargin = currentSurplus - monthlyTarget;
+              factsUsed.push('savingsPlan.surplusDiff', 'savingsPlan.isFeasible');
+              if (isBn) {
+                answer = `প্রতি মাসে **৳${fmt(monthlyTarget)}** সঞ্চয় করার পরিকল্পনা (সাপ্তাহিক প্রায় **৳${fmt(weeklyTarget)}**):\n\n` +
+                  `• **রেকর্ডকৃত আয় ও ব্যয়**: চলতি মাসে আপনার রেকর্ডকৃত মোট আয় **৳${fmt(income)}** এবং মোট ব্যয় **৳${fmt(spending)}**। ফলে আপনার বর্তমান নিট মাসিক নগদ উদ্বৃত্ত **৳${fmt(currentSurplus)}**।\n` +
+                  `• **বাস্তবায়নযোগ্যতা**: আপনার ৳${fmt(monthlyTarget)}/মাস সঞ্চয়ের লক্ষ্যটি **সম্পূর্ণ বাস্তবায়নযোগ্য**। আপনার বর্তমান মাসিক উদ্বৃত্ত লক্ষ্যের চেয়ে **৳${fmt(surplusMargin)}** বেশি রয়েছে।\n` +
+                  `• **সঞ্চয় বনাম উদ্বৃত্তের পার্থক্য**: ওয়ালেটে অবশিষ্ট নগদ উদ্বৃত্তই স্বয়ংক্রিয়ভাবে সঞ্চয় নয়। নির্দিষ্ট সঞ্চয় তহবিলে স্থানান্তর না করলে এ অর্থ দৈনন্দিন খরচে শেষ হয়ে যাওয়ার ঝুঁকি থাকে।\n` +
+                  `• **কার্যকর কর্মপরিকল্পনা**:\n` +
+                  `  ১. **আয়ের শুরুতেই সঞ্চয় আলাদা করুন (Pay Yourself First)**: মাস শেষের জন্য অপেক্ষা না করে আয় প্রাপ্তির সাথে সাথে প্রতি মাসে **৳${fmt(monthlyTarget)}** (বা সপ্তাহে **৳${fmt(weeklyTarget)}**) একটি পৃথক সঞ্চয় অ্যাকাউন্টে স্থানান্তর করুন।\n` +
+                  `  ২. **বর্তমান ব্যয়ের শৃঙ্খলা বজায় রাখুন**: আপনার চলতি খরচের গতি সুষম রেখে এই ইতিবাচক উদ্বৃত্ত ধরে রাখুন।\n` +
+                  `  ৩. **লক্ষ্য ট্র্যাকিং**: এ অর্থ সরাসরি আপনার সঞ্চয় লক্ষ্যে যুক্ত করে নিয়মিত অগ্রগতি পর্যবেক্ষণ করুন।`;
+              } else {
+                answer = `To save **৳${fmt(monthlyTarget)} per month** (approximately **৳${fmt(weeklyTarget)} per week**):\n\n` +
+                  `• **Recorded Inflow & Outflow**: Your recorded monthly income is **৳${fmt(income)}** and total expenses are **৳${fmt(spending)}**, generating a net monthly cash surplus of **৳${fmt(currentSurplus)}**.\n` +
+                  `• **Feasibility Assessment**: Your target of ৳${fmt(monthlyTarget)}/month is **fully feasible**. Your current monthly surplus exceeds your target by **৳${fmt(surplusMargin)}**.\n` +
+                  `• **Surplus vs. Actual Savings**: Cash surplus remaining in your transaction account is not yet saved money until it is protected. Unallocated funds risk leaking into casual spending before month end.\n` +
+                  `• **Actionable Plan**:\n` +
+                  `  1. **Pay Yourself First**: Transfer **৳${fmt(monthlyTarget)}** (or **৳${fmt(weeklyTarget)} weekly**) into a dedicated savings vault right after your income arrives, rather than waiting for month end.\n` +
+                  `  2. **Protect Current Margins**: Maintain your current spending habits to preserve this positive cash-flow buffer.\n` +
+                  `  3. **Track Toward Goals**: Direct this allocation toward an active savings goal to monitor your milestone progress.`;
+              }
+            } else if (currentSurplus > 0 && currentSurplus < monthlyTarget) {
+              // State 2: 0 < Surplus < Target (Partial Surplus, Shortfall)
+              const gap = monthlyTarget - currentSurplus;
+              const weeklyGap = Math.round(gap / 4);
+              factsUsed.push('savingsPlan.monthlyGap', 'savingsPlan.isFeasible');
+
+              const discCats = ctx.spending.discretionaryCategories || [];
+              let discAdviceBn = '';
+              let discAdviceEn = '';
+
+              if (discCats.length > 0) {
+                const topDisc = discCats.slice(0, 2);
+                const catNamesBn = topDisc.map((c) => `**${c.category}** (৳${fmt(c.amount)})`).join(' ও ');
+                const catNamesEn = topDisc.map((c) => `**${c.category}** (৳${fmt(c.amount)})`).join(' and ');
+                discAdviceBn = `\n• **খরচ কমানোর সম্ভাব্য খাত**: চিকিৎসা বা জরুরি খরচে হাত না দিয়ে আপনার নমনীয় ব্যয়ের খাতগুলো যেমন ${catNamesBn} থেকে অপ্রয়োজনীয় কেনাকাটা ও বাইরের খাওয়া সীমিত করে সপ্তাহে প্রায় **৳${fmt(weeklyGap)}** সাশ্রয় করা সম্ভব।`;
+                discAdviceEn = `\n• **Targeted Reduction Areas**: Without touching essential healthcare or living costs, flexible spending in categories such as ${catNamesEn} can be trimmed by approximately **৳${fmt(weeklyGap)}/week** to bridge the gap.`;
+              }
+
+              if (isBn) {
+                answer = `প্রতি মাসে **৳${fmt(monthlyTarget)}** সঞ্চয় করার পরিকল্পনা (সাপ্তাহিক প্রায় **৳${fmt(weeklyTarget)}**):\n\n` +
+                  `• **আয় ও ব্যয়ের চিত্র**: চলতি মাসে আপনার রেকর্ডকৃত আয় **৳${fmt(income)}** এবং মোট ব্যয় **৳${fmt(spending)}**। আপনার বর্তমান নিট মাসিক উদ্বৃত্ত **৳${fmt(currentSurplus)}**।\n` +
+                  `• **ঘাটতি বিশ্লেষণ**: আপনার ৳${fmt(monthlyTarget)} মাসিক লক্ষ্য পূরণে প্রতি মাসে এখনো **৳${fmt(gap)}** (সাপ্তাহিক প্রায় **৳${fmt(weeklyGap)}**) ঘাটতি রয়েছে।\n` +
+                  `• **বাস্তবায়নযোগ্যতা**: নমনীয় ব্যয়ের ক্ষেত্রে সামান্য সাশ্রয়ী হয়ে এই লক্ষ্য পূরণ করা **সম্ভব**।${discAdviceBn}\n` +
+                  `• **কার্যকর কর্মপরিকল্পনা**:\n` +
+                  `  ১. আয়ের শুরুতেই বর্তমান উদ্বৃত্তের **৳${fmt(currentSurplus)}** সঞ্চয়ে সরিয়ে রাখুন।\n` +
+                  `  ২. অপ্রয়োজনীয় ও ঐচ্ছিক খরচ থেকে প্রতি সপ্তাহে প্রায় **৳${fmt(weeklyGap)}** সাশ্রয় করে মাসিক ঘাটতি পূরণ করুন।\n` +
+                  `  ৩. প্রতি সপ্তাহে ব্যয়ের হিসাব মিলিয়ে লক্ষ্য অর্জনের পথে থাকুন।`;
+              } else {
+                answer = `To save **৳${fmt(monthlyTarget)} per month** (approximately **৳${fmt(weeklyTarget)} per week**):\n\n` +
+                  `• **Recorded Inflow & Outflow**: Your recorded monthly income is **৳${fmt(income)}** and total expenses are **৳${fmt(spending)}**, resulting in a current net surplus of **৳${fmt(currentSurplus)}**.\n` +
+                  `• **Target Gap**: Your current surplus is **৳${fmt(gap)}** short of your ৳${fmt(monthlyTarget)} monthly target (a weekly gap of approximately **৳${fmt(weeklyGap)}**).\n` +
+                  `• **Feasibility Assessment**: Achievable with moderate adjustments to flexible spending.${discAdviceEn}\n` +
+                  `• **Actionable Plan**:\n` +
+                  `  1. Allocate your existing **৳${fmt(currentSurplus)}** surplus into savings on payday.\n` +
+                  `  2. Reduce discretionary purchases by approximately **৳${fmt(weeklyGap)} per week** to cover the gap.\n` +
+                  `  3. Track spending weekly to ensure flexible leaks do not exceed your planned budget.`;
+              }
+            } else {
+              // State 3: Surplus <= 0 (Deficit or break-even, expenses >= income)
+              const deficit = Math.abs(currentSurplus);
+              const totalAdjustment = deficit + monthlyTarget;
+              factsUsed.push('savingsPlan.isFeasible');
+
+              if (isBn) {
+                answer = `প্রতি মাসে **৳${fmt(monthlyTarget)}** সঞ্চয় করার পরিকল্পনা (সাপ্তাহিক প্রায় **৳${fmt(weeklyTarget)}**):\n\n` +
+                  `• **আয় ও ব্যয়ের চিত্র**: চলতি মাসে আপনার রেকর্ডকৃত আয় **৳${fmt(income)}** এবং মোট ব্যয় **৳${fmt(spending)}**। ফলে বর্তমানে কোনো উদ্বৃত্ত নেই${deficit > 0 ? ` এবং **৳${fmt(deficit)}** মাসিক ঘাটতি রয়েছে` : ''}।\n` +
+                  `• **বাস্তবায়নযোগ্যতা**: বর্তমান আর্থিক উপাত্ত অনুযায়ী প্রতি মাসে ৳${fmt(monthlyTarget)} সঞ্চয় করা **এই মুহূর্তে বাস্তবায়নযোগ্য নয়**, কারণ আপনার ব্যয় আয়ের সমান বা তার চেয়ে বেশি হচ্ছে।\n` +
+                  `• **প্রয়োজনীয় আর্থিক উন্নতি**: এ লক্ষ্য অর্জন করতে আপনার বাজেটে মোট **৳${fmt(totalAdjustment)}** এর সাশ্রয় বা আয় বৃদ্ধি প্রয়োজন (${deficit > 0 ? `ঘাটতি মেটাতে ৳${fmt(deficit)} + ` : ''}সঞ্চয়ের জন্য ৳${fmt(monthlyTarget)})।\n` +
+                  `• **কার্যকর কর্মপরিকল্পনা**:\n` +
+                  `  ১. **প্রথমে ঘাটতি দূর করুন**: নতুন সঞ্চয় প্রতিশ্রুতির আগে অপ্রয়োজনীয় ও নমনীয় খরচ কমিয়ে আয়-ব্যয়কে সমতায় আনুন।\n` +
+                  `  ২. **নমনীয় খরচ চিহ্নিত করুন**: বাইরে খাওয়া, ডেলিভারি ও সাবস্ক্রিপশন ফি পর্যালোচনা করুন।\n` +
+                  `  ৩. **ধাপে ধাপে অগ্রসর হোন**: বাজেট উদ্বৃত্তে এলে একটি ছোট প্রারম্ভিক লক্ষ্য দিয়ে সঞ্চয় শুরু করুন।`;
+              } else {
+                answer = `To save **৳${fmt(monthlyTarget)} per month** (approximately **৳${fmt(weeklyTarget)} per week**):\n\n` +
+                  `• **Recorded Inflow & Outflow**: Your recorded monthly income is **৳${fmt(income)}** and total expenses are **৳${fmt(spending)}**, leaving no net surplus${deficit > 0 ? ` (net monthly deficit of **৳${fmt(deficit)}**)` : ''}.\n` +
+                  `• **Feasibility Assessment**: Based on your current financial records, saving ৳${fmt(monthlyTarget)}/month is **not currently feasible** because expenditures exceed or equal inflows.\n` +
+                  `• **Required Budget Restructuring**: Reaching this target requires a total monthly cash-flow recovery of **৳${fmt(totalAdjustment)}** (${deficit > 0 ? `৳${deficit.toLocaleString()} to close the deficit + ` : ''}৳${monthlyTarget.toLocaleString()} for savings).\n` +
+                  `• **Actionable Plan**:\n` +
+                  `  1. **Stop the Deficit First**: Before committing to new savings, bring spending below income by cutting non-essential flexible costs.\n` +
+                  `  2. **Audit Discretionary Outflows**: Review takeout, entertainment, and avoidable service fees.\n` +
+                  `  3. **Build Sequentially**: Once your cash flow breaks even, establish an initial emergency buffer before scaling to ৳${monthlyTarget.toLocaleString()}/month.`;
+              }
+            }
+          }
         }
       } else {
         factsUsed.push('snapshot.netSavings', 'snapshot.savingsRate');
-        if (topCat) factsUsed.push('spending.topCategory', 'spending.topCategoryAmount');
+        const discCats = ctx.spending.discretionaryCategories || [];
+        const targetTrimCat =
+          discCats.length > 0
+            ? discCats[0].category
+            : topCat && !topCat.category.toLowerCase().includes('health')
+            ? topCat.category
+            : 'flexible spending';
+
         if (isBn) {
-          answer = `আপনার বর্তমান মাসিক সঞ্চয় ৳${netSavings.toLocaleString()} (সঞ্চয়ের হার: ${savingsRate}%)। সঞ্চয় বাড়ানোর বাস্তবসম্মত পদক্ষেপ:\n১. শীর্ষ খরচের খাত **${topCat ? topCat.category : 'নমনীয় খাত'}** এর খরচ নিয়ন্ত্রণে রাখা।\n২. অপ্রয়োজনীয় ক্যাশ-আউট চার্জ এড়িয়ে চলা।\n৩. উদ্বৃত্ত অর্থ নির্দিষ্ট সঞ্চয় লক্ষ্যে স্বয়ংক্রিয়ভাবে জমা করা।`;
+          answer = `আপনার বর্তমান মাসিক সঞ্চয় ৳${netSavings.toLocaleString()} (সঞ্চয়ের হার: ${savingsRate}%)। সঞ্চয় বাড়ানোর বাস্তবসম্মত পদক্ষেপ:\n১. নমনীয় খরচের খাত **${targetTrimCat}** এর খরচ নিয়ন্ত্রণে রাখা।\n২. অপ্রয়োজনীয় ক্যাশ-আউট চার্জ এড়িয়ে চলা।\n৩. উদ্বৃত্ত অর্থ নির্দিষ্ট সঞ্চয় লক্ষ্যে স্বয়ংক্রিয়ভাবে জমা করা।`;
         } else {
-          answer = `Your current monthly savings is ৳${netSavings.toLocaleString()} (savings rate: ${savingsRate}%). Practical steps to save more:\n1. Moderate outflows in your top category **${topCat ? topCat.category : 'flexible spending'}**.\n2. Eliminate avoidable cash-out tariffs and subscription leaks.\n3. Route your monthly surplus directly into an automated high-yield savings vault.`;
+          answer = `Your current monthly savings is ৳${netSavings.toLocaleString()} (savings rate: ${savingsRate}%). Practical steps to save more:\n1. Moderate outflows in your flexible category **${targetTrimCat}**.\n2. Eliminate avoidable cash-out tariffs and subscription leaks.\n3. Route your monthly surplus directly into an automated high-yield savings vault.`;
         }
       }
       followUps.push(

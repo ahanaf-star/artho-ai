@@ -85,12 +85,34 @@ export async function executeCoachInquiry(params: CoachCallParams): Promise<Coac
   // Additional precomputed numbers for validation
   const additionalPrecomputed: number[] = [];
   if (intentResult.parsedPlan) {
+    const p = intentResult.parsedPlan;
+    const surplus = p.currentMonthlySurplus;
+    const mTarget = p.monthlyTarget ?? p.targetAmount;
+    const wTarget = p.weeklyTarget ?? Math.round(mTarget / 4);
+    const mGap = p.monthlyGap ?? 0;
+    const wGap = Math.round(mGap / 4);
+    const diff = p.surplusDiff ?? Math.abs(surplus - mTarget);
+    const inc = fullContext.snapshot.monthlyIncome || 0;
+    const exp = fullContext.snapshot.monthlySpending || 0;
+    const deficit = Math.abs(exp - inc);
+    const totalAdj = deficit + mTarget;
+
     additionalPrecomputed.push(
-      intentResult.parsedPlan.targetAmount,
-      intentResult.parsedPlan.monthsDuration,
-      intentResult.parsedPlan.requiredMonthly,
-      intentResult.parsedPlan.monthlyGap
+      p.targetAmount,
+      mTarget,
+      wTarget,
+      p.requiredMonthly,
+      mGap,
+      wGap,
+      diff,
+      surplus,
+      Math.abs(surplus),
+      deficit,
+      totalAdj
     );
+    if (p.monthsDuration !== undefined) {
+      additionalPrecomputed.push(p.monthsDuration);
+    }
   }
 
   // If Gemini client is not initialized, run deterministic fallback

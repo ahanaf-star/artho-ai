@@ -44,9 +44,14 @@ export interface CoachContext {
     monthlyIncome: number;
     monthlySpending: number;
     netSavings: number;
+    netCashFlow?: number;
     savingsRate: number;
     expenseRatio: number;
     currentBalance: number;
+    profileMonthlyIncome?: number;
+    hasRecordedIncome?: boolean;
+    hasRecordedExpenses?: boolean;
+    hasProfileIncome?: boolean;
     facts: Record<string, FactItem>;
   };
   spending: {
@@ -69,6 +74,12 @@ export interface CoachContext {
       tiedCategories?: string[];
     } | null;
     zeroSpendingCategories: string[];
+    discretionaryCategories?: Array<{
+      category: string;
+      amount: number;
+      percentage: number;
+    }>;
+    discretionaryTotal?: number;
     topCategories: Array<{
       category: string;
       amount: number;
@@ -332,8 +343,13 @@ export async function buildCoachContext(
   const monthlyIncome = monthlyOverview.totalIncome;
   const monthlySpending = monthlyOverview.totalExpenses;
   const netSavings = monthlyOverview.netSavings;
-  const savingsRate = monthlyOverview.savingsRate;
+  const netCashFlow = monthlyIncome - monthlySpending;
+  const savingsRate = monthlyIncome > 0 ? Number(monthlyOverview.savingsRate.toFixed(1)) : 0;
   const expenseRatio = monthlyIncome > 0 ? Number(((monthlySpending / monthlyIncome) * 100).toFixed(1)) : 0;
+  const profileMonthlyIncome = user?.monthlyIncome ? Number(user.monthlyIncome) : undefined;
+  const hasRecordedIncome = monthlyIncome > 0;
+  const hasRecordedExpenses = monthlySpending > 0;
+  const hasProfileIncome = profileMonthlyIncome !== undefined && profileMonthlyIncome > 0;
 
   // 1. Snapshot Fact Group
   const snapshotFacts: Record<string, FactItem> = {
@@ -358,6 +374,13 @@ export async function buildCoachContext(
       labelEn: 'Net Monthly Savings',
       labelBn: 'নিট মাসিক সঞ্চয়',
     },
+    'snapshot.netCashFlow': {
+      key: 'snapshot.netCashFlow',
+      value: netCashFlow,
+      available: true,
+      labelEn: 'Net Cash Flow',
+      labelBn: 'নিট ক্যাশ ফ্লো',
+    },
     'snapshot.savingsRate': {
       key: 'snapshot.savingsRate',
       value: savingsRate,
@@ -380,6 +403,16 @@ export async function buildCoachContext(
       labelBn: 'উপলব্ধ ব্যালেন্স',
     },
   };
+
+  if (profileMonthlyIncome !== undefined && profileMonthlyIncome > 0) {
+    snapshotFacts['snapshot.profileMonthlyIncome'] = {
+      key: 'snapshot.profileMonthlyIncome',
+      value: profileMonthlyIncome,
+      available: true,
+      labelEn: 'Profile Benchmark Income',
+      labelBn: 'প্রোফাইল নির্দেশিত মাসিক আয়',
+    };
+  }
 
   // 2. Spending Fact Group
   const factual = calculateFactualAnalysis(eligibleTransactions, activeMonth);
@@ -420,6 +453,48 @@ export async function buildCoachContext(
     categoryPercentages[cat.category] = cat.percentage;
   }
 
+  // Identify discretionary categories for safe savings recommendations
+  // (Filter out healthcare, medical, utilities, tuition, rent, and explicit essential categories)
+  const isEssentialCatName = (name: string): boolean => {
+    const norm = name.toLowerCase();
+    return (
+      norm.includes('health') ||
+      norm.includes('medic') ||
+      norm.includes('doctor') ||
+      norm.includes('hospital') ||
+      norm.includes('pharma') ||
+      norm.includes('tuition') ||
+      norm.includes('educat') ||
+      norm.includes('school') ||
+      norm.includes('rent') ||
+      norm.includes('utilit') ||
+      norm.includes('electric') ||
+      norm.includes('water') ||
+      norm.includes('gas')
+    );
+  };
+
+  const discretionaryCatMap: Record<string, number> = {};
+  for (const t of eligibleTransactions) {
+    if (t.date && t.date.startsWith(activeMonth) && t.type === 'expense') {
+      const isEssential = t.classification === 'essential' || isEssentialCatName(t.category);
+      if (!isEssential) {
+        discretionaryCatMap[t.category] = (discretionaryCatMap[t.category] || 0) + t.amount;
+      }
+    }
+  }
+
+  const discretionaryCategories = Object.entries(discretionaryCatMap)
+    .filter(([_, amt]) => amt > 0)
+    .map(([cat, amt]) => ({
+      category: cat,
+      amount: amt,
+      percentage: monthlySpending > 0 ? Number(((amt / monthlySpending) * 100).toFixed(1)) : 0,
+    }))
+    .sort((a, b) => b.amount - a.amount);
+
+  const discretionaryTotal = discretionaryCategories.reduce((sum, c) => sum + c.amount, 0);
+
   // Detect spending anomalies using shared function
   const anomaliesList = detectSpendingAnomalies(eligibleTransactions, activeMonth);
   const anomalies = anomaliesList.map((a) => ({
@@ -435,6 +510,13 @@ export async function buildCoachContext(
       available: monthlySpending > 0,
       labelEn: 'Total Monthly Spending',
       labelBn: 'মোট মাসিক ব্যয়',
+    },
+    'spending.discretionaryTotal': {
+      key: 'spending.discretionaryTotal',
+      value: discretionaryTotal,
+      available: discretionaryTotal > 0,
+      labelEn: 'Total Discretionary Spending',
+      labelBn: 'মোট নমনীয় ব্যয়',
     },
     'spending.topCategory': {
       key: 'spending.topCategory',
@@ -808,13 +890,18 @@ export async function buildCoachContext(
       },
     },
     snapshot: {
-      available: monthlyIncome > 0 || monthlySpending > 0 || currentBalance > 0,
+      available: monthlyIncome > 0 || monthlySpending > 0 || currentBalance > 0 || hasProfileIncome,
       monthlyIncome,
       monthlySpending,
       netSavings,
+      netCashFlow,
       savingsRate,
       expenseRatio,
       currentBalance,
+      profileMonthlyIncome,
+      hasRecordedIncome,
+      hasRecordedExpenses,
+      hasProfileIncome,
       facts: snapshotFacts,
     },
     spending: {
@@ -841,6 +928,8 @@ export async function buildCoachContext(
           }
         : null,
       zeroSpendingCategories: factual.zeroSpendingCategories,
+      discretionaryCategories,
+      discretionaryTotal,
       topCategories: topCategories.map((c) => ({
         category: c.category,
         amount: c.amount,
