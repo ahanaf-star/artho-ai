@@ -165,19 +165,15 @@ export function formatCalendarDate(
 /**
  * Core dynamic readable timestamp formatter.
  *
- * Examples produced:
- * - "Updated just now"
- * - "Updated 5 minutes ago"
- * - "Updated today at 09:52"
- * - "Updated yesterday at 18:30"
- * - "Updated on Oct 14, 2026 at 09:52"
+ * Strictly formats non-relative 24-hour timestamps:
+ * - "Updated today at 17:11"
+ * - "Updated yesterday at 09:45"
+ * - "Updated on Oct 14, 2026 at 16:30"
  *
  * Bangla translations:
- * - "এইমাত্র আপডেট করা হয়েছে"
- * - "৫ মিনিট আগে আপডেট"
- * - "আজ ০৯:৫২-এ আপডেট"
- * - "গতকাল ১৮:৩০-এ আপডেট"
- * - "১৪ অক্টো, ২০২৬ ০৯:৫২-এ আপডেট"
+ * - "আজ ১৭:১১-এ আপডেট"
+ * - "গতকাল ০৯:৪৫-এ আপডেট"
+ * - "১৪ অক্টো, ২০২৬ ১৬:৩০-এ আপডেট"
  */
 export function formatLastUpdated(
   timestamp: string | Date | null | undefined,
@@ -196,37 +192,25 @@ export function formatLastUpdated(
 
   const timeZone = resolveTimeZone(options.timeZone);
   const locale = options.locale || (isBangla ? 'bn-BD' : 'en-US');
-  const hour12 = options.hour12 !== undefined ? options.hour12 : false;
   const now = options.referenceDate || new Date();
 
-  // Elapsed difference in seconds
-  const diffMs = now.getTime() - date.getTime();
-  const diffSeconds = Math.floor(diffMs / 1000);
-
-  // 1. Just now: less than 60 seconds (also protect against slight client clock skew down to -10s)
-  if (diffSeconds < 60 && diffSeconds >= -10) {
-    return isBangla ? 'এইমাত্র আপডেট করা হয়েছে' : 'Updated just now';
-  }
-
-  // 2. Relative minutes: 1 to 59 minutes ago
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  if (diffMinutes < 60 && diffMinutes >= 1) {
-    if (isBangla) {
-      return `${toBanglaDigits(diffMinutes)} মিনিট আগে আপডেট`;
-    }
-    return diffMinutes === 1 ? 'Updated 1 minute ago' : `Updated ${diffMinutes} minutes ago`;
-  }
-
-  // 3. Calendar day comparison in the user's specific timezone
+  // Calendar day comparison in the user's specific timezone
   const todayStr = getCalendarDateString(now, timeZone);
   const dateStr = getCalendarDateString(date, timeZone);
-  const timeFormatted = formatTimeOfDay(date, { timeZone, locale, hour12, isBangla });
+  // Always format time in 24-hour (HH:mm) format
+  const timeFormatted = formatTimeOfDay(date, {
+    timeZone,
+    locale: isBangla ? 'bn-BD' : 'en-GB',
+    hour12: false,
+    isBangla,
+  });
 
+  // 1. If the update occurred today: "Updated today at HH:mm"
   if (todayStr === dateStr) {
     return isBangla ? `আজ ${timeFormatted}-এ আপডেট` : `Updated today at ${timeFormatted}`;
   }
 
-  // Check if target was yesterday in the user's timezone
+  // 2. Check if target was yesterday in the user's timezone: "Updated yesterday at HH:mm"
   const [tYear, tMonth, tDay] = todayStr.split('-').map(Number);
   const [dYear, dMonth, dDay] = dateStr.split('-').map(Number);
   const utcTodayMidnight = Date.UTC(tYear, tMonth - 1, tDay);
@@ -237,7 +221,7 @@ export function formatLastUpdated(
     return isBangla ? `গতকাল ${timeFormatted}-এ আপডেট` : `Updated yesterday at ${timeFormatted}`;
   }
 
-  // 4. Older than yesterday: show formatted date and time
+  // 3. Otherwise: "Updated on MMM DD, YYYY at HH:mm"
   const dateFormatted = formatCalendarDate(date, { timeZone, locale, isBangla });
   if (isBangla) {
     return `${dateFormatted} ${timeFormatted}-এ আপডেট`;
@@ -268,6 +252,7 @@ export function formatExactDateTime(
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
+      hour12: false,
       timeZoneName: 'short',
     });
     return formatter.format(date);
@@ -308,3 +293,4 @@ export function useLiveFormattedTimestamp(
 
   return formatLastUpdated(isoTimestamp, options);
 }
+

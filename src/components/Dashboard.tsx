@@ -89,7 +89,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const formattedLastUpdated = useLiveFormattedTimestamp(lastUpdated, {
     timeZone: effectiveTimeZone,
     isBangla,
-    hour12: user?.timeFormat === '12h',
+    hour12: false,
   });
   const exactTooltip = formatExactDateTime(
     lastUpdated,
