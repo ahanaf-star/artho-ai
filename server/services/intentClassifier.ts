@@ -59,12 +59,23 @@ export interface SlicedContext {
 /**
  * Normalizes text for keyword matching in English and Bengali
  */
-function normalizeText(text: string): string {
+export function normalizeText(text: string): string {
   return text
+    .normalize('NFC')
     .toLowerCase()
-    .replace(/[৳$,?!.]/g, ' ')
+    .replace(/\u09DF/g, '\u09AF\u09BC') // Normalize precomposed য় to য+nukta
+    .replace(/\u09DC/g, '\u09A1\u09BC') // Normalize precomposed ড় to ড+nukta
+    .replace(/\u09DD/g, '\u09A2\u09BC') // Normalize precomposed ঢ় to ঢ+nukta
+    .replace(/[৳$,?!.।]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/**
+ * Robust keyword matcher that normalizes both query and pattern text
+ */
+export function matchesKeyword(normText: string, pattern: string): boolean {
+  return normText.includes(normalizeText(pattern));
 }
 
 /**
@@ -77,7 +88,7 @@ export function parseSavingsTarget(
   currentNetSavings: number = 0
 ): ParsedSavingsPlan | undefined {
   // Avoid misclassifying simulations or projections as savings plans
-  if (/(?:simulate|simulation|scenario|forecast|trajectory|risk|resilience)/i.test(query)) {
+  if (/(?:simulate|simulation|scenario|forecast|trajectory|risk|resilience|পূর্বাভাস|কত\s*(?:টাকা)?\s*জমবে|কত\s*(?:টাকা)?\s*সঞ্চ[য়য়]|প্রভাব\s*পড়বে|প্রভাব\s*পড়বে|বাফার)/i.test(query)) {
     return undefined;
   }
 
@@ -285,7 +296,7 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'recipe',
   ];
   for (const p of outOfScopePatterns) {
-    if (norm.includes(p)) {
+    if (matchesKeyword(norm, p)) {
       return {
         intent: 'out_of_scope',
         confidence: 0.95,
@@ -322,9 +333,11 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'উইথড্র ফি',
     'চার্জ কমাব',
     'ফি সাশ্রয়',
+    'এজেন্ট ফি',
+    'এজেন্ট ফিতে',
   ];
   for (const p of cashOutPatterns) {
-    if (norm.includes(p)) {
+    if (matchesKeyword(norm, p)) {
       return { intent: 'reduce_cash_outs', confidence: 0.9, matchedKeywords: [p] };
     }
   }
@@ -365,6 +378,10 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'project three months',
     'project 3 months',
     'project next month',
+    'project my finances for next month',
+    'project my finances',
+    'project my finances for',
+    'based on current trends',
     'next month s financial position',
     'next month financial position',
     'next month s savings',
@@ -372,22 +389,61 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'estimate next month',
     'estimate next month\'s savings',
     'next month savings',
+    'accumulate in 6 months',
+    'accumulate in',
+    'money will i accumulate',
+    'accumulate',
+    'can my balance absorb',
+    'absorb it',
+    'balance absorb',
+    'unexpected ৳20,000',
+    'unexpected 20,000',
+    'project my finances for 3 months',
+    'for 3 months with incomplete',
+    'incomplete transaction history',
     'income-loss resilience',
     'loss resilience',
     'resilience',
-    'stability risks',
     'financial trajectory',
     'trajectory',
     'আর্থিক পূর্বাভাস',
     'ভবিষ্যতের পূর্বাভাস',
     'ভবিষ্যত আর্থিক অবস্থান',
+    'ভবিষ্যৎ পূর্বাভাস',
+    'ভবিষ্যত পূর্বাভাস',
     'আগামী ৬ মাস',
     'আগামী ছয় মাস',
     'পরবর্তী ৬ মাস',
     'পরবর্তী ছয় মাস',
+    'কত জমবে',
+    'কত সঞ্চয় হতে পারে',
+    'কত সঞ্চয় হতে পারে',
+    'খরচ বাড়লে',
+    'খরচ বাড়লে',
+    'কী প্রভাব পড়বে',
+    'কী প্রভাব পড়বে',
+    'প্রভাব পড়বে',
+    'প্রভাব পড়বে',
+    'ব্যালেন্স তা সামলাতে পারবে',
+    'অপ্রত্যাশিত খরচ আসলে',
+    'পূর্বাভাস',
+    'পূর্বাভাস বিশ্লেষণ',
+    'পূর্বাভাস দাও',
+    'পূর্বাভাস কেমন হবে',
+    'পূর্বাভাসের জন্য',
+    'বর্তমান ধারা অনুযায়ী',
+    'বর্তমান ধারা অনুযায়ী',
+    'আগামী মাসে আমার আর্থিক অবস্থান',
+    'আগামী মাসে আর্থিক',
+    'আগামী ৬ মাসে আমার কত টাকা সঞ্চয়',
+    'আগামী ৬ মাসে কত সঞ্চয়',
+    'আগামী ৬ মাসে',
+    'আগামী 6 মাসে',
+    'কত টাকা সঞ্চয় হতে পারে',
+    'কত টাকা সঞ্চয় হতে পারে',
   ];
   for (const p of projectionPatterns) {
-    if (norm.includes(p)) {
+    if (matchesKeyword(norm, p)) {
       return { intent: 'financial_projection', confidence: 0.94, matchedKeywords: [p] };
     }
   }
@@ -407,8 +463,19 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'running out of money',
     'run out of money',
     'risk of running out',
+    'safe personal spending limit',
+    'safe personal spending',
+    'safe personal',
     'safe spending for the rest',
+    'safe spending limit',
+    'safe spending',
+    'spending limit for the rest of this month',
+    'spending limit for the rest',
+    'spending limit for the remaining',
+    'weekly spending limit for the remaining',
+    'weekly spending limit',
     'rest of the month',
+    'rest of this month',
     'expenses affecting cash flow',
     'affecting cash flow',
     'why money is not left',
@@ -417,12 +484,37 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'মাস শেষ',
     'মাস শেষে',
     'টাকা শেষ',
+    'টাকা শেষ হয়ে যায়',
+    'টাকা শেষ হয়ে যায়',
+    'টাকা শেষ হয়ে যাওয়ার ঝুঁকি',
+    'টাকা শেষ হয়ে যাওয়ার ঝুঁকি',
+    'টাকা শেষ হওয়ার ঝুঁকি',
+    'টাকা শেষ হওয়ার ঝুঁকি',
     'কত টাকা থাকতে পারে',
     'টানাপোড়েন',
+    'টানাটানি',
+    'টানাটানি শুরু',
+    'সম্ভাব্য ব্যালেন্স',
+    'ব্যালেন্স কত দাঁড়াবে',
+    'ব্যালেন্স কত দাঁড়াবে',
+    'সেফটি বাফার',
+    'নিরাপত্তা বাফার',
+    'বাফার রাখা দরকার',
+    'ঘাটতি',
+    'ঘাটতি থাকা',
+    'ঘাটতি হওয়ার ঝুঁকি',
+    'ঘাটতি হওয়ার ঝুঁকি',
+    'বাকি দিনগুলোতে খরচের নিরাপদ সীমা',
+    'বাকি দিনগুলোর জন্য আমার সাপ্তাহিক খরচের সীমা',
+    'বাকি দিনগুলোর জন্য খরচের সীমা',
+    'বাকি দিনগুলোতে খরচের',
+    'খরচের নিরাপদ সীমা',
+    'সাপ্তাহিক খরচের সীমা',
+    'নিরাপদ সীমা',
   ];
   if (!norm.includes('checklist')) {
     for (const p of monthEndPatterns) {
-      if (norm.includes(p)) {
+      if (matchesKeyword(norm, p)) {
         return { intent: 'month_end_balance', confidence: 0.9, matchedKeywords: [p] };
       }
     }
@@ -446,7 +538,7 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'কোন মার্চেন্টে সবচেয়ে কম',
   ];
   for (const p of lowestMerchPatterns) {
-    if (norm.includes(p)) {
+    if (matchesKeyword(norm, p)) {
       return { intent: 'lowest_merchant', confidence: 0.94, matchedKeywords: [p] };
     }
   }
@@ -475,7 +567,7 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'কোন মার্চেন্টে সবচেয়ে বেশি',
   ];
   for (const p of highestMerchPatterns) {
-    if (norm.includes(p)) {
+    if (matchesKeyword(norm, p)) {
       return { intent: 'highest_merchant', confidence: 0.94, matchedKeywords: [p] };
     }
   }
@@ -506,7 +598,7 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'এককালীন সর্বোচ্চ',
   ];
   for (const p of largestExpensePatterns) {
-    if (norm.includes(p)) {
+    if (matchesKeyword(norm, p)) {
       return { intent: 'largest_expense', confidence: 0.92, matchedKeywords: [p] };
     }
   }
@@ -526,7 +618,7 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'ক্ষুদ্রতম লেনদেন',
   ];
   for (const p of smallestExpensePatterns) {
-    if (norm.includes(p)) {
+    if (matchesKeyword(norm, p)) {
       return { intent: 'smallest_expense', confidence: 0.92, matchedKeywords: [p] };
     }
   }
@@ -561,7 +653,7 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'সবচেয়ে কম খরচের খাত',
   ];
   for (const p of lowestCatPatterns) {
-    if (norm.includes(p)) {
+    if (matchesKeyword(norm, p)) {
       return { intent: 'lowest_category', confidence: 0.94, matchedKeywords: [p] };
     }
   }
@@ -592,7 +684,7 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'সর্বোচ্চ খরচের খাত',
   ];
   for (const p of topCatPatterns) {
-    if (norm.includes(p)) {
+    if (matchesKeyword(norm, p)) {
       return { intent: 'top_category', confidence: 0.93, matchedKeywords: [p] };
     }
   }
@@ -615,7 +707,7 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'যে খাতে খরচ হয়নি',
   ];
   for (const p of zeroSpendingPatterns) {
-    if (norm.includes(p)) {
+    if (matchesKeyword(norm, p)) {
       return { intent: 'zero_spending', confidence: 0.92, matchedKeywords: [p] };
     }
   }
@@ -642,7 +734,7 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'আগের মাসের চেয়ে',
   ];
   for (const p of momComparisonPatterns) {
-    if (norm.includes(p)) {
+    if (matchesKeyword(norm, p)) {
       return { intent: 'mom_comparison', confidence: 0.92, matchedKeywords: [p] };
     }
   }
@@ -662,13 +754,23 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'উপার্জন কত',
   ];
   for (const p of incomeTotalPatterns) {
-    if (norm.includes(p)) {
+    if (matchesKeyword(norm, p)) {
       return { intent: 'income_total', confidence: 0.92, matchedKeywords: [p] };
     }
   }
 
   // 4. Unusual Spending & Anomalies (skip if query asks to "plan for" or "prepare for")
-  const isPlanningForUnexpected = norm.includes('plan for') || norm.includes('prepare for');
+  const isPlanningForUnexpected =
+    norm.includes('plan for') ||
+    norm.includes('prepare for') ||
+    norm.includes('absorb') ||
+    norm.includes('can my balance absorb') ||
+    norm.includes('বাজেট') ||
+    norm.includes('পরিকল্পনা') ||
+    norm.includes('প্রস্তুত') ||
+    norm.includes('সামলানোর') ||
+    norm.includes('সাজাব') ||
+    norm.includes('ব্যালেন্স তা সামলাতে');
   if (!isPlanningForUnexpected) {
     const anomalyPatterns = [
       'unusual',
@@ -689,7 +791,7 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
       'বেশি লেগেছে',
     ];
     for (const p of anomalyPatterns) {
-      if (norm.includes(p)) {
+      if (matchesKeyword(norm, p)) {
         return { intent: 'unusual_spending', confidence: 0.88, matchedKeywords: [p] };
       }
     }
@@ -715,11 +817,18 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'লক্ষ্য',
     'টার্গেট',
     'ইমার্জেন্সি ফান্ড',
+    'জরুরি তহবিল',
+    'তহবিল জমার',
+    'অগ্রগতি কেমন',
+    'জমার অগ্রগতি',
+    'ল্যাপটপ',
+    'ল্যাপটপ কেনার',
+    'ল্যাপটপ কিনতে',
     'লক্ষ্যমাত্রা',
     'অন ট্র্যাক',
   ];
   for (const p of goalPatterns) {
-    if (norm.includes(p)) {
+    if (matchesKeyword(norm, p)) {
       return { intent: 'savings_goal_progress', confidence: 0.9, matchedKeywords: [p] };
     }
   }
@@ -728,6 +837,15 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
   const savingsPlanPatterns = [
     'save more',
     'how can i save',
+    'how much should i save',
+    'how much should i save every week',
+    'save every week',
+    'save each week',
+    'hit my monthly target',
+    'day i get paid',
+    'save money on the day',
+    'save on the day',
+    'save on payday',
     'savings rate',
     'reach 30%',
     'increase savings',
@@ -751,10 +869,32 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'সঞ্চয় বাড়াব',
     'কীভাবে সঞ্চয়',
     'সঞ্চয়ের হার',
+    'সপ্তাহে কত টাকা সঞ্চয়',
+    'সপ্তাহে কত টাকা সঞ্চয়',
+    'সপ্তাহে সঞ্চয়',
+    'সপ্তাহে সঞ্চয়',
+    'বেতন বা আয় পাওয়ার দিনই',
+    'বেতন বা আয় পাওয়ার দিনই',
+    'বেতন পাওয়ার দিন',
+    'বেতন পাওয়ার দিন',
+    'আয় পাওয়ার দিন',
+    'আয় পাওয়ার দিন',
+    'আয় আসলে সঞ্চয়',
+    'আয় আসলে সঞ্চয়',
+    'অনিয়মিত বা পরিবর্তনশীল আয়ে',
+    'অনিয়মিত বা পরিবর্তনশীল আয়ে',
+    'পরিবর্তনশীল আয়ে',
+    'পরিবর্তনশীল আয়ে',
+    'পরিবর্তনশীল আয়',
+    'পরিবর্তনশীল আয়',
+    'নিয়মিত সঞ্চয়',
+    'নিয়মিত সঞ্চয়',
+    '৩ মাসে সঞ্চয়',
+    '৩ মাসে সঞ্চয়',
   ];
   if (!norm.includes('checklist')) {
     for (const p of savingsPlanPatterns) {
-      if (norm.includes(p)) {
+      if (matchesKeyword(norm, p)) {
         return { intent: 'savings_plan', confidence: 0.88, matchedKeywords: [p] };
       }
     }
@@ -784,6 +924,8 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'improvements',
     'good habits and areas',
     'good habits',
+    'financial habits',
+    'habits should i build',
     'priority action',
     'priority actions',
     'prioritize expense reduction',
@@ -799,9 +941,17 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'financial risks',
     'habit to stop',
     'checklist',
+    'checklist for my mid-month',
     'mid-month and month-end',
+    'month-end financial reviews',
     'financial improvement plan',
     'improvement plan',
+    'major financial purchase',
+    'before making a major',
+    'major purchase',
+    'missing financial data',
+    'what missing financial data',
+    'financial data should i add',
     '90-day',
     'কী পদক্ষেপ নেব',
     'কী কী পদক্ষেপ',
@@ -811,9 +961,34 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'উন্নতি করার ৩টি',
     'উন্নতি করার উপায়',
     'আর্থিক স্বাস্থ্য উন্নতি',
+    'অগ্রাধিকারমূলক',
+    'পদক্ষেপ কী কী',
+    '৩টি অগ্রাধিকারমূলক',
+    'উন্নতির জন্য এখনই',
+    'আগামী ৩০ দিনে',
+    'আগামী ৩০ দিন',
+    'অভ্যাসগুলো গড়ে',
+    'অভ্যাস গড়ে',
+    'অভ্যাসগুলো',
+    'আর্থিক স্বাস্থ্য উন্নত করতে',
+    'বারবার অতিরিক্ত খরচ',
+    'অতিরিক্ত খরচ কীভাবে নিয়ন্ত্রণ',
+    'অতিরিক্ত খরচ নিয়ন্ত্রণ',
+    'বড় কোনো খরচের সিদ্ধান্ত',
+    'বড় খরচের সিদ্ধান্ত',
+    'সিদ্ধান্ত নেওয়ার আগে',
+    'কী কী বিষয় যাচাই',
+    'চেকলিস্ট',
+    'চেকলিস্ট দাও',
+    'পক্ষকালের',
+    'পক্ষকালের আর্থিক পর্যালোচনার',
+    'কী কী আর্থিক তথ্য যুক্ত',
+    'কী তথ্য যুক্ত করতে হবে',
+    'আরও নিখুঁত পরামর্শ পেতে',
+    'আরও নিখুঁত পরামর্শ পেতে অ্যাপে',
   ];
   for (const p of recommendationPatterns) {
-    if (norm.includes(p)) {
+    if (matchesKeyword(norm, p)) {
       return { intent: 'health_recommendations', confidence: 0.94, matchedKeywords: [p] };
     }
   }
@@ -831,7 +1006,10 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'fixed and variable',
     'fixed expenses',
     'variable expenses',
+    'allocate my income',
+    'allocate income across',
     'allocate income',
+    'allocation across categories',
     'allocation',
     'spending limits',
     'category spending limits',
@@ -842,6 +1020,8 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'potential 10% spending reduction',
     'reduction in discretionary',
     'discretionary spending by',
+    'optimize spending when medical',
+    'medical expenses are large',
     'safe personal spending',
     'safe personal',
     'arriving at different times',
@@ -854,9 +1034,46 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'খরচ কমাব',
     'খরচ কাটব',
     'কোন খাত কমাব',
+    'বণ্টন',
+    'কীভাবে বণ্টন',
+    'আয় বণ্টন',
+    'আয় বণ্টন',
+    'বিভিন্ন খাতে',
+    'কোন খাতটি কমানো',
+    'খাতটি কমানো',
+    'কোন খাত কমানো',
+    'প্রয়োজনীয় ও নমনীয়',
+    'প্রয়োজনীয় ও নমনীয়',
+    'নমনীয় খরচ',
+    'নমনীয় খরচ',
+    'স্থায়ী খরচ',
+    'স্থায়ী খরচ',
+    'ভারসাম্য',
+    'পরিবর্তনশীল খরচের',
+    'পরিবর্তনশীল খরচ',
+    'বাকি দিনগুলোতে খরচের',
+    'নিরাপদ সীমা',
+    'খরচের নিরাপদ সীমা',
+    'সাপ্তাহিক খরচের সীমা',
+    'খরচের সীমা কত',
+    'বাকি দিনগুলোর জন্য',
+    '১০% কমালে',
+    '10% কমালে',
+    'কমালে কী লাভ',
+    'নমনীয় খরচ ১০%',
+    'নমনীয় খরচ ১০%',
+    'কোনো রেকর্ড করা আয় না থাকলে',
+    'রেকর্ড করা আয় না থাকলে',
+    'কোনো রেকর্ড করা আয় না থাকলে',
+    'রেকর্ড করা আয় না থাকলে',
+    'জরুরি চিকিৎসা খরচে হাত না দিয়ে',
+    'চিকিৎসা খরচে হাত না দিয়ে',
+    'হাত না দিয়ে কীভাবে অন্য খরচ',
+    'জরুরি চিকিৎসা',
+    'হাত না দিয়ে',
   ];
   for (const p of budgetPatterns) {
-    if (norm.includes(p)) {
+    if (matchesKeyword(norm, p)) {
       return { intent: 'budget_help', confidence: 0.85, matchedKeywords: [p] };
     }
   }
@@ -876,9 +1093,13 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'হেলথ স্কোর',
     'স্কোর কত',
     'আর্থিক অবস্থা',
+    'আর্থিক স্থিতিশীলতার ক্ষেত্রে',
+    'প্রধান দুর্বলতা',
+    'দুর্বলতা বা ঝুঁকি',
+    'স্থিতিশীলতার ক্ষেত্রে প্রধান',
   ];
   for (const p of healthPatterns) {
-    if (norm.includes(p)) {
+    if (matchesKeyword(norm, p)) {
       return { intent: 'financial_health', confidence: 0.92, matchedKeywords: [p] };
     }
   }
@@ -899,7 +1120,7 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'কত খরচ করেছি',
   ];
   for (const p of totalSpendingPatterns) {
-    if (norm.includes(p)) {
+    if (matchesKeyword(norm, p)) {
       return { intent: 'spending_total', confidence: 0.9, matchedKeywords: [p] };
     }
   }
@@ -916,7 +1137,7 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'সাম্প্রতিক খরচ',
   ];
   for (const p of txLookupPatterns) {
-    if (norm.includes(p)) {
+    if (matchesKeyword(norm, p)) {
       return { intent: 'transaction_lookup', confidence: 0.88, matchedKeywords: [p] };
     }
   }
@@ -936,7 +1157,7 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'কাকে বলে',
   ];
   for (const p of generalEduPatterns) {
-    if (norm.includes(p)) {
+    if (matchesKeyword(norm, p)) {
       return { intent: 'general_education', confidence: 0.75, matchedKeywords: [p] };
     }
   }

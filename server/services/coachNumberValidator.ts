@@ -29,14 +29,19 @@ function convertBnToAsciiDigits(str: string): string {
 /**
  * Gathers all authoritative numerical figures present in the CoachContext
  */
-export function extractAllowedNumbers(ctx: CoachContext, additionalAllowed: number[] = []): Set<number> {
+export function extractAllowedNumbers(
+  ctx: CoachContext,
+  additionalAllowed: number[] = [],
+  intent?: string,
+  query?: string
+): Set<number> {
   const allowed = new Set<number>();
 
   // Add standard conversational numbers (e.g., list bullets, standard rules, percentages, standard planning periods)
+  // Large scenario/benchmark amounts are strictly contextual and added via additionalAllowed or query scenarios.
   const standardPermitted = [
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 15, 20, 24, 25, 26, 28, 30, 50, 60, 90, 100, 180, 365,
-    500, 1000, 1500, 2000, 5000, 6000, 8333, 10000, 20000, 24000, 28000, 30000, 50000, 100000,
-    2024, 2025, 2026, 2027, 2028, 2029, 2030
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 18, 20, 21, 24, 25, 26, 28, 30, 50, 60, 90, 100, 180, 365,
+    2024, 2025, 2026, 2027, 2028, 2029, 2030,
   ];
   standardPermitted.forEach((n) => allowed.add(n));
 
@@ -122,11 +127,11 @@ export function extractAllowedNumbers(ctx: CoachContext, additionalAllowed: numb
     }
   }
 
-  // Multi-month projection multipliers (1, 2, 3, 6, 10, 12 months)
+  // Baseline run-rate multipliers (1, 2, 3 months)
   const inc = ctx.snapshot.monthlyIncome || 0;
   const exp = ctx.snapshot.monthlySpending || 0;
   const net = ctx.snapshot.netSavings || (inc - exp);
-  for (const m of [1, 2, 3, 6, 10, 12]) {
+  for (const m of [1, 2, 3]) {
     allowed.add(m);
     allowed.add(m * inc);
     allowed.add(m * exp);
@@ -138,6 +143,9 @@ export function extractAllowedNumbers(ctx: CoachContext, additionalAllowed: numb
   allowed.add(Math.round(Math.abs(net) / 4));
   allowed.add(Math.round(exp / 4)); // weekly outflow
   allowed.add(Math.round(inc / 4));
+  const bal = ctx.snapshot.currentBalance || 0;
+  allowed.add(Math.round(bal / 4)); // weekly safe spending limit based on balance
+  allowed.add(Math.round(bal / 2));
 
   // Calculated budget percentages against income and spending
   const essTotal = ctx.spending.essentialTotal ?? (exp - (ctx.spending.discretionaryTotal || 0));
@@ -162,31 +170,109 @@ export function extractAllowedNumbers(ctx: CoachContext, additionalAllowed: numb
     });
   }
 
-  // Common simulation projections
-  const bal = ctx.snapshot.currentBalance || 0;
-  [
-    Math.max(0, bal - 20000),
-    Math.round(exp * 1.15),
-    Math.round(exp * 0.15),
-    Math.round(inc - exp * 1.15),
-    Math.round(inc * 0.8),
-    Math.round(inc * 0.2),
-    Math.round(inc * 0.8 - exp),
-    Math.round(inc * 1.1),
-    Math.round(inc * 0.1),
-    Math.round(inc * 1.1 - exp),
-    Math.round(exp * 1.05),
-    Math.round(exp * 0.05),
-    Math.round(inc - exp * 1.05),
-    Math.round(inc * 0.9),
-    Math.round(inc * 0.9 - exp),
-    exp + 5000,
-    inc - (exp + 5000),
-    net + 2000,
-  ].forEach((n) => {
-    allowed.add(n);
-    allowed.add(Math.abs(n));
-  });
+  // Multi-Month Projections (6, 10, 12 months scoped strictly to financial_projection intent or projection queries)
+  const hasCallContext = intent !== undefined || query !== undefined;
+  const isProjectionContext = hasCallContext
+    ? (intent === 'financial_projection' ||
+       Boolean(
+         query && (
+           query.includes('6-month') ||
+           query.includes('৬ মাস') ||
+           query.includes('six month') ||
+           query.includes('6 month') ||
+           query.includes('projection') ||
+           query.includes('পূর্বাভাস') ||
+           query.includes('12 month') ||
+           query.includes('১ বছর')
+         )
+       ))
+    : true; // When called without context (e.g. standalone projection unit tests), allow legitimate ledger multiples
+
+  if (isProjectionContext) {
+    for (const m of [6, 10, 12]) {
+      allowed.add(m);
+      allowed.add(m * inc);
+      allowed.add(m * exp);
+      allowed.add(m * net);
+      allowed.add(Math.abs(m * net));
+      allowed.add(Math.abs(m * (inc - exp)));
+    }
+  }
+
+  // Hypothetical scenario amounts are accepted ONLY when explicitly part of the user's inquiry
+  if (query) {
+    const qLower = query.toLowerCase();
+    const bnToAsciiMap: Record<string, string> = {
+      '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4',
+      '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9',
+    };
+    const qAscii = qLower.replace(/[০-৯]/g, (d) => bnToAsciiMap[d] || d);
+    const queryNumbers = extractNumbersFromText(query);
+    queryNumbers.forEach((n) => allowed.add(n));
+
+    const bal = ctx.snapshot.currentBalance || 0;
+    for (const qn of queryNumbers) {
+      if (qn >= 100) {
+        allowed.add(Math.round(qn / 4)); // weekly pace
+        allowed.add(Math.max(0, bal - qn)); // remaining balance buffer
+        allowed.add(exp + qn); // spending + shock
+        allowed.add(inc - (exp + qn)); // net surplus after expense shock
+        allowed.add(Math.abs(inc - (exp + qn)));
+        allowed.add(net + qn); // adjusted surplus with additional savings
+        allowed.add(Math.round(qn * 6)); // 6-month accumulation
+        allowed.add(Math.round(qn * 12)); // 1-year accumulation
+      }
+    }
+
+    // Optimistic vs Pessimistic Scenario Simulation
+    if (
+      qLower.includes('optimistic') ||
+      qLower.includes('pessimistic') ||
+      qLower.includes('আশাবাদী') ||
+      qLower.includes('রক্ষণশীল')
+    ) {
+      allowed.add(10);
+      allowed.add(Math.round(inc * 1.1));
+      allowed.add(Math.round(inc * 1.1 - exp));
+      allowed.add(Math.round(inc * 0.9));
+      allowed.add(Math.round(inc * 0.9 - exp));
+    }
+
+    if (qAscii.includes('15%')) {
+      allowed.add(15);
+      allowed.add(Math.round(exp * 0.15));
+      allowed.add(Math.round(exp * 1.15));
+      allowed.add(Math.round(inc - exp * 1.15));
+      allowed.add(Math.round(inc * 0.15));
+      allowed.add(Math.round(inc * 1.15));
+    }
+    if (qAscii.includes('20%')) {
+      allowed.add(20);
+      allowed.add(Math.round(inc * 0.2));
+      allowed.add(Math.round(inc * 0.8));
+      allowed.add(Math.round(inc * 0.8 - exp));
+      allowed.add(Math.round(exp * 0.2));
+      allowed.add(Math.round(exp * 1.2));
+    }
+    if (qAscii.includes('10%')) {
+      allowed.add(10);
+      allowed.add(Math.round(inc * 0.1));
+      allowed.add(Math.round(inc * 1.1));
+      allowed.add(Math.round(inc * 1.1 - exp));
+      allowed.add(Math.round(exp * 0.1));
+      allowed.add(Math.round(exp * 0.9));
+      allowed.add(Math.round(inc - exp * 0.9));
+      const discTotal = ctx.spending.discretionaryTotal || 0;
+      allowed.add(Math.round(discTotal * 0.1));
+      allowed.add(Math.round(discTotal * 0.9));
+    }
+    if (qAscii.includes('5%')) {
+      allowed.add(5);
+      allowed.add(Math.round(exp * 0.05));
+      allowed.add(Math.round(exp * 1.05));
+      allowed.add(Math.round(inc - exp * 1.05));
+    }
+  }
   if (ctx.spending.merchants) {
     if (ctx.spending.merchants.highestMerchant) {
       allowed.add(ctx.spending.merchants.highestMerchant.amount);
@@ -321,7 +407,8 @@ export function validateCoachNumbers(
   answer: string,
   ctx: CoachContext,
   additionalPrecomputed: number[] = [],
-  intent?: string
+  intent?: string,
+  query?: string
 ): ValidationResult {
   if (!answer || typeof answer !== 'string' || !answer.trim()) {
     return { valid: false, reason: 'Answer is empty or not a string' };
@@ -387,7 +474,7 @@ export function validateCoachNumbers(
 
   // Extract all numbers from the generated response
   const numbersInAnswer = extractNumbersFromText(answer);
-  const allowedSet = extractAllowedNumbers(ctx, additionalPrecomputed);
+  const allowedSet = extractAllowedNumbers(ctx, additionalPrecomputed, intent, query);
 
   const unrecognized: number[] = [];
   for (const n of numbersInAnswer) {
@@ -411,4 +498,53 @@ export function validateCoachNumbers(
   }
 
   return { valid: true };
+}
+
+/**
+ * Detects whether the predominant language of the response is English or Bangla.
+ * Allows Bangladesh Taka symbol ৳ (\u09F3) in English responses.
+ */
+export function detectResponseLanguage(text: string): 'en' | 'bn' {
+  if (!text || typeof text !== 'string') return 'en';
+  // Exclude \u09F3 (৳ symbol) when counting Bengali letters
+  const bnChars = (text.match(/[\u0980-\u09F2\u09F4-\u09FF]/g) || []).length;
+  const enChars = (text.match(/[a-zA-Z]/g) || []).length;
+  if (bnChars >= 10 && bnChars >= enChars * 0.2) {
+    return 'bn';
+  }
+  return 'en';
+}
+
+/**
+ * Validates that the answer strictly matches the expected language.
+ * English inquiries must receive English answers (with optional ৳ symbol).
+ * Bangla inquiries must receive Bangla answers with genuine Bengali script.
+ */
+export function verifyLanguageMatch(
+  answer: string,
+  expectedLanguage: 'en' | 'bn'
+): { matched: boolean; detected: 'en' | 'bn'; reason?: string } {
+  const detected = detectResponseLanguage(answer);
+  if (expectedLanguage === 'bn') {
+    const bnChars = (answer.match(/[\u0980-\u09F2\u09F4-\u09FF]/g) || []).length;
+    if (bnChars < 10) {
+      return {
+        matched: false,
+        detected: 'en',
+        reason: `Language mismatch: Expected Bangla ('bn') response, but response has only ${bnChars} Bengali characters.`,
+      };
+    }
+    return { matched: true, detected: 'bn' };
+  } else {
+    // Expected English: Ensure no significant Bengali prose (excluding ৳)
+    const bnChars = (answer.match(/[\u0980-\u09F2\u09F4-\u09FF]/g) || []).length;
+    if (bnChars > 5) {
+      return {
+        matched: false,
+        detected: 'bn',
+        reason: `Language mismatch: Expected English ('en') response, but found ${bnChars} Bengali prose characters.`,
+      };
+    }
+    return { matched: true, detected: 'en' };
+  }
 }

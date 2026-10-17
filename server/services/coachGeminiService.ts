@@ -198,7 +198,8 @@ export async function executeCoachInquiry(params: CoachCallParams): Promise<Coac
           parsed.answer,
           fullContext,
           additionalPrecomputed,
-          intentResult.intent
+          intentResult.intent,
+          query
         );
         if (!validation.valid) {
           console.warn(
@@ -241,5 +242,5 @@ export async function executeCoachInquiry(params: CoachCallParams): Promise<Coac
   );
 
   // Return reliable deterministic fallback
-  return generateDeterministicCoachResponse(intentResult, fullContext, language);
+  return generateDeterministicCoachResponse(intentResult, fullContext, language, query);
 }

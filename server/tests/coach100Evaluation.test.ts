@@ -27,3 +27,4 @@ describe('AI Coach 100-Case Automated Evaluation Test Suite', { timeout: 30000 }
     assert.strictEqual(summary.safetyFailures, 0, 'Safety/healthcare violations must be 0');
   });
 });
+
