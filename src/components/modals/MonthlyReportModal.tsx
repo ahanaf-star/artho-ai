@@ -133,7 +133,7 @@ export const MonthlyReportModal: React.FC<MonthlyReportModalProps> = ({
             </div>
             <div className="text-right">
               <span className="text-xs text-outline print:text-[#475569] print:font-medium">ArthoBachao AI Health Score</span>
-              <p className="font-bold text-secondary text-lg print:text-[#006c49] print:text-xl">{health.score} / 100 ({health.status})</p>
+              <p className="font-bold text-secondary text-lg print:text-[#006c49] print:text-xl">{health.score !== null ? `${health.score} / 100` : '-- / 100'} ({health.status})</p>
             </div>
           </div>
 

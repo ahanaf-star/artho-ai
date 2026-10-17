@@ -489,6 +489,29 @@ export function validateCoachNumbers(
     }
   }
 
+  // Financial Health Score data-sufficiency contradiction check
+  const isHealthInsufficient =
+    ctx.health &&
+    (ctx.health.score === null ||
+      ctx.health.band === 'Insufficient Data' ||
+      ctx.health.band === 'insufficient_data' ||
+      !ctx.health.available);
+  if (isHealthInsufficient) {
+    // If health calculation returned insufficient_data / null, AI must not assert a numeric score or Excellent rating
+    const claimsScore =
+      /(?:health\s*score|হেলথ\s*স্কোর|স্কোর)[^.\n]*?(?:100\s*\/\s*100|১০০\s*\/\s*১০০|\b100\b|\b১০০\b)/i.test(answer) ||
+      /(?:health\s*score|হেলথ\s*স্কোর|স্কোর)[^.\n]*?(?:excellent|চমৎকার)/i.test(answer) ||
+      /rating:\s*(?:\*\*)?excellent/i.test(answer) ||
+      /রেটিং:\s*(?:\*\*)?চমৎকার/i.test(answer);
+    if (claimsScore) {
+      return {
+        valid: false,
+        reason:
+          'Semantic contradiction: Answer asserts a Financial Health Score of 100/100 or Excellent rating when authoritative calculation returned insufficient data.',
+      };
+    }
+  }
+
   // Extract all numbers from the generated response
   const numbersInAnswer = extractNumbersFromText(answer);
   const allowedSet = extractAllowedNumbers(ctx, additionalPrecomputed, intent, query);

@@ -1398,6 +1398,9 @@ export function sliceContext(fullContext: CoachContext, intentResult: IntentResu
       includeSnapshot(true);
       addFact('health.score', fullContext.health.score);
       addFact('health.band', fullContext.health.band);
+      addFact('health.confidence', fullContext.health.confidence);
+      addFact('dataWindow.totalTransactions', fullContext.metadata.dataWindow.totalTransactions);
+      addFact('dataWindow.historicalMonthsCount', fullContext.metadata.dataWindow.historicalMonthsCount ?? 1);
       addFact('health.savingConsistency', fullContext.health.savingConsistency);
       addFact('health.spendingControl', fullContext.health.spendingControl);
       addFact('health.cashFlowStability', fullContext.health.cashFlowStability);

@@ -674,18 +674,49 @@ export function generateDeterministicCoachResponse(
         'health.cashFlowStability',
         'health.goalProgress'
       );
+      if (ctx.health.confidence) factsUsed.push('health.confidence');
       const isDeficit = netSavings < 0 || spending > income;
       const deficitAmt = Math.abs(income - spending);
+      const totalTx = ctx.metadata?.dataWindow?.totalTransactions ?? ctx.recentTransactions?.length ?? 0;
+      const isConfidenceLow = (ctx.health.confidence ? ctx.health.confidence.toLowerCase() === 'low' : false) || totalTx <= 3;
+      const isInsufficient = healthScore === null || healthBand === 'Insufficient Data' || healthBand === 'insufficient_data' || !ctx.health.available;
+
+      if (isInsufficient) {
+        if (isBn) {
+          answer = `চলতি মাসে আপনার রেকর্ডকৃত মোট আয় **৳${income.toLocaleString()}** এবং মোট ব্যয় **৳${spending.toLocaleString()}** (নিট উদ্বৃত্ত: **৳${netSavings.toLocaleString()}**)।\n\nআপনার সামগ্রিক আর্থিক স্বাস্থ্য স্কোর (Financial Health Score) নির্ণয়ের জন্য **পর্যাপ্ত লেনদেনের তথ্য নেই (Insufficient Data)**।\n\nনির্ভরযোগ্য হেলথ স্কোর পেতে:\n১. প্রতিদিনের নিয়মিত খরচ (বাজার, বাসা ভাড়া, ইউটিলিটি ইত্যাদি) লেজারে যুক্ত করুন।\n২. অন্তত ১টি সক্রিয় সঞ্চয় লক্ষ্য (যেমন জরুরি তহবিল) তৈরি করুন।\n৩. নিয়মিত লেনদেনের ইতিহাস তৈরি হলে এআই স্বয়ংক্রিয়ভাবে আপনার সামগ্রিক হেলথ স্কোর ও ৪টি পিলার মূল্যায়ন করবে।`;
+        } else {
+          answer = `Based on your recorded monthly income of **৳${income.toLocaleString()}** and total expenses of **৳${spending.toLocaleString()}** (net savings: **৳${netSavings.toLocaleString()}**), there is **insufficient transaction data** to calculate a reliable Financial Health Score.\n\nTo unlock a reliable score:\n1. Log your routine living expenses (housing, groceries, utilities, transit) regularly.\n2. Create at least one active savings goal (such as an Emergency Fund).\n3. Once regular transaction history is established, ArthoBachao AI will automatically calculate your composite score across all 4 diagnostic pillars.`;
+        }
+        followUps.push(
+          isBn ? 'কীভাবে খরচ যোগ করব?' : 'How do I add transactions?',
+          isBn ? 'সঞ্চয় লক্ষ্য কীভাবে তৈরি করব?' : 'How do I create a savings goal?'
+        );
+        break;
+      }
+
+      const savingConsistencyStr = ctx.health.savingConsistency !== null ? `${ctx.health.savingConsistency}%` : (isBn ? 'পর্যাপ্ত তথ্য নেই' : 'Insufficient Data');
+      const spendingControlStr = ctx.health.spendingControl !== null ? `${ctx.health.spendingControl}%` : (isBn ? 'পর্যাপ্ত তথ্য নেই' : 'Insufficient Data');
+      const cashFlowStabilityStr = ctx.health.cashFlowStability !== null ? `${ctx.health.cashFlowStability}%` : (isBn ? 'পর্যাপ্ত তথ্য নেই' : 'Insufficient Data');
+      const goalProgressStr = ctx.health.goalProgress !== null ? `${ctx.health.goalProgress}%` : (isBn ? 'সক্রিয় লক্ষ্য নেই' : 'No Active Goals');
+
       if (isBn) {
         const riskNote = isDeficit
           ? `\n\n• **প্রধান দুর্বলতা ও ঝুঁকি**: আপনার মাসিক ব্যয় আয়ের চেয়ে বেশি হওয়ায় **৳${deficitAmt.toLocaleString()}** এর বাজেট ঘাটতি রয়েছে, যা আর্থিক স্থিতিশীলতার জন্য প্রধান ঝুঁকি।`
           : '';
-        answer = `চলতি মাসে আপনার রেকর্ডকৃত মোট আয় **৳${income.toLocaleString()}** এবং মোট ব্যয় **৳${spending.toLocaleString()}** (নিট উদ্বৃত্ত: **৳${netSavings.toLocaleString()}**)।\n\nআপনার অর্থবাঁচাও এআই আর্থিক স্বাস্থ্য ও হেলথ স্কোর (Health Score) **${healthScore} / ১০০** (অবস্থা: **${healthBand}**)।${riskNote}\n\nপিলার বিশ্লেষণ:\n• সঞ্চয়ের ধারাবাহিকতা: ${ctx.health.savingConsistency}%\n• ব্যয় নিয়ন্ত্রণ: ${ctx.health.spendingControl}%\n• ক্যাশ-ফ্লো স্থায়িত্ব: ${ctx.health.cashFlowStability}%\n• সঞ্চয় লক্ষ্যের অগ্রগতি: ${ctx.health.goalProgress}%`;
+        const scoreBlock = isConfidenceLow
+          ? `আপনার অর্থবাঁচাও এআই আর্থিক স্বাস্থ্য ও হেলথ স্কোর (Health Score) **${healthScore} / ১০০** (অবস্থা: **${healthBand}** — সীমিত তথ্যের কারণে প্রাথমিক)।\n\n*প্রাথমিক স্কোরের কারণ*: লেজারে সীমিত সংখ্যক লেনদেন (${totalTx}টি) থাকায় এটি একটি প্রাথমিক মূল্যায়ন। সকল নিয়মিত খরচ অন্তর্ভুক্ত হলে এটি আরও নির্ভুল হবে।`
+          : `আপনার অর্থবাঁচাও এআই আর্থিক স্বাস্থ্য ও হেলথ স্কোর (Health Score) **${healthScore} / ১০০** (অবস্থা: **${healthBand}**)।`;
+
+        answer = `চলতি মাসে আপনার রেকর্ডকৃত মোট আয় **৳${income.toLocaleString()}** এবং মোট ব্যয় **৳${spending.toLocaleString()}** (নিট উদ্বৃত্ত: **৳${netSavings.toLocaleString()}**)।\n\n${scoreBlock}${riskNote}\n\nপিলার বিশ্লেষণ:\n• সঞ্চয়ের ধারাবাহিকতা: ${savingConsistencyStr}\n• ব্যয় নিয়ন্ত্রণ: ${spendingControlStr}\n• ক্যাশ-ফ্লো স্থায়িত্ব: ${cashFlowStabilityStr}\n• সঞ্চয় লক্ষ্যের অগ্রগতি: ${goalProgressStr}`;
       } else {
         const riskNote = isDeficit
           ? `\n\n• **Core Stability Risk**: Outflows exceed inflows by **৳${deficitAmt.toLocaleString()}**, creating a monthly cash deficit that represents the primary liquidity risk to your financial profile.`
           : '';
-        answer = `Based on your recorded monthly income of **৳${income.toLocaleString()}** and total expenses of **৳${spending.toLocaleString()}** (net savings: **৳${netSavings.toLocaleString()}**), your ArthoBachao AI Financial Health Score is **${healthScore} / 100** (Rating: **${healthBand}**).${riskNote}\n\nDiagnostic Pillars:\n• Saving Consistency: ${ctx.health.savingConsistency}%\n• Spending Control: ${ctx.health.spendingControl}%\n• Cash Flow Stability: ${ctx.health.cashFlowStability}%\n• Goal Progress: ${ctx.health.goalProgress}%`;
+        const scoreBlock = isConfidenceLow
+          ? `your ArthoBachao AI Financial Health Score is **${healthScore} / 100** (Rating: **${healthBand}** — Preliminary due to limited history).\n\n*Note on Preliminary Status*: Because your ledger contains limited transaction history (${totalTx} transaction(s)), this score is an initial baseline. Recurring living costs or pending bills may not yet be reflected.`
+          : `your ArthoBachao AI Financial Health Score is **${healthScore} / 100** (Rating: **${healthBand}**).`;
+
+        answer = `Based on your recorded monthly income of **৳${income.toLocaleString()}** and total expenses of **৳${spending.toLocaleString()}** (net savings: **৳${netSavings.toLocaleString()}**), ${scoreBlock}${riskNote}\n\nDiagnostic Pillars:\n• Saving Consistency: ${savingConsistencyStr}\n• Spending Control: ${spendingControlStr}\n• Cash Flow Stability: ${cashFlowStabilityStr}\n• Goal Progress: ${goalProgressStr}`;
       }
       followUps.push(
         isBn ? 'স্কোর আরও বাড়ানোর উপায় কি?' : 'How can I improve my health score?',
@@ -735,11 +766,12 @@ export function generateDeterministicCoachResponse(
       }
 
       if (isBn) {
-        const scoreHeader = healthScore !== null
-          ? isConfidenceLow
+        const isInsufficient = healthScore === null || healthBand === 'Insufficient Data' || healthBand === 'insufficient_data' || !ctx.health.available;
+        const scoreHeader = isInsufficient
+          ? ` (হেলথ স্কোর: **তথ্য অপর্যাপ্ত** — নির্ভরযোগ্য স্কোর হিসাব করার জন্য পর্যাপ্ত লেনদেনের তথ্য নেই)`
+          : isConfidenceLow
             ? ` (প্রাথমিক হেলথ স্কোর: **${healthScore}/১০০**, রেটিং: **${healthBand}** — সীমিত তথ্যের কারণে প্রাথমিক)`
-            : ` (হেলথ স্কোর: **${healthScore}/১০০**, রেটিং: **${healthBand}**)`
-          : '';
+            : ` (হেলথ স্কোর: **${healthScore}/১০০**, রেটিং: **${healthBand}**)`;
 
         let action1Bn = '';
         if (hasMedicalExpenses) {
@@ -791,11 +823,12 @@ export function generateDeterministicCoachResponse(
           action2Bn +
           action3Bn;
       } else {
-        const scoreHeader = healthScore !== null
-          ? isConfidenceLow
+        const isInsufficient = healthScore === null || healthBand === 'Insufficient Data' || healthBand === 'insufficient_data' || !ctx.health.available;
+        const scoreHeader = isInsufficient
+          ? ` (Financial Health Score: **Pending Data** — insufficient transactions to calculate a reliable score)`
+          : isConfidenceLow
             ? ` (Financial Health Score: **${healthScore}/100**, Rating: **${healthBand}** — Preliminary due to limited history)`
-            : ` (Financial Health Score: **${healthScore}/100**, Rating: **${healthBand}**)`
-          : '';
+            : ` (Financial Health Score: **${healthScore}/100**, Rating: **${healthBand}**)`;
 
         let action1En = '';
         if (hasMedicalExpenses) {

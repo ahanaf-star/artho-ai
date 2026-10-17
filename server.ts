@@ -386,9 +386,10 @@ async function startServer() {
               .join('\n')
           : '  • No savings goals created yet.';
 
-        const healthPillars = effectiveContext.healthScore?.factors
-          ? `Saving Consistency: ${effectiveContext.healthScore.factors.savingConsistency}%, Spending Control: ${effectiveContext.healthScore.factors.spendingControl}%, Cash Flow Stability: ${effectiveContext.healthScore.factors.cashFlowStability}%, Goal Progress: ${effectiveContext.healthScore.factors.goalProgress}%`
-          : 'Saving Consistency: 0%, Spending Control: 0%, Cash Flow Stability: 0%, Goal Progress: 0% (Insufficient data)';
+        const hp = effectiveContext.healthScore?.factors;
+        const healthPillars = hp
+          ? `Saving Consistency: ${hp.savingConsistency !== null ? `${hp.savingConsistency}%` : 'Insufficient Data'}, Spending Control: ${hp.spendingControl !== null ? `${hp.spendingControl}%` : 'Insufficient Data'}, Cash Flow Stability: ${hp.cashFlowStability !== null ? `${hp.cashFlowStability}%` : 'Insufficient Data'}, Goal Progress: ${hp.goalProgress !== null ? `${hp.goalProgress}%` : 'Insufficient Data'}`
+          : 'Saving Consistency: Insufficient Data, Spending Control: Insufficient Data, Cash Flow Stability: Insufficient Data, Goal Progress: Insufficient Data';
 
         const systemInstruction = `You are ArthoBachao AI Personal Financial Coach, an expert digital wealth engine built specifically for Bangladesh (Dhaka lifestyle, bKash, Nagad, City Bank, Dhaka Metro MRT, Pathao, Shwapno). You provide explainable, empathetic, non-judgmental, and mathematically sound coaching grounded strictly in the user's authentic ledger data.
 

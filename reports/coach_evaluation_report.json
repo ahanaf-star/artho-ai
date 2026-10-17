@@ -50,7 +50,7 @@
   "unsupportedClaimFailures": 0,
   "dataSufficiencyFailures": 0,
   "safetyFailures": 0,
-  "durationMs": 152,
+  "durationMs": 156,
   "results": [
     {
       "id": "TC-001",
@@ -2430,7 +2430,8 @@
         "health.savingConsistency",
         "health.spendingControl",
         "health.cashFlowStability",
-        "health.goalProgress"
+        "health.goalProgress",
+        "health.confidence"
       ],
       "failureReasons": [],
       "codeLocation": "server/services/coachFallbackEngine.ts",
@@ -2586,7 +2587,8 @@
         "health.savingConsistency",
         "health.spendingControl",
         "health.cashFlowStability",
-        "health.goalProgress"
+        "health.goalProgress",
+        "health.confidence"
       ],
       "failureReasons": [],
       "codeLocation": "server/services/coachFallbackEngine.ts",
@@ -2609,7 +2611,7 @@
       "expectedIntent": "health_recommendations | spending_total",
       "actualIntent": "health_recommendations",
       "status": "PASS",
-      "answerExcerpt": "Based on your authenticated financial records, here are the 3 most useful, prioritized actions to improve your financial health: 1. **Build ...",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **Pending Data** — insufficient transactions to calculate a reliable ...",
       "factsUsed": [
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
@@ -2738,7 +2740,8 @@
         "health.savingConsistency",
         "health.spendingControl",
         "health.cashFlowStability",
-        "health.goalProgress"
+        "health.goalProgress",
+        "health.confidence"
       ],
       "failureReasons": [],
       "codeLocation": "server/services/coachFallbackEngine.ts",
@@ -2894,7 +2897,8 @@
         "health.savingConsistency",
         "health.spendingControl",
         "health.cashFlowStability",
-        "health.goalProgress"
+        "health.goalProgress",
+        "health.confidence"
       ],
       "failureReasons": [],
       "codeLocation": "server/services/coachFallbackEngine.ts",
@@ -2917,7 +2921,7 @@
       "expectedIntent": "health_recommendations | spending_total",
       "actualIntent": "health_recommendations",
       "status": "PASS",
-      "answerExcerpt": "আপনার আর্থিক তথ্য বিশ্লেষণ করে আর্থিক সক্ষমতা ও স্বাস্থ্য উন্নত করার ৩টি অগ্রাধিকারভিত্তিক কার্যকর পদক্ষেপ: ১. **লিকুইড জরুরি জীবনযাত্রার তহ...",
+      "answerExcerpt": "আপনার আর্থিক তথ্য (হেলথ স্কোর: **তথ্য অপর্যাপ্ত** — নির্ভরযোগ্য স্কোর হিসাব করার জন্য পর্যাপ্ত লেনদেনের তথ্য নেই) বিশ্লেষণ করে আর্থিক সক্ষমত...",
       "factsUsed": [
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
