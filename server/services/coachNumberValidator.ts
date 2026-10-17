@@ -512,6 +512,35 @@ export function validateCoachNumbers(
     }
   }
 
+  // If Saving Consistency is null, AI must not assert 100% Saving Consistency
+  if (ctx.health && ctx.health.savingConsistency === null) {
+    const claimsSavingConsistency100 =
+      /(?:saving\s*consistency|ধারাবাহিক\s*সঞ্চয়|সঞ্চয়ের\s*ধারাবাহিকতা)[^.\n]*?(?:100%|১০০%)/i.test(answer);
+    if (claimsSavingConsistency100) {
+      return {
+        valid: false,
+        reason:
+          'Semantic contradiction: Answer asserts 100% Saving Consistency when authoritative calculation has insufficient historical data.',
+      };
+    }
+  }
+
+  // If confidence is low, Spending Control must not be presented with bare certainty without preliminary disclaimer
+  const totalTxCount = ctx.metadata?.dataWindow?.totalTransactions ?? ctx.recentTransactions?.length ?? 0;
+  const isConfidenceLow = (ctx.health?.confidence ? ctx.health.confidence.toLowerCase() === 'low' : false) || totalTxCount <= 3;
+  if (isConfidenceLow && ctx.health?.score !== null) {
+    const barePillarCertainty =
+      /(?:spending\s*control|ব্যয়\s*নিয়ন্ত্রণ):\s*(?:\*\*)?100%(?!\s*—)/i.test(answer) &&
+      !/(?:preliminary|প্রাথমিক)/i.test(answer);
+    if (barePillarCertainty) {
+      return {
+        valid: false,
+        reason:
+          'Semantic contradiction: Answer asserts unconditional 100% Spending Control without preliminary status when data confidence is low.',
+      };
+    }
+  }
+
   // Extract all numbers from the generated response
   const numbersInAnswer = extractNumbersFromText(answer);
   const allowedSet = extractAllowedNumbers(ctx, additionalPrecomputed, intent, query);

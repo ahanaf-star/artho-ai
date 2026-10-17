@@ -211,9 +211,13 @@ test('Financial Health Score Consistency & Data Sufficiency Test Suite', async (
       assert.equal(result.category, 'Excellent');
       assert.equal(result.confidence, 'low', 'Confidence is low due to limited 1-month history');
       assert.equal(result.status, 'ok');
+      assert.equal(result.factors?.savingConsistency, null, 'Saving Consistency must be null due to incomplete history (< 2 months)');
+      assert.equal(result.factors?.spendingControl, 100);
+      assert.equal(result.factors?.cashFlowStability, 100);
+      assert.equal(result.factors?.goalProgress, null);
     });
 
-    await t.test('1.2: AI Coach displays score as Preliminary and explains the limitation (English)', async () => {
+    await t.test('1.2: AI Coach displays score as Preliminary and individual pillars honestly (English)', async () => {
       const ctx = createTwoTransactionsContext();
       const res = await executeCoachInquiry({
         query: 'What is my financial health score?',
@@ -227,12 +231,18 @@ test('Financial Health Score Consistency & Data Sufficiency Test Suite', async (
       assert.match(res.answer, /Preliminary/i);
       // Must explain the data limitation / limited history
       assert.match(res.answer, /limited history|initial baseline|limited transaction/i);
-      // Must not display "null%" for missing goal progress
+      // Saving Consistency must display Insufficient Data, NEVER bare 100%
+      assert.match(res.answer, /Saving Consistency:\s*Insufficient Data/i);
+      assert.doesNotMatch(res.answer, /Saving Consistency:\s*100%/i);
+      // Spending Control and Cash Flow Stability must indicate Preliminary
+      assert.match(res.answer, /Spending Control:\s*Preliminary\s*\(100%/i);
+      assert.match(res.answer, /Cash Flow Stability:\s*Preliminary\s*\(100%/i);
+      // Goal Progress must display No Active Goals, not null% or 0%
       assert.doesNotMatch(res.answer, /null%/);
-      assert.match(res.answer, /No Active Goals|Insufficient Data/i);
+      assert.match(res.answer, /Goal Progress:\s*No Active Goals/i);
     });
 
-    await t.test('1.3: AI Coach displays score as Preliminary in Bengali', async () => {
+    await t.test('1.3: AI Coach displays score as Preliminary and individual pillars honestly in Bengali', async () => {
       const ctx = createTwoTransactionsContext();
       const res = await executeCoachInquiry({
         query: 'আমার হেলথ স্কোর কত?',
@@ -244,6 +254,12 @@ test('Financial Health Score Consistency & Data Sufficiency Test Suite', async (
       assert.match(res.answer, /প্রাথমিক/);
       assert.match(res.answer, /সীমিত তথ্যের কারণে|প্রাথমিক মূল্যায়ন/);
       assert.doesNotMatch(res.answer, /null%/);
+      // Bengali pillars honesty
+      assert.match(res.answer, /সঞ্চয়ের ধারাবাহিকতা:\s*পর্যাপ্ত তথ্য নেই/);
+      assert.doesNotMatch(res.answer, /সঞ্চয়ের ধারাবাহিকতা:\s*(?:100|১০০)%/);
+      assert.match(res.answer, /ব্যয় নিয়ন্ত্রণ:\s*প্রাথমিক\s*\((?:100|১০০)%/);
+      assert.match(res.answer, /ক্যাশ-ফ্লো স্থায়িত্ব:\s*প্রাথমিক\s*\((?:100|১০০)%/);
+      assert.match(res.answer, /সঞ্চয় লক্ষ্যের অগ্রগতি:\s*কোনো সক্রিয় সঞ্চয় লক্ষ্য নেই/);
     });
 
     await t.test('1.4: Health recommendations header cites preliminary score when low confidence', async () => {
@@ -256,6 +272,14 @@ test('Financial Health Score Consistency & Data Sufficiency Test Suite', async (
 
       assert.match(res.answer, /Preliminary due to limited history/);
       assert.match(res.answer, /100\/100/);
+    });
+
+    await t.test('1.5: Number validator rejects 100% Saving Consistency when history is incomplete', () => {
+      const ctx = createTwoTransactionsContext();
+      const hallucinated = 'Your Financial Health Score is 100/100 (Preliminary). Saving Consistency: 100%, Spending Control: 100%.';
+      const validation = validateCoachNumbers(hallucinated, ctx);
+      assert.equal(validation.valid, false);
+      assert.match(validation.reason!, /Saving Consistency/i);
     });
   });
 
@@ -377,6 +401,87 @@ test('Financial Health Score Consistency & Data Sufficiency Test Suite', async (
 
       assert.equal(validation.valid, false, 'Validator must reject claiming 100/100 when calculation is insufficient_data');
       assert.match(validation.reason!, /Semantic contradiction.*insufficient data/i);
+    });
+  });
+
+  // =========================================================================
+  // SCENARIO 4: Missing savings goals with sufficient transaction history
+  // =========================================================================
+  await suite.test('4. Missing savings goals with sufficient transaction history', async (t) => {
+    await t.test('4.1: Goal progress is null while Saving Consistency is calculated', () => {
+      const ctx = createSufficientDataContext();
+      const ctxNoGoals: CoachContext = {
+        ...ctx,
+        goals: { available: false, totalGoals: 0, items: [], facts: {} },
+        health: {
+          ...ctx.health,
+          goalProgress: null,
+        },
+      };
+      assert.equal(ctxNoGoals.health.goalProgress, null);
+      assert(ctxNoGoals.health.savingConsistency !== null && ctxNoGoals.health.savingConsistency > 0);
+    });
+
+    await t.test('4.2: AI Coach displays "No Active Goals" while preserving valid pillars (English)', async () => {
+      const ctx = createSufficientDataContext();
+      const ctxNoGoals: CoachContext = {
+        ...ctx,
+        goals: { available: false, totalGoals: 0, items: [], facts: {} },
+        health: {
+          ...ctx.health,
+          goalProgress: null,
+        },
+      };
+      const res = await executeCoachInquiry({
+        query: 'What is my financial health score?',
+        fullContext: ctxNoGoals,
+        language: 'en',
+      });
+
+      assert.match(res.answer, /Goal Progress:\s*No Active Goals/i);
+      assert.doesNotMatch(res.answer, /null%/);
+      assert.doesNotMatch(res.answer, /Goal Progress:\s*0%/i);
+      assert.match(res.answer, /Saving Consistency:\s*\d+%/i);
+    });
+
+    await t.test('4.3: AI Coach displays "কোনো সক্রিয় সঞ্চয় লক্ষ্য নেই" in Bengali', async () => {
+      const ctx = createSufficientDataContext();
+      const ctxNoGoals: CoachContext = {
+        ...ctx,
+        goals: { available: false, totalGoals: 0, items: [], facts: {} },
+        health: {
+          ...ctx.health,
+          goalProgress: null,
+        },
+      };
+      const res = await executeCoachInquiry({
+        query: 'আমার হেলথ স্কোর কত?',
+        fullContext: ctxNoGoals,
+        language: 'bn',
+      });
+
+      assert.match(res.answer, /সঞ্চয় লক্ষ্যের অগ্রগতি:\s*কোনো সক্রিয় সঞ্চয় লক্ষ্য নেই/);
+      assert.doesNotMatch(res.answer, /null%/);
+      assert.match(res.answer, /সঞ্চয়ের ধারাবাহিকতা:\s*\d+%/);
+    });
+  });
+
+  // =========================================================================
+  // SCENARIO 5: Consistency between calculated metrics and AI Coach response
+  // =========================================================================
+  await suite.test('5. Consistency between calculated metrics and AI Coach response', async (t) => {
+    await t.test('5.1: Pillar values in AI response match authoritative context facts', async () => {
+      const ctx = createSufficientDataContext();
+      const res = await executeCoachInquiry({
+        query: 'What is my financial health score?',
+        fullContext: ctx,
+        language: 'en',
+      });
+
+      assert.match(res.answer, new RegExp(`Saving Consistency:\\s*${ctx.health.savingConsistency}%`));
+      assert.match(res.answer, new RegExp(`Spending Control:\\s*${ctx.health.spendingControl}%`));
+      assert.match(res.answer, new RegExp(`Cash Flow Stability:\\s*${ctx.health.cashFlowStability}%`));
+      assert.match(res.answer, new RegExp(`Goal Progress:\\s*${ctx.health.goalProgress}%`));
     });
   });
 });

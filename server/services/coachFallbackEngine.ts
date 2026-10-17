@@ -694,10 +694,22 @@ export function generateDeterministicCoachResponse(
         break;
       }
 
-      const savingConsistencyStr = ctx.health.savingConsistency !== null ? `${ctx.health.savingConsistency}%` : (isBn ? 'পর্যাপ্ত তথ্য নেই' : 'Insufficient Data');
-      const spendingControlStr = ctx.health.spendingControl !== null ? `${ctx.health.spendingControl}%` : (isBn ? 'পর্যাপ্ত তথ্য নেই' : 'Insufficient Data');
-      const cashFlowStabilityStr = ctx.health.cashFlowStability !== null ? `${ctx.health.cashFlowStability}%` : (isBn ? 'পর্যাপ্ত তথ্য নেই' : 'Insufficient Data');
-      const goalProgressStr = ctx.health.goalProgress !== null ? `${ctx.health.goalProgress}%` : (isBn ? 'সক্রিয় লক্ষ্য নেই' : 'No Active Goals');
+      const savingConsistencyStr =
+        ctx.health.savingConsistency !== null
+          ? (isConfidenceLow ? (isBn ? `প্রাথমিক (${ctx.health.savingConsistency}%)` : `Preliminary (${ctx.health.savingConsistency}%)`) : `${ctx.health.savingConsistency}%`)
+          : (isBn ? 'পর্যাপ্ত তথ্য নেই' : 'Insufficient Data');
+      const spendingControlStr =
+        ctx.health.spendingControl !== null
+          ? (isConfidenceLow ? (isBn ? `প্রাথমিক (${ctx.health.spendingControl}% — সীমিত রেকর্ডের ভিত্তিতে)` : `Preliminary (${ctx.health.spendingControl}% — based on limited records)`) : `${ctx.health.spendingControl}%`)
+          : (isBn ? 'পর্যাপ্ত তথ্য নেই' : 'Insufficient Data');
+      const cashFlowStabilityStr =
+        ctx.health.cashFlowStability !== null
+          ? (isConfidenceLow ? (isBn ? `প্রাথমিক (${ctx.health.cashFlowStability}% — একক মাসের উদ্বৃত্ত)` : `Preliminary (${ctx.health.cashFlowStability}% — single month surplus)`) : `${ctx.health.cashFlowStability}%`)
+          : (isBn ? 'পর্যাপ্ত তথ্য নেই' : 'Insufficient Data');
+      const goalProgressStr =
+        ctx.health.goalProgress !== null
+          ? `${ctx.health.goalProgress}%`
+          : (isBn ? 'কোনো সক্রিয় সঞ্চয় লক্ষ্য নেই' : 'No Active Goals');
 
       if (isBn) {
         const riskNote = isDeficit

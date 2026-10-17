@@ -637,8 +637,37 @@ export function calculateFinancialHealthScore(
     // Check available weight sum
     const availableWeight = components.reduce((acc, c) => acc + (c.available ? c.weight : 0), 0);
 
+    // Saving Consistency: Evaluates regularity of savings over multiple periods.
+    // Consistency requires at least 2 distinct months of historical data.
+    const relevantMonths = availableMonths.filter((m) => m <= activeMonth);
+    let savingConsistency: number | null = null;
+
+    if (relevantMonths.length >= 2) {
+      let monthsWithPositiveSavings = 0;
+      let totalSavingsRate = 0;
+      for (const m of relevantMonths) {
+        const mTxs = filterTransactionsByMonth(transactions, m);
+        const mValid = (mTxs || []).filter((t) => t && typeof t.amount === 'number' && !isNaN(t.amount) && t.amount > 0);
+        let mExp = 0;
+        let mInc = 0;
+        for (const t of mValid) {
+          if (t.type === 'expense') mExp += t.amount;
+          else if (t.type === 'income') mInc += t.amount;
+        }
+        const mEffectiveInc = (m === activeMonth && effectiveIncome > 0) ? effectiveIncome : (mInc > 0 ? mInc : effectiveIncome);
+        const mSavings = Math.max(0, mEffectiveInc - mExp);
+        const mRate = mEffectiveInc > 0 ? mSavings / mEffectiveInc : 0;
+        if (mSavings > 0) monthsWithPositiveSavings++;
+        totalSavingsRate += mRate;
+      }
+      const avgSavingsRate = totalSavingsRate / relevantMonths.length;
+      const consistencyRatio = monthsWithPositiveSavings / relevantMonths.length;
+      const avgScore = interpolatePiecewiseLinear(avgSavingsRate, config.anchors.savingsRate);
+      savingConsistency = Math.round(avgScore * consistencyRatio);
+    }
+
     const factors: FinancialHealthFactorBreakdown = {
-      savingConsistency: components.find((c) => c.key === 'savings_rate')?.score ?? null,
+      savingConsistency,
       spendingControl: components.find((c) => c.key === 'expense_control')?.score ?? null,
       cashFlowStability: components.find((c) => c.key === 'cash_flow_health')?.score ?? null,
       goalProgress: components.find((c) => c.key === 'savings_goals')?.score ?? null,
@@ -735,10 +764,10 @@ export function calculateFinancialHealthScore(
     percentile: result.percentile ?? null,
     confidence: result.confidence,
     factors: {
-      savingConsistency: result.components?.find((c) => c.key === 'savings_rate')?.score ?? null,
-      spendingControl: result.components?.find((c) => c.key === 'expense_control')?.score ?? null,
-      cashFlowStability: result.components?.find((c) => c.key === 'cash_flow_health')?.score ?? null,
-      goalProgress: result.components?.find((c) => c.key === 'savings_goals')?.score ?? null,
+      savingConsistency: result.factors?.savingConsistency ?? null,
+      spendingControl: result.factors?.spendingControl ?? (result.components?.find((c) => c.key === 'expense_control')?.score ?? null),
+      cashFlowStability: result.factors?.cashFlowStability ?? (result.components?.find((c) => c.key === 'cash_flow_health')?.score ?? null),
+      goalProgress: result.factors?.goalProgress ?? (result.components?.find((c) => c.key === 'savings_goals')?.score ?? null),
     },
     explanation:
       result.explanation ||

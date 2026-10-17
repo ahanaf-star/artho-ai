@@ -96,17 +96,43 @@ test('Financial Health Data-Sufficiency & Integrity Test Suite', async (suite) =
     assert.equal(savingsRateComp.available, true, 'Savings Rate should be available with valid income');
     assert(savingsRateComp.score !== null && savingsRateComp.score > 0);
 
-    // Factors mapping: spendingControl is null, savingConsistency is present
+    // Factors mapping: spendingControl is null, savingConsistency is null because 1 transaction cannot establish consistency
     assert.equal(res.factors?.spendingControl, null, 'Factor spendingControl must be null');
-    assert(res.factors?.savingConsistency !== null, 'Factor savingConsistency must be calculated');
+    assert.equal(res.factors?.savingConsistency, null, 'Factor savingConsistency must be null when history is under 2 months');
   });
 
   // ==================================================
   // TEST 3 — LEGITIMATE ZERO RESULT
   // ==================================================
   await suite.test('TEST 3 — LEGITIMATE ZERO RESULT: Displays 0%, not Insufficient Data, when genuinely zero', () => {
-    // Zero Net Savings (income = 40,000, expenses = 40,000 -> netSavings = 0, rate = 0%)
+    // Zero Net Savings across 2 months (income = 40,000, expenses = 40,000 -> netSavings = 0, rate = 0%)
     const breakEvenTxs: Transaction[] = [
+      {
+        id: 'tx-in-3-sep',
+        userId: 'u-zero-res',
+        type: 'income',
+        amount: 40000,
+        category: 'Salary & Inflow',
+        description: 'Salary September',
+        date: '2026-09-01',
+        merchant: 'Employer',
+        account: 'City Bank',
+        paymentMethod: 'Bank Transfer',
+        classification: 'essential',
+      },
+      {
+        id: 'tx-exp-3-sep',
+        userId: 'u-zero-res',
+        type: 'expense',
+        amount: 40000,
+        category: 'Utility & Fixed Costs',
+        description: 'Living September',
+        date: '2026-09-02',
+        merchant: 'Various',
+        account: 'City Bank',
+        paymentMethod: 'Bank Transfer',
+        classification: 'essential',
+      },
       {
         id: 'tx-in-3',
         userId: 'u-zero-res',
@@ -184,6 +210,32 @@ test('Financial Health Data-Sufficiency & Integrity Test Suite', async (suite) =
   // ==================================================
   await suite.test('TEST 4 — NO SAVINGS GOALS: Goal Progress is Insufficient Data while other components retain state', () => {
     const txs: Transaction[] = [
+      {
+        id: 'tx-4-sep-inc',
+        userId: 'u-no-goals',
+        type: 'income',
+        amount: 50000,
+        category: 'Salary & Inflow',
+        description: 'Salary September',
+        date: '2026-09-01',
+        merchant: 'Co',
+        account: 'City Bank',
+        paymentMethod: 'Bank Transfer',
+        classification: 'essential',
+      },
+      {
+        id: 'tx-4-sep-exp',
+        userId: 'u-no-goals',
+        type: 'expense',
+        amount: 20000,
+        category: 'Food & Groceries',
+        description: 'Groceries September',
+        date: '2026-09-03',
+        merchant: 'Shwapno',
+        account: 'bKash',
+        paymentMethod: 'QR',
+        classification: 'essential',
+      },
       {
         id: 'tx-4a',
         userId: 'u-no-goals',
@@ -686,6 +738,30 @@ test('Financial Health Data-Sufficiency & Integrity Test Suite', async (suite) =
     // 2. Verify legitimate zero score maintains numeric 0 for UI presentation
     const legitimateZero = calculateFinancialHealthScore(
       [
+        {
+          id: 'tx-inc-zero-sep',
+          type: 'income',
+          amount: 30000,
+          date: '2026-09-01',
+          category: 'Salary & Inflow',
+          description: 'Inflow September',
+          merchant: 'Co',
+          account: 'bKash',
+          paymentMethod: 'Transfer',
+          classification: 'essential',
+        },
+        {
+          id: 'tx-exp-zero-sep',
+          type: 'expense',
+          amount: 30000,
+          date: '2026-09-02',
+          category: 'Food & Groceries',
+          description: 'Outflow September',
+          merchant: 'Store',
+          account: 'bKash',
+          paymentMethod: 'QR',
+          classification: 'essential',
+        },
         {
           id: 'tx-inc-zero',
           type: 'income',
