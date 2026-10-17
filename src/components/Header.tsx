@@ -136,7 +136,7 @@ export const Header: React.FC<HeaderProps> = ({
               placeholder={
                 isBangla
                   ? 'লেনদেন, সঞ্চয় বা পরামর্শ খুঁজুন...'
-                  : 'Search transactions, goals, AI insights...'
+                  : 'Search transactions, goals, AI Coach...'
               }
               className="w-full h-10 sm:h-11 pl-9 sm:pl-10 pr-space-md bg-surface-container-lowest rounded-xl font-body-sm text-xs sm:text-body-sm text-on-surface placeholder:text-outline border border-outline-variant/40 focus:outline-none focus:ring-2 focus:ring-primary-container transition-all"
             />

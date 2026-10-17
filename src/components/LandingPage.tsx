@@ -400,24 +400,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </div>
 
-          {/* Card 6: Actionable Alerts & Leaks */}
+          {/* Card 6: Unified Financial Dashboard & Reports */}
           <div
-            onClick={() => onNavigate('insights-alerts')}
+            onClick={() => onNavigate('dashboard')}
             className="p-space-lg rounded-2xl bg-surface-container-lowest border border-outline-variant/25 shadow-xs hover:shadow-md hover:border-secondary/40 transition-all cursor-pointer flex flex-col justify-between group"
           >
             <div>
-              <div className="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center text-error mb-4 group-hover:bg-error-container transition-colors">
-                <span className="material-symbols-outlined text-[26px]">notifications_active</span>
+              <div className="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center text-primary-container mb-4 group-hover:bg-primary-container group-hover:text-on-primary transition-colors">
+                <span className="material-symbols-outlined text-[26px]">grid_view</span>
               </div>
               <h3 className="font-title-lg text-title-lg text-on-surface font-bold">
-                Fee Leaks &amp; Proactive Alerts
+                Unified Ledger &amp; PDF Reports
               </h3>
               <p className="font-body-md text-body-md text-on-surface-variant mt-2">
-                Spot ৳420 in avoidable MFS cash-out fees, unused subscriptions, and food delivery surges before they damage your month-end.
+                Consolidate bank accounts, bKash, and cash in one real-time dashboard. Generate clean, professional monthly financial reports instantly.
               </p>
             </div>
             <div className="pt-4 mt-4 border-t border-outline-variant/15 flex items-center justify-between text-sm font-bold text-secondary">
-              <span>Inspect Active Alerts</span>
+              <span>Open Live Dashboard</span>
               <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">
                 arrow_forward
               </span>

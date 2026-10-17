@@ -10,7 +10,6 @@ export type NavScreen =
   | 'cash-flow-forecast'
   | 'ai-coach'
   | 'financial-health'
-  | 'insights-alerts'
   | 'settings-profile';
 
 interface SidebarProps {
@@ -41,7 +40,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'cash-flow-forecast', label: 'Cash Flow Forecast', icon: 'trending_up' },
     { id: 'ai-coach', label: 'AI Coach', icon: 'auto_awesome', badge: 'AI Active' },
     { id: 'financial-health', label: 'Financial Health', icon: 'vital_signs' },
-    { id: 'insights-alerts', label: 'Insights & Alerts', icon: 'notifications_active' },
   ];
 
   const handleItemClick = (screen: NavScreen) => {

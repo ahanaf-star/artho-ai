@@ -7,7 +7,6 @@ import { SavingsGoals } from './components/SavingsGoals';
 import { AICoach } from './components/AICoach';
 import { CashFlowView } from './components/CashFlowView';
 import { FinancialHealthView } from './components/FinancialHealthView';
-import { InsightsAlertsView } from './components/InsightsAlertsView';
 import { SettingsProfileView } from './components/SettingsProfileView';
 import { LandingPage } from './components/LandingPage';
 import { AuthScreen } from './components/AuthScreen';
@@ -31,7 +30,6 @@ const PRIVATE_SCREENS: NavScreen[] = [
   'cash-flow-forecast',
   'ai-coach',
   'financial-health',
-  'insights-alerts',
   'settings-profile',
 ];
 
@@ -68,7 +66,7 @@ function getScreenFromPathname(pathname: string): NavScreen {
     case 'insights-alerts':
     case 'insights':
     case 'alerts':
-      return 'insights-alerts';
+      return 'dashboard';
     case 'settings-profile':
     case 'settings':
     case 'profile':
@@ -735,7 +733,7 @@ export default function App() {
           )}
 
           {(resolvedScreen === 'dashboard' ||
-            (!['landing', 'spending-analysis', 'savings-goals', 'ai-coach', 'cash-flow-forecast', 'financial-health', 'insights-alerts', 'settings-profile'].includes(resolvedScreen))) && (
+            (!['landing', 'spending-analysis', 'savings-goals', 'ai-coach', 'cash-flow-forecast', 'financial-health', 'settings-profile'].includes(resolvedScreen))) && (
             <Dashboard
               transactions={transactions}
               goals={goals}
@@ -821,10 +819,6 @@ export default function App() {
               onNavigate={navigateTo}
               isBangla={isBangla}
             />
-          )}
-
-          {resolvedScreen === 'insights-alerts' && (
-            <InsightsAlertsView onNavigate={navigateTo} isBangla={isBangla} />
           )}
 
           {resolvedScreen === 'settings-profile' && (
