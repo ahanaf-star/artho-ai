@@ -235,12 +235,14 @@ function sanitizeDescription(desc?: string): string | undefined {
 /**
  * Builds deterministic, authoritative CoachContext for an authenticated user from MongoDB
  */
+/**
+ * Builds deterministic, authoritative CoachContext for an authenticated user from MongoDB
+ */
 export async function buildCoachContext(
   userId: string,
-  options?: { targetMonth?: string; userDoc?: any }
+  options?: { targetMonth?: string; userDoc?: any; today?: string }
 ): Promise<CoachContext> {
-  const today = getDhakaToday();
-  const calendarMonth = today.slice(0, 7);
+  const today = options?.today || getDhakaToday();
 
   let rawTransactions: ITransaction[] = [];
   let rawGoals: ISavingsGoal[] = [];
@@ -309,6 +311,22 @@ export async function buildCoachContext(
     icon: g.icon || '🎯',
   }));
 
+  return buildCoachContextFromData(transactions, goals, user, options);
+}
+
+/**
+ * Builds deterministic, authoritative CoachContext from in-memory typed data
+ * Used by buildCoachContext, unit tests, and automated evaluation suites without DB queries
+ */
+export function buildCoachContextFromData(
+  transactions: Transaction[],
+  goals: SavingsGoal[],
+  user: any = null,
+  options?: { targetMonth?: string; today?: string }
+): CoachContext {
+  const today = options?.today || getDhakaToday();
+  const calendarMonth = today.slice(0, 7);
+
   // Determine active month window:
   // Prefer requested targetMonth -> then current calendar month if it has data -> then latest transaction month
   let activeMonth = options?.targetMonth;
@@ -339,7 +357,7 @@ export async function buildCoachContext(
   // Sum of linkedAccounts balances; if accounts array empty, calculate cumulative all-time income - expenses
   let currentBalance = 0;
   if (user?.linkedAccounts && user.linkedAccounts.length > 0) {
-    currentBalance = user.linkedAccounts.reduce((sum, a) => sum + (Number(a.balance) || 0), 0);
+    currentBalance = user.linkedAccounts.reduce((sum: number, a: any) => sum + (Number(a.balance) || 0), 0);
   } else if (eligibleTransactions.length > 0) {
     const allTimeBal = eligibleTransactions.reduce((acc, t) => {
       if (t.type === 'income') return acc + t.amount;

@@ -64,7 +64,7 @@ export async function executeCoachInquiry(params: CoachCallParams): Promise<Coac
 
   // 1. If intent is out of scope, immediately return deterministic educational boundary message
   if (intentResult.intent === 'out_of_scope') {
-    return generateDeterministicCoachResponse(intentResult, fullContext, language);
+    return generateDeterministicCoachResponse(intentResult, fullContext, language, query);
   }
 
   // 1b. Direct factual routing for deterministic extrema queries (highest/lowest spending category, merchant, extrema, zero spending, MoM)
@@ -81,7 +81,7 @@ export async function executeCoachInquiry(params: CoachCallParams): Promise<Coac
     'income_total',
   ];
   if (directFactualIntents.includes(intentResult.intent)) {
-    return generateDeterministicCoachResponse(intentResult, fullContext, language);
+    return generateDeterministicCoachResponse(intentResult, fullContext, language, query);
   }
 
   // 2. Slice context deterministically
@@ -122,7 +122,7 @@ export async function executeCoachInquiry(params: CoachCallParams): Promise<Coac
 
   // If Gemini client is not initialized, run deterministic fallback
   if (!aiClient) {
-    return generateDeterministicCoachResponse(intentResult, fullContext, language);
+    return generateDeterministicCoachResponse(intentResult, fullContext, language, query);
   }
 
   // 3. Prepare Prompt Structure
@@ -205,7 +205,7 @@ export async function executeCoachInquiry(params: CoachCallParams): Promise<Coac
             `[Gemini Validation Rejected] Reason: ${validation.reason}. Falling back to deterministic response.`
           );
           // Rejection triggers deterministic fallback
-          return generateDeterministicCoachResponse(intentResult, fullContext, language);
+          return generateDeterministicCoachResponse(intentResult, fullContext, language, query);
         }
 
         // Valid AI response

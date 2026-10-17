@@ -76,6 +76,11 @@ export function parseSavingsTarget(
   query: string,
   currentNetSavings: number = 0
 ): ParsedSavingsPlan | undefined {
+  // Avoid misclassifying simulations or projections as savings plans
+  if (/(?:simulate|simulation|scenario|forecast|trajectory|risk|resilience)/i.test(query)) {
+    return undefined;
+  }
+
   // Convert Bengali numerals to Western digits for unified parsing
   const bnToEnDigits: Record<string, string> = {
     '০': '0',
@@ -168,14 +173,15 @@ export function parseSavingsTarget(
   }
 
   // Pattern 3: English monthly recurring savings target (e.g. "save 6000 tk per month", "save ৳6,000 monthly")
-  const isMonthlyEn = /(?:per|each|every|a)\s*month|monthly/i.test(normalizedDigits);
+  const hasSavingsWordEn = /(?:save|reach|target|stash|accumulate|deposit|put aside|set aside)/i.test(normalizedDigits);
+  const isMonthlyEn = hasSavingsWordEn && /(?:per|each|every|a)\s*month|monthly/i.test(normalizedDigits);
   if (isMonthlyEn) {
     const m =
       normalizedDigits.match(
-        /(?:save|reach|target|stash|accumulate).*?(?:bdt|tk|taka|৳|\$)?\s*([0-9,]+)\s*(?:bdt|tk|taka|৳|\$)?/i
+        /(?:save|reach|target|stash|accumulate|deposit|put aside|set aside).*?(?:bdt|tk|taka|৳|\$)?\s*([0-9,]+)(?!\s*%)\s*(?:bdt|tk|taka|৳|\$)?/i
       ) ||
       normalizedDigits.match(
-        /(?:bdt|tk|taka|৳|\$)?\s*([0-9,]+)\s*(?:bdt|tk|taka|৳|\$)?.*?(?:(?:per|each|every|a)\s*month|monthly)/i
+        /(?:bdt|tk|taka|৳|\$)?\s*([0-9,]+)(?!\s*%).*?(?:(?:per|each|every|a)\s*month|monthly)/i
       );
     if (m) {
       const targetAmount = parseInt(m[1].replace(/,/g, ''), 10);
@@ -223,6 +229,28 @@ export function parseSavingsTarget(
           isRecurringMonthly: true,
         };
       }
+    }
+  }
+
+  // Pattern 5: Standalone target (e.g. "Save ৳50,000", "Save 50000")
+  const standaloneMatch = normalizedDigits.match(/^(?:please\s+)?(?:how\s+to\s+)?save\s*(?:bdt|tk|taka|৳|\$)?\s*([0-9,]+)(?!\s*%)(?:\s*(?:bdt|tk|taka|৳|\$))?\.?$/i);
+  if (standaloneMatch) {
+    const targetAmount = parseInt(standaloneMatch[1].replace(/,/g, ''), 10);
+    if (targetAmount > 0) {
+      const isFeasible = currentNetSavings >= targetAmount;
+      const monthlyGap = Math.max(0, targetAmount - currentNetSavings);
+      const surplusDiff = Math.abs(currentNetSavings - targetAmount);
+      return {
+        targetAmount,
+        monthlyTarget: targetAmount,
+        weeklyTarget: Math.round(targetAmount / 4),
+        requiredMonthly: targetAmount,
+        currentMonthlySurplus: currentNetSavings,
+        isFeasible,
+        monthlyGap,
+        surplusDiff,
+        isRecurringMonthly: true,
+      };
     }
   }
 
@@ -327,6 +355,29 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'forecast for next',
     'forecast next 6',
     'forecast next six',
+    'simulate',
+    'simulation',
+    'scenario',
+    'scenarios',
+    'pessimistic',
+    'optimistic',
+    'financial activity',
+    'project three months',
+    'project 3 months',
+    'project next month',
+    'next month s financial position',
+    'next month financial position',
+    'next month s savings',
+    'next month\'s savings',
+    'estimate next month',
+    'estimate next month\'s savings',
+    'next month savings',
+    'income-loss resilience',
+    'loss resilience',
+    'resilience',
+    'stability risks',
+    'financial trajectory',
+    'trajectory',
     'আর্থিক পূর্বাভাস',
     'ভবিষ্যতের পূর্বাভাস',
     'ভবিষ্যত আর্থিক অবস্থান',
@@ -353,6 +404,15 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'forecast balance',
     'balance next month',
     'cash flow',
+    'running out of money',
+    'run out of money',
+    'risk of running out',
+    'safe spending for the rest',
+    'rest of the month',
+    'expenses affecting cash flow',
+    'affecting cash flow',
+    'why money is not left',
+    'no money left',
     'ক্যাশ ফ্লো',
     'মাস শেষ',
     'মাস শেষে',
@@ -360,9 +420,11 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'কত টাকা থাকতে পারে',
     'টানাপোড়েন',
   ];
-  for (const p of monthEndPatterns) {
-    if (norm.includes(p)) {
-      return { intent: 'month_end_balance', confidence: 0.9, matchedKeywords: [p] };
+  if (!norm.includes('checklist')) {
+    for (const p of monthEndPatterns) {
+      if (norm.includes(p)) {
+        return { intent: 'month_end_balance', confidence: 0.9, matchedKeywords: [p] };
+      }
     }
   }
 
@@ -399,6 +461,11 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'which merchant did i spend the most',
     'spend most at',
     'spend the most at',
+    'merchants receive the most',
+    'merchants receive most',
+    'which merchants receive',
+    'top merchants',
+    'highest merchants',
     'top vendor',
     'highest vendor',
     'সবচেয়ে বেশি মার্চেন্ট',
@@ -415,6 +482,12 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
 
   // 3c. Largest Individual Expense Transaction
   const largestExpensePatterns = [
+    'five largest',
+    'largest expense transactions',
+    'largest expense transaction',
+    'largest expense',
+    'largest expenses',
+    'biggest expense transactions',
     'largest individual expense',
     'largest transaction',
     'largest single expense',
@@ -549,6 +622,10 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
 
   // 3h. Month-over-Month Comparison
   const momComparisonPatterns = [
+    'compare this month with last month',
+    'this month with last month',
+    'compare this month',
+    'compare with last month',
     'spend more than last month',
     'spend less than last month',
     'compared to last month',
@@ -590,24 +667,31 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     }
   }
 
-  // 4. Unusual Spending & Anomalies
-  const anomalyPatterns = [
-    'unusual',
-    'anomaly',
-    'surge',
-    'unexpected expense',
-    'higher than usual',
-    'food surge',
-    'spike',
-    'অস্বাভাবিক',
-    'হঠাৎ বৃদ্ধি',
-    'অপ্রত্যাশিত',
-    'সার্জ',
-    'বেশি লেগেছে',
-  ];
-  for (const p of anomalyPatterns) {
-    if (norm.includes(p)) {
-      return { intent: 'unusual_spending', confidence: 0.88, matchedKeywords: [p] };
+  // 4. Unusual Spending & Anomalies (skip if query asks to "plan for" or "prepare for")
+  const isPlanningForUnexpected = norm.includes('plan for') || norm.includes('prepare for');
+  if (!isPlanningForUnexpected) {
+    const anomalyPatterns = [
+      'unusual',
+      'anomaly',
+      'surge',
+      'unexpected expense',
+      'higher than usual',
+      'food surge',
+      'spike',
+      'requiring attention',
+      'categories requiring attention',
+      'needs attention',
+      'unusual categories',
+      'অস্বাভাবিক',
+      'হঠাৎ বৃদ্ধি',
+      'অপ্রত্যাশিত',
+      'সার্জ',
+      'বেশি লেগেছে',
+    ];
+    for (const p of anomalyPatterns) {
+      if (norm.includes(p)) {
+        return { intent: 'unusual_spending', confidence: 0.88, matchedKeywords: [p] };
+      }
     }
   }
 
@@ -619,6 +703,15 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'target amount',
     'progress on goal',
     'goal deadline',
+    'save for a laptop',
+    'laptop',
+    'within a deadline',
+    'multiple savings goals',
+    'prioritize multiple',
+    'emergency reserve',
+    'emergency reserves',
+    'prioritize financial goals',
+    'prioritize emergency',
     'লক্ষ্য',
     'টার্গেট',
     'ইমার্জেন্সি ফান্ড',
@@ -639,18 +732,35 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'reach 30%',
     'increase savings',
     'savings plan',
+    'start saving',
+    'how to start saving',
+    'how to save money',
+    'savings capacity',
+    'monthly savings capacity',
+    'realistic savings',
+    'weekly savings needed',
+    'weekly savings',
+    'variable income',
+    'savings with variable income',
+    'payday',
+    'savings improvement plan',
+    'savings improvement',
+    'three-month savings',
+    '3-month savings',
     'বেশি সঞ্চয়',
     'সঞ্চয় বাড়াব',
     'কীভাবে সঞ্চয়',
     'সঞ্চয়ের হার',
   ];
-  for (const p of savingsPlanPatterns) {
-    if (norm.includes(p)) {
-      return { intent: 'savings_plan', confidence: 0.88, matchedKeywords: [p] };
+  if (!norm.includes('checklist')) {
+    for (const p of savingsPlanPatterns) {
+      if (norm.includes(p)) {
+        return { intent: 'savings_plan', confidence: 0.88, matchedKeywords: [p] };
+      }
     }
   }
 
-  // 6b. Actionable Financial Health Recommendations (3 actions)
+  // 6b. Actionable Financial Health Recommendations (3 actions, habits, improvements, checklists)
   const recommendationPatterns = [
     'actions i should take',
     'actions should i take',
@@ -668,6 +778,31 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'how to improve my financial health',
     'improve my financial health',
     'ways to improve my financial health',
+    'problems and possible actions',
+    'problems and actions',
+    'personalized improvements',
+    'improvements',
+    'good habits and areas',
+    'good habits',
+    'priority action',
+    'priority actions',
+    'prioritize expense reduction',
+    'habits for the next',
+    'next 30 days',
+    'weekly financial action plan',
+    'action plan',
+    'savings opportunities',
+    'impact of specific spending',
+    'repeated overspending',
+    'prepare for unexpected',
+    'plan for unexpected',
+    'financial risks',
+    'habit to stop',
+    'checklist',
+    'mid-month and month-end',
+    'financial improvement plan',
+    'improvement plan',
+    '90-day',
     'কী পদক্ষেপ নেব',
     'কী কী পদক্ষেপ',
     'তিনটি পদক্ষেপ',
@@ -683,6 +818,49 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     }
   }
 
+  // 6c. Budget & Spending Reduction Advice (Prioritized before generic total spending)
+  const budgetPatterns = [
+    'budget',
+    'reduce spending',
+    'cut spending',
+    'which category should i cut',
+    'where should i reduce',
+    'trim expense',
+    'essential and discretionary',
+    'non-discretionary vs discretionary',
+    'fixed and variable',
+    'fixed expenses',
+    'variable expenses',
+    'allocate income',
+    'allocation',
+    'spending limits',
+    'category spending limits',
+    'spending limit',
+    'justified spending',
+    'spending reductions',
+    'spending reduction',
+    'potential 10% spending reduction',
+    'reduction in discretionary',
+    'discretionary spending by',
+    'safe personal spending',
+    'safe personal',
+    'arriving at different times',
+    'different times',
+    'spendable funds',
+    'remaining spendable',
+    'weekly plan for the remaining',
+    'weekly plan',
+    'বাজেট',
+    'খরচ কমাব',
+    'খরচ কাটব',
+    'কোন খাত কমাব',
+  ];
+  for (const p of budgetPatterns) {
+    if (norm.includes(p)) {
+      return { intent: 'budget_help', confidence: 0.85, matchedKeywords: [p] };
+    }
+  }
+
   // 7. Financial Health Score
   const healthPatterns = [
     'health score',
@@ -690,6 +868,10 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'how healthy',
     'health status',
     'my score',
+    'financial stability risks',
+    'stability risks',
+    'financial situation to a beginner',
+    'financial position in simple language',
     'আর্থিক স্বাস্থ্য',
     'হেলথ স্কোর',
     'স্কোর কত',
@@ -708,6 +890,9 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'total expense',
     'how much i spent',
     'spending this month',
+    'overall spending behavior',
+    'break down expenses',
+    'breakdown',
     'কত টাকা খরচ',
     'মোট খরচ',
     'এ মাসের খরচ',
@@ -719,26 +904,7 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     }
   }
 
-  // 9. Budget & Spending Reduction Advice
-  const budgetPatterns = [
-    'budget',
-    'reduce spending',
-    'cut spending',
-    'which category should i cut',
-    'where should i reduce',
-    'trim expense',
-    'বাজেট',
-    'খরচ কমাব',
-    'খরচ কাটব',
-    'কোন খাত কমাব',
-  ];
-  for (const p of budgetPatterns) {
-    if (norm.includes(p)) {
-      return { intent: 'budget_help', confidence: 0.85, matchedKeywords: [p] };
-    }
-  }
-
-  // 10. Transaction Lookup
+  // 9. Transaction Lookup
   const txLookupPatterns = [
     'last transaction',
     'recent transaction',
@@ -755,7 +921,7 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     }
   }
 
-  // 11. General Education
+  // 10. General Education
   const generalEduPatterns = [
     'what is the 50/30/20',
     'what is 50/30/20',
@@ -764,6 +930,8 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'budgeting rule',
     'explain 50/30/20',
     'explain rule',
+    'evaluate expensive purchases',
+    'expensive purchases',
     'কীভাবে কাজ করে',
     'কাকে বলে',
   ];

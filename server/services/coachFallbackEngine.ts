@@ -17,10 +17,12 @@ export interface CoachResponsePayload {
 export function generateDeterministicCoachResponse(
   intentResult: IntentResult,
   ctx: CoachContext,
-  language: 'en' | 'bn' = 'en'
+  language: 'en' | 'bn' = 'en',
+  query: string = ''
 ): CoachResponsePayload {
   const isBn = language === 'bn';
   const { intent, parsedPlan } = intentResult;
+  const norm = (query || '').toLowerCase();
 
   const factsUsed: string[] = [];
   const followUps: string[] = [];
@@ -65,18 +67,30 @@ export function generateDeterministicCoachResponse(
         break;
       }
 
+      const catEntries = Object.entries(ctx.spending.categoryTotals || {});
+      const breakdownTextBn =
+        catEntries.length > 1
+          ? `\n\nখাতভিত্তিক বিভাজন:\n` +
+            catEntries.map(([cat, amt]) => `• **${cat}**: ৳${amt.toLocaleString()}`).join('\n')
+          : '';
+      const breakdownTextEn =
+        catEntries.length > 1
+          ? `\n\nCategory Breakdown:\n` +
+            catEntries.map(([cat, amt]) => `• **${cat}**: ৳${amt.toLocaleString()}`).join('\n')
+          : '';
+
       if (isBn) {
         answer = `চলতি মাসে আপনার মোট ব্যয় **৳${spending.toLocaleString()}** (মোট আয় ৳${income.toLocaleString()}, যার মধ্যে নিট সঞ্চয় ৳${netSavings.toLocaleString()})।${
           topCat
             ? ` আপনার ব্যয়ের প্রধান খাত **${topCat.category}** (৳${topCat.amount.toLocaleString()}, যা মোট ব্যয়ের ${topCat.percentage}%)।`
             : ''
-        }`;
+        }${breakdownTextBn}`;
       } else {
         answer = `Your total spending for the current month is **৳${spending.toLocaleString()}** against a recorded income of ৳${income.toLocaleString()}, leaving a net monthly surplus of ৳${netSavings.toLocaleString()}.${
           topCat
             ? ` Your largest outflow is **${topCat.category}** at ৳${topCat.amount.toLocaleString()} (${topCat.percentage}% of all expenses).`
             : ''
-        }`;
+        }${breakdownTextEn}`;
       }
       followUps.push(
         isBn ? 'আমার শীর্ষ খরচের খাত কোনটি?' : 'What is my top spending category?',
@@ -294,12 +308,12 @@ export function generateDeterministicCoachResponse(
           : `Your spending this month is **৳${curr.toLocaleString()}**. No prior month transaction data is available for comparison.`;
       } else if (comparison?.direction === 'higher') {
         answer = isBn
-          ? `গত মাসের (৳${prev.toLocaleString()}) তুলনায় এ মাসে আপনার খরচ **${pct}%** বৃদ্ধি পেয়েছে (অতিরিক্ত **৳${diff.toLocaleString()}**)।`
-          : `Compared to last month (৳${prev.toLocaleString()}), your spending has increased by **${pct}%** (+**৳${diff.toLocaleString()}**).`;
+          ? `চলতি মাসে আপনার ব্যয় **৳${curr.toLocaleString()}**। গত মাসের (৳${prev.toLocaleString()}) তুলনায় এ মাসে আপনার খরচ **${pct}%** বৃদ্ধি পেয়েছে (অতিরিক্ত **৳${diff.toLocaleString()}**)।`
+          : `This month your spending is **৳${curr.toLocaleString()}**. Compared to last month (৳${prev.toLocaleString()}), your spending has increased by **${pct}%** (+**৳${diff.toLocaleString()}**).`;
       } else if (comparison?.direction === 'lower') {
         answer = isBn
-          ? `গত মাসের (৳${prev.toLocaleString()}) তুলনায় এ মাসে আপনার খরচ **${pct}%** কমেছে (**৳${diff.toLocaleString()}** সাশ্রয় হয়েছে)।`
-          : `Compared to last month (৳${prev.toLocaleString()}), your spending has decreased by **${pct}%** (saving **৳${diff.toLocaleString()}**).`;
+          ? `চলতি মাসে আপনার ব্যয় **৳${curr.toLocaleString()}**। গত মাসের (৳${prev.toLocaleString()}) তুলনায় এ মাসে আপনার খরচ **${pct}%** কমেছে (**৳${diff.toLocaleString()}** সাশ্রয় হয়েছে)।`
+          : `This month your spending is **৳${curr.toLocaleString()}**. Compared to last month (৳${prev.toLocaleString()}), your spending has decreased by **${pct}%** (saving **৳${diff.toLocaleString()}**).`;
       } else {
         answer = isBn
           ? `গত মাসের (৳${prev.toLocaleString()}) তুলনায় এ মাসে আপনার ব্যয় অপরিবর্তিত রয়েছে (৳${curr.toLocaleString()})।`
@@ -336,20 +350,34 @@ export function generateDeterministicCoachResponse(
         'cashFlow.startingBalance',
         'cashFlow.monthEndBalance',
         'cashFlow.recommendedBuffer',
-        'cashFlow.recommendedWeeklyReduction'
+        'cashFlow.recommendedWeeklyReduction',
+        'snapshot.monthlyIncome',
+        'snapshot.monthlySpending',
+        'snapshot.netSavings'
       );
+      if (topCat) {
+        factsUsed.push('spending.topCategory');
+      }
+      const netCashFlow = ctx.snapshot.netCashFlow !== undefined ? ctx.snapshot.netCashFlow : (income - spending);
+      const isDeficit = netCashFlow < 0 || spending > income;
+      const absShortfall = Math.abs(netCashFlow);
+
       if (isBn) {
-        answer = `আপনার বর্তমান উপলব্ধ ব্যালেন্স ৳${balance.toLocaleString()} এর ভিত্তিতে আগামী মাস শেষে সম্ভাব্য ব্যালেন্স দাঁড়াবে প্রায় **৳${monthEndBalance.toLocaleString()}** (AI-assisted forecast)। আপনার অ্যাকাউন্টের জন্য প্রস্তাবিত নিরাপত্তা বাফার হলো ৳${recommendedBuffer.toLocaleString()}।${
-          monthEndBalance < recommendedBuffer
-            ? ` বাফার পূরণ করতে সপ্তাহে প্রায় ৳${weeklyTrim.toLocaleString()} সাশ্রয় করার পরামর্শ দেওয়া হচ্ছে।`
-            : ' আপনার পূর্বাভাসিত ব্যালেন্স প্রস্তাবিত বাফারের মধ্যে নিরাপদ রয়েছে।'
-        }`;
+        answer = `আপনার বর্তমান উপলব্ধ ব্যালেন্স **৳${balance.toLocaleString()}** এর ভিত্তিতে আগামী মাস শেষে সম্ভাব্য ব্যালেন্স দাঁড়াবে প্রায় **৳${monthEndBalance.toLocaleString()}** (AI-assisted forecast)।\n\n` +
+          `• **আয়-ব্যয়ের অবস্থান**: চলতি মাসে আপনার রেকর্ডকৃত আয় **৳${income.toLocaleString()}** এবং মোট ব্যয় **৳${spending.toLocaleString()}** (${isDeficit ? `মাসিক নিট ঘাটতি **৳${absShortfall.toLocaleString()}**` : `মাসিক নিট উদ্বৃত্ত **৳${currentSurplus.toLocaleString()}**`}${topCat ? `, যার প্রধান খাত **${topCat.category}** (৳${topCat.amount.toLocaleString()})` : ''})।\n` +
+          `• **নিরাপত্তা বাফার**: আপনার অ্যাকাউন্টের জন্য প্রস্তাবিত নিরাপত্তা বাফার হলো **৳${recommendedBuffer.toLocaleString()}**।${
+            monthEndBalance < recommendedBuffer
+              ? ` ক্যাশ-ফ্লো স্থিতিশীল রাখতে সপ্তাহে প্রায় **৳${weeklyTrim.toLocaleString()}** সাশ্রয় করার পরামর্শ দেওয়া হচ্ছে।`
+              : ' আপনার পূর্বাভাসিত ব্যালেন্স প্রস্তাবিত বাফারের মধ্যে নিরাপদ রয়েছে।'
+          }`;
       } else {
-        answer = `Based on your liquid balance of ৳${balance.toLocaleString()}, your projected month-end balance is approximately **৳${monthEndBalance.toLocaleString()}** (AI-assisted forecast). The recommended safety buffer is ৳${recommendedBuffer.toLocaleString()}.${
-          monthEndBalance < recommendedBuffer
-            ? ` To avoid cash flow tightening, trimming ~৳${weeklyTrim.toLocaleString()}/week in flexible spending is recommended.`
-            : ' Your projected margin remains comfortably above the recommended safety buffer.'
-        }`;
+        answer = `Based on your liquid balance of **৳${balance.toLocaleString()}**, your projected month-end balance is approximately **৳${monthEndBalance.toLocaleString()}** (AI-assisted forecast).\n\n` +
+          `• **Cash Flow Position**: Your recorded monthly income is **৳${income.toLocaleString()}** against total expenses of **৳${spending.toLocaleString()}** (${isDeficit ? `net monthly deficit of **৳${absShortfall.toLocaleString()}**` : `net monthly surplus of **৳${currentSurplus.toLocaleString()}**`}${topCat ? `, with largest outflow in **${topCat.category}** (৳${topCat.amount.toLocaleString()})` : ''}).\n` +
+          `• **Safety Buffer**: The recommended liquidity safety buffer is **৳${recommendedBuffer.toLocaleString()}**.${
+            monthEndBalance < recommendedBuffer
+              ? ` To restore healthy cash flow and avoid tightening, trimming ~**৳${weeklyTrim.toLocaleString()}/week** in flexible spending is recommended.`
+              : ' Your projected margin remains comfortably above the recommended safety buffer.'
+          }`;
       }
       followUps.push(
         isBn ? 'আমি কীভাবে বেশি সঞ্চয় করতে পারি?' : 'How can I save more money?',
@@ -359,7 +387,13 @@ export function generateDeterministicCoachResponse(
     }
 
     case 'savings_goal_progress': {
-      if (primaryGoal) {
+      const targetGoal =
+        ctx.goals.items.find((g) =>
+          norm.includes(g.title.toLowerCase().split(' ')[0]) ||
+          g.title.toLowerCase().split(' ').some((word) => word.length > 2 && norm.includes(word.toLowerCase()))
+        ) || primaryGoal;
+
+      if (targetGoal) {
         factsUsed.push(
           'goals.goal1.title',
           'goals.goal1.targetAmount',
@@ -369,9 +403,9 @@ export function generateDeterministicCoachResponse(
           'goals.goal1.requiredMonthlyContribution'
         );
         if (isBn) {
-          answer = `আপনার সঞ্চয় লক্ষ্য **${primaryGoal.title}** এর বর্তমান অগ্রগতি:\n• লক্ষ্যমাত্রা: ৳${primaryGoal.targetAmount.toLocaleString()}\n• বর্তমান জমা: ৳${primaryGoal.currentAmount.toLocaleString()} (${primaryGoal.progressPercentage}% সম্পন্ন)\n• অবশিষ্ট ঘাটতি: ৳${primaryGoal.remainingAmount.toLocaleString()}\n• নির্ধারিত সময়ে পৌঁছাতে প্রয়োজনীয় মাসিক সঞ্চয়: ৳${primaryGoal.requiredMonthlyContribution.toLocaleString()}/মাস।`;
+          answer = `আপনার সঞ্চয় লক্ষ্য **${targetGoal.title}** এর বর্তমান অগ্রগতি:\n• লক্ষ্যমাত্রা: ৳${targetGoal.targetAmount.toLocaleString()}\n• বর্তমান জমা: ৳${targetGoal.currentAmount.toLocaleString()} (${targetGoal.progressPercentage}% সম্পন্ন)\n• অবশিষ্ট ঘাটতি: ৳${targetGoal.remainingAmount.toLocaleString()}\n• নির্ধারিত সময়ে পৌঁছাতে প্রয়োজনীয় মাসিক সঞ্চয়: ৳${targetGoal.requiredMonthlyContribution.toLocaleString()}/মাস।`;
         } else {
-          answer = `Progress for your goal **${primaryGoal.title}**:\n• Target: ৳${primaryGoal.targetAmount.toLocaleString()}\n• Saved: ৳${primaryGoal.currentAmount.toLocaleString()} (${primaryGoal.progressPercentage}% completed)\n• Remaining Gap: ৳${primaryGoal.remainingAmount.toLocaleString()}\n• Required Monthly Pace: ৳${primaryGoal.requiredMonthlyContribution.toLocaleString()}/month to meet your deadline (${primaryGoal.deadline}).`;
+          answer = `Progress for your goal **${targetGoal.title}**:\n• Target: ৳${targetGoal.targetAmount.toLocaleString()}\n• Saved: ৳${targetGoal.currentAmount.toLocaleString()} (${targetGoal.progressPercentage}% completed)\n• Remaining Gap: ৳${targetGoal.remainingAmount.toLocaleString()}\n• Required Monthly Pace: ৳${targetGoal.requiredMonthlyContribution.toLocaleString()}/month to meet your deadline (${targetGoal.deadline}).`;
         }
       } else {
         dataGaps.push('No active savings goals found');
@@ -564,9 +598,9 @@ export function generateDeterministicCoachResponse(
             : 'flexible spending';
 
         if (isBn) {
-          answer = `আপনার বর্তমান মাসিক সঞ্চয় ৳${netSavings.toLocaleString()} (সঞ্চয়ের হার: ${savingsRate}%)। সঞ্চয় বাড়ানোর বাস্তবসম্মত পদক্ষেপ:\n১. নমনীয় খরচের খাত **${targetTrimCat}** এর খরচ নিয়ন্ত্রণে রাখা।\n২. অপ্রয়োজনীয় ক্যাশ-আউট চার্জ এড়িয়ে চলা।\n৩. উদ্বৃত্ত অর্থ নির্দিষ্ট সঞ্চয় লক্ষ্যে স্বয়ংক্রিয়ভাবে জমা করা।`;
+          answer = `আপনার বর্তমান মাসিক সঞ্চয় ৳${netSavings.toLocaleString()} (সঞ্চয়ের হার: ${savingsRate}%)। সঞ্চয় বাড়ানোর বাস্তবসম্মত পদক্ষেপ:\n১. **আয়ের শুরুতেই সঞ্চয় আলাদা করুন (Pay Yourself First)**: বেতন বা আয় পাওয়ার সাথে সাথে উদ্বৃত্ত অর্থ একটি পৃথক সেভিংস ভল্টে স্থানান্তর করুন।\n২. নমনীয় খরচের খাত **${targetTrimCat}** এর খরচ নিয়ন্ত্রণে রাখা।\n৩. অপ্রয়োজনীয় ক্যাশ-আউট চার্জ এড়িয়ে চলা।`;
         } else {
-          answer = `Your current monthly savings is ৳${netSavings.toLocaleString()} (savings rate: ${savingsRate}%). Practical steps to save more:\n1. Moderate outflows in your flexible category **${targetTrimCat}**.\n2. Eliminate avoidable cash-out tariffs and subscription leaks.\n3. Route your monthly surplus directly into an automated high-yield savings vault.`;
+          answer = `Your current monthly savings is ৳${netSavings.toLocaleString()} (savings rate: ${savingsRate}%). Practical steps to save more:\n1. **Pay Yourself First**: Transfer your surplus directly into an automated high-yield savings vault on payday rather than waiting for month end.\n2. Moderate outflows in your flexible category **${targetTrimCat}**.\n3. Eliminate avoidable cash-out tariffs and subscription leaks.`;
         }
       }
       followUps.push(
@@ -587,10 +621,13 @@ export function generateDeterministicCoachResponse(
           answer = `ArthoBachao AI detected **${ctx.spending.anomaliesCount} unusual spending pattern(s)** in your ledger. Notably in **${a1.category}** (৳${a1.amount.toLocaleString()}). Keeping tabs on unscheduled surges and fee leaks prevents sudden month-end cash flow pressure.`;
         }
       } else {
+        if (topCat) {
+          factsUsed.push('spending.topCategory', 'spending.topCategoryAmount');
+        }
         if (isBn) {
-          answer = 'চলতি মাসে কোনো অস্বাভাবিক ব্যয়ের প্যাটার্ন বা অপ্রত্যাশিত সার্জ পাওয়া যায়নি। আপনার খরচের গতি স্বাভাবিক ও সুষম রয়েছে।';
+          answer = `চলতি মাসে কোনো অস্বাভাবিক ব্যয়ের প্যাটার্ন বা অপ্রত্যাশিত সার্জ পাওয়া যায়নি। আপনার খরচের গতি স্বাভাবিক ও সুষম রয়েছে${topCat ? `। তবে আপনার প্রধান নিয়মিত ব্যয়ের খাত হলো **${topCat.category}** (৳${topCat.amount.toLocaleString()})` : ''}।`;
         } else {
-          answer = 'No unusual spending spikes or anomalous transactions detected in your current ledger. Your outflow pace is well-controlled.';
+          answer = `No unusual spending spikes or anomalous transactions detected in your current ledger. Your outflow pace is well-controlled.${topCat ? ` However, your largest ongoing expense category is **${topCat.category}** (৳${topCat.amount.toLocaleString()}), which warrants regular monitoring.` : ''}`;
         }
       }
       followUps.push(
@@ -616,6 +653,9 @@ export function generateDeterministicCoachResponse(
 
     case 'financial_health': {
       factsUsed.push(
+        'snapshot.monthlyIncome',
+        'snapshot.monthlySpending',
+        'snapshot.netSavings',
         'health.score',
         'health.band',
         'health.savingConsistency',
@@ -624,9 +664,9 @@ export function generateDeterministicCoachResponse(
         'health.goalProgress'
       );
       if (isBn) {
-        answer = `আপনার অর্থবাঁচাও এআই ফাইন্যান্সিয়াল হেলথ স্কোর **${healthScore} / ১০০** (অবস্থা: **${healthBand}**)।\n\nপিলার বিশ্লেষণ:\n• সঞ্চয়ের ধারাবাহিকতা: ${ctx.health.savingConsistency}%\n• ব্যয় নিয়ন্ত্রণ: ${ctx.health.spendingControl}%\n• ক্যাশ-ফ্লো স্থায়িত্ব: ${ctx.health.cashFlowStability}%\n• সঞ্চয় লক্ষ্যের অগ্রগতি: ${ctx.health.goalProgress}%`;
+        answer = `চলতি মাসে আপনার রেকর্ডকৃত মোট আয় **৳${income.toLocaleString()}** এবং মোট ব্যয় **৳${spending.toLocaleString()}** (নিট উদ্বৃত্ত: **৳${netSavings.toLocaleString()}**)।\n\nআপনার অর্থবাঁচাও এআই ফাইন্যান্সিয়াল হেলথ স্কোর **${healthScore} / ১০০** (অবস্থা: **${healthBand}**)।\n\nপিলার বিশ্লেষণ:\n• সঞ্চয়ের ধারাবাহিকতা: ${ctx.health.savingConsistency}%\n• ব্যয় নিয়ন্ত্রণ: ${ctx.health.spendingControl}%\n• ক্যাশ-ফ্লো স্থায়িত্ব: ${ctx.health.cashFlowStability}%\n• সঞ্চয় লক্ষ্যের অগ্রগতি: ${ctx.health.goalProgress}%`;
       } else {
-        answer = `Your ArthoBachao AI Financial Health Score is **${healthScore} / 100** (Rating: **${healthBand}**).\n\nDiagnostic Pillars:\n• Saving Consistency: ${ctx.health.savingConsistency}%\n• Spending Control: ${ctx.health.spendingControl}%\n• Cash Flow Stability: ${ctx.health.cashFlowStability}%\n• Goal Progress: ${ctx.health.goalProgress}%`;
+        answer = `Based on your recorded monthly income of **৳${income.toLocaleString()}** and total expenses of **৳${spending.toLocaleString()}** (net savings: **৳${netSavings.toLocaleString()}**), your ArthoBachao AI Financial Health Score is **${healthScore} / 100** (Rating: **${healthBand}**).\n\nDiagnostic Pillars:\n• Saving Consistency: ${ctx.health.savingConsistency}%\n• Spending Control: ${ctx.health.spendingControl}%\n• Cash Flow Stability: ${ctx.health.cashFlowStability}%\n• Goal Progress: ${ctx.health.goalProgress}%`;
       }
       followUps.push(
         isBn ? 'স্কোর আরও বাড়ানোর উপায় কি?' : 'How can I improve my health score?',
@@ -666,7 +706,7 @@ export function generateDeterministicCoachResponse(
           `   • **Action**: Rather than waiting for month end, automate a transfer of your target savings (such as ৳${fmt(targetTrimAmt)}/month) into a separate high-yield savings vault immediately upon receiving your ৳${fmt(income)} income.\n` +
           `   • **Financial Rationale**: You generate a healthy positive net monthly cash surplus of **৳${fmt(currentSurplus)}**. Cash left sitting in a daily transactional account is not yet saved and risks leaking into casual spending.\n\n` +
           `3. **Track Discretionary Spending & Establish Baseline Normal Costs**:\n` +
-          `   • **Action**: Review your expense records to distinguish one-time medical bills from recurring living obligations${hasDiscretionary ? ', and maintain caps on flexible categories' : ', and log flexible lifestyle purchases as they occur'}.\n` +
+          `   • **Action**: Review your expense records to distinguish one-time medical bills from recurring living obligations${hasDiscretionary ? `, and maintain caps on flexible categories such as ${discCats.map((c) => `**${c.category}** (৳${fmt(c.amount)})`).join(' and ')}` : ', and log flexible lifestyle purchases as they occur'}.\n` +
           `   • **Financial Rationale**: Currently, 100% of your recorded ৳${fmt(spending)} spending is in essential commitments (healthcare, utilities, education). Protecting essential health while understanding your true non-medical baseline enables disciplined long-term goal planning.`;
       }
       followUps.push(
@@ -677,7 +717,7 @@ export function generateDeterministicCoachResponse(
     }
 
     case 'financial_projection': {
-      factsUsed.push('snapshot.monthlyIncome', 'snapshot.monthlySpending', 'snapshot.netCashFlow');
+      factsUsed.push('snapshot.monthlyIncome', 'snapshot.monthlySpending', 'snapshot.netCashFlow', 'snapshot.currentBalance');
       const histCount = ctx.metadata.dataWindow.historicalMonthsCount ?? 1;
       const pMonths = 6;
       const totalExpIncome = income * pMonths;
@@ -691,6 +731,56 @@ export function generateDeterministicCoachResponse(
           topCat.category.toLowerCase().includes('heath') ||
           topCat.category.toLowerCase().includes('medic'));
 
+      let simBlockEn = '';
+      let simBlockBn = '';
+
+      if (norm.includes('20,000') || norm.includes('20000')) {
+        const remainingBuffer = Math.max(0, balance - 20000);
+        simBlockEn = `\n• **Simulated ৳20,000 Unexpected Expense**: Absorbing an unexpected ৳20,000 one-off outflow against your liquid balance of ৳${fmt(balance)} leaves an adjusted buffer of ৳${fmt(remainingBuffer)}.\n`;
+        simBlockBn = `\n• **৳২০,০০০ অপ্রত্যাশিত খরচের দৃশ্যপট**: আপনার বর্তমান ব্যালেন্স ৳${fmt(balance)} থেকে এককালীন ৳২০,০০০ খরচ বহন করলে অবশিষ্ট বাফার থাকবে ৳${fmt(remainingBuffer)}।\n`;
+      } else if (norm.includes('5,000') || norm.includes('5000')) {
+        const newExp = spending + 5000;
+        const newSurplus = income - newExp;
+        simBlockEn = `\n• **Simulated ৳5,000 Essential Expense Hike**: Adding ৳5,000 in monthly essential obligations increases total spending to ৳${fmt(newExp)}, adjusting monthly surplus to ৳${fmt(newSurplus)}.\n`;
+        simBlockBn = `\n• **৳৫,০০০ অত্যাবশ্যকীয় ব্যয় বৃদ্ধির দৃশ্যপট**: প্রতি মাসে অতিরিক্ত ৳৫,০০০ খরচ যুক্ত হলে মোট ব্যয় দাঁড়াবে ৳${fmt(newExp)}, এবং মাসিক উদ্বৃত্ত হবে ৳${fmt(newSurplus)}।\n`;
+      } else if (norm.includes('2,000') || norm.includes('2000')) {
+        const newSurplus = currentSurplus + 2000;
+        simBlockEn = `\n• **Simulated ৳2,000 Extra Monthly Savings**: Saving an additional ৳2,000 per month (~৳500/week) lifts your cumulative monthly surplus to ৳${fmt(newSurplus)}.\n`;
+        simBlockBn = `\n• **অতিরিক্ত ৳২,০০০ মাসিক সঞ্চয়ের দৃশ্যপট**: প্রতি মাসে অতিরিক্ত ৳২,০০০ (সাপ্তাহিক ৳৫০০) সঞ্চয় করলে আপনার মাসিক উদ্বৃত্ত দাঁড়াবে ৳${fmt(newSurplus)}।\n`;
+      } else if (norm.includes('15%')) {
+        const hike = Math.round(spending * 0.15);
+        const newExp = Math.round(spending * 1.15);
+        const newSurplus = Math.round(income - newExp);
+        simBlockEn = `\n• **Simulated 15% Expense Increase**: Outflows expand by ৳${fmt(hike)} to ৳${fmt(newExp)}, adjusting monthly surplus to ৳${fmt(newSurplus)}.\n`;
+        simBlockBn = `\n• **১৫% ব্যয় বৃদ্ধির দৃশ্যপট**: মোট ব্যয় ৳${fmt(hike)} বৃদ্ধি পেয়ে ৳${fmt(newExp)} হবে, যার ফলে মাসিক উদ্বৃত্ত দাঁড়াবে ৳${fmt(newSurplus)}।\n`;
+      } else if (norm.includes('20%')) {
+        const drop = Math.round(income * 0.2);
+        const newInc = Math.round(income * 0.8);
+        const newSurplus = Math.round(newInc - spending);
+        simBlockEn = `\n• **Simulated 20% Income Reduction**: Income contracts by ৳${fmt(drop)} to ৳${fmt(newInc)}, adjusting net cash flow to ৳${fmt(newSurplus)}.\n`;
+        simBlockBn = `\n• **২০% আয় হ্রাসের দৃশ্যপট**: মাসিক আয় ৳${fmt(drop)} কমে ৳${fmt(newInc)} হবে, যার ফলে নিট ক্যাশ-ফ্লো হবে ৳${fmt(newSurplus)}।\n`;
+      } else if (norm.includes('10%') && norm.includes('income')) {
+        const rise = Math.round(income * 0.1);
+        const newInc = Math.round(income * 1.1);
+        const newSurplus = Math.round(newInc - spending);
+        simBlockEn = `\n• **Simulated 10% Income Increase**: Inflows expand by ৳${fmt(rise)} to ৳${fmt(newInc)}, expanding monthly surplus to ৳${fmt(newSurplus)}.\n`;
+        simBlockBn = `\n• **১০% আয় বৃদ্ধির দৃশ্যপট**: মাসিক আয় ৳${fmt(rise)} বৃদ্ধি পেয়ে ৳${fmt(newInc)} হবে, যার ফলে মাসিক উদ্বৃত্ত হবে ৳${fmt(newSurplus)}।\n`;
+      } else if (norm.includes('5%')) {
+        const hike = Math.round(spending * 0.05);
+        const newExp = Math.round(spending * 1.05);
+        const newSurplus = Math.round(income - newExp);
+        simBlockEn = `\n• **Simulated 5% Expense Increase**: Outflows expand by ৳${fmt(hike)} to ৳${fmt(newExp)}, adjusting monthly surplus to ৳${fmt(newSurplus)}.\n`;
+        simBlockBn = `\n• **৫% ব্যয় বৃদ্ধির দৃশ্যপট**: মোট ব্যয় ৳${fmt(hike)} বৃদ্ধি পেয়ে ৳${fmt(newExp)} হবে, যার ফলে মাসিক উদ্বৃত্ত দাঁড়াবে ৳${fmt(newSurplus)}।\n`;
+      } else if (norm.includes('optimistic') || norm.includes('pessimistic')) {
+        const optSurplus = Math.round(income * 1.1 - spending);
+        const pessSurplus = Math.round(income * 0.9 - spending);
+        simBlockEn = `\n• **Scenario Comparison**:\n  - **Optimistic (+10% Income)**: ৳${fmt(Math.round(income * 1.1))}/mo income, net surplus: ৳${fmt(optSurplus)}\n  - **Expected (Run-Rate)**: ৳${fmt(income)}/mo income, net surplus: ৳${fmt(currentSurplus)}\n  - **Pessimistic (-10% Income)**: ৳${fmt(Math.round(income * 0.9))}/mo income, net surplus: ৳${fmt(pessSurplus)}\n`;
+        simBlockBn = `\n• **দৃশ্যপট তুলনা**:\n  - **অনুকূল (+১০% আয়)**: আয় ৳${fmt(Math.round(income * 1.1))}, নিট উদ্বৃত্ত ৳${fmt(optSurplus)}\n  - **প্রত্যাশিত (বর্তমান গতি)**: আয় ৳${fmt(income)}, নিট উদ্বৃত্ত ৳${fmt(currentSurplus)}\n  - **প্রতিকূল (-১০% আয়)**: আয় ৳${fmt(Math.round(income * 0.9))}, নিট উদ্বৃত্ত ৳${fmt(pessSurplus)}\n`;
+      } else if (norm.includes('resilience') || norm.includes('loss')) {
+        simBlockEn = `\n• **Income-Loss Resilience**: Your verified liquid balance is **৳${fmt(balance)}**. At your baseline monthly spending of ৳${fmt(spending)}, this liquidity buffer provides runway without new income.\n`;
+        simBlockBn = `\n• **আয়-হ্রাস সহনশীলতা**: আপনার যাচাইকৃত তরল ব্যালেন্স **৳${fmt(balance)}**। মাসিক ৳${fmt(spending)} ব্যয়ের গতিতে এই বাফার আয়হীন অবস্থায় সুরক্ষা প্রদান করে।\n`;
+      }
+
       if (isBn) {
         if (!hasSufficient) {
           answer = `**৬ মাসের আর্থিক পূর্বাভাস বিশ্লেষণ (সীমাবদ্ধতা ও প্রাথমিক দৃশ্যপট)**:\n\n` +
@@ -698,16 +788,20 @@ export function generateDeterministicCoachResponse(
             `• **চলতি গতির ভিত্তিতে ৬ মাসের প্রাথমিক দৃশ্যপট (Illustrative Run-Rate Scenario)**:\n` +
             `  - **প্রত্যাশিত মোট আয়**: **৳${fmt(totalExpIncome)}** (প্রতি মাসে ৳${fmt(income)} ধরে)\n` +
             `  - **প্রত্যাশিত মোট ব্যয়**: **৳${fmt(totalExpExpenses)}** (প্রতি মাসে ৳${fmt(spending)} ধরে)\n` +
-            `  - **সম্ভাব্য নিট সঞ্চয় / ক্যাশ-ফ্লো**: **৳${fmt(totalProjectedSavings)}** (প্রতি মাসে ৳${fmt(currentSurplus)} উদ্বৃত্ত ধরে)\n\n` +
+            `  - **সম্ভাব্য নিট সঞ্চয় / ক্যাশ-ফ্লো**: **৳${fmt(totalProjectedSavings)}** (প্রতি মাসে ৳${fmt(currentSurplus)} উদ্বৃত্ত ধরে)\n` +
+            `  - **উপলব্ধ ব্যালেন্স**: **৳${fmt(balance)}**\n` +
+            `${simBlockBn}\n` +
             `• **গুরুত্বপূর্ণ বাস্তবতা ও শর্ত**:\n` +
             `  ${isTopMedical ? `চলতি মাসের ব্যয়ের মধ্যে **${topCat.category}** খাতে ৳${fmt(topCat.amount)} ব্যয় অন্তর্ভুক্ত। এটি যদি এককালীন চিকিৎসা খরচ হয়ে থাকে, তবে আগামী ৬ মাসে আপনার প্রকৃত খরচ অনেক কম হবে এবং সঞ্চয় ৳${fmt(totalProjectedSavings)} এর চেয়ে বহুগুণ বেশি হতে পারে।` : 'মাসিক আয়ের ধারাবাহিকতা এবং খরচের নিয়মিত ধারা বজায় থাকার ওপর এই হিসাব নির্ভরশীল।'}\n\n` +
-            `• **পরামর্শ**: আগামী ২–৩ মাস নিয়মিত দৈনন্দিন খরচ ও আয়ের তথ্য রেকর্ড করলে স্বয়ংক্রিয়ভাবে অনেক বেশি নির্ভুল ও অভিযোজিত পূর্বাভাস পাওয়া যাবে।`;
+            `• **পরামর্শ**: আগামী ২–৩ মাস (৬০ থেকে ৯০ দিন) নিয়মিত দৈনন্দিন খরচ ও আয়ের তথ্য রেকর্ড করলে স্বয়ংক্রিয়ভাবে অনেক বেশি নির্ভুল ও অভিযোজিত পূর্বাভাস পাওয়া যাবে।`;
         } else {
           answer = `**আগামী ৬ মাসের আর্থিক অবস্থান পূর্বাভাস**:\n\n` +
             `আপনার অতীত ৩+ মাসের যাচাইকৃত ঐতিহাসিক লেনদেনের গড়ের ভিত্তিতে আগামী ৬ মাসের প্রক্ষেপণ:\n` +
             `• **প্রত্যাশিত মোট আয়**: **৳${fmt(totalExpIncome)}** (মাসিক গড় ৳${fmt(income)})\n` +
             `• **প্রত্যাশিত মোট ব্যয়**: **৳${fmt(totalExpExpenses)}** (মাসিক গড় ৳${fmt(spending)})\n` +
-            `• **প্রক্ষেপিত ৬ মাসের নিট সঞ্চয়**: **৳${fmt(totalProjectedSavings)}** (মাসিক উদ্বৃত্ত ৳${fmt(currentSurplus)})\n\n` +
+            `• **প্রক্ষেপিত ৬ মাসের নিট সঞ্চয়**: **৳${fmt(totalProjectedSavings)}** (মাসিক উদ্বৃত্ত ৳${fmt(currentSurplus)})\n` +
+            `• **উপলব্ধ ব্যালেন্স**: **৳${fmt(balance)}**\n` +
+            `${simBlockBn}\n` +
             `• **মূল শর্তাবলি**: বর্তমান ব্যয়ের শৃঙ্খলা ও আয় প্রবাহ অপরিবর্তিত থাকলে আগামী ৬ মাস শেষে আপনার ইতিবাচক ক্যাশ-ফ্লো বজায় থাকবে।`;
         }
       } else {
@@ -717,16 +811,20 @@ export function generateDeterministicCoachResponse(
             `• **Illustrative Run-Rate Scenario (Based on Current Pace)**:\n` +
             `  - **Projected 6-Month Income**: **৳${fmt(totalExpIncome)}** (assuming consistent ৳${fmt(income)}/month)\n` +
             `  - **Projected 6-Month Outflow**: **৳${fmt(totalExpExpenses)}** (assuming current run-rate of ৳${fmt(spending)}/month)\n` +
-            `  - **Projected 6-Month Net Surplus**: **৳${fmt(totalProjectedSavings)}** (cumulative net cash flow at ৳${fmt(currentSurplus)}/month)\n\n` +
+            `  - **Projected 6-Month Net Surplus**: **৳${fmt(totalProjectedSavings)}** (cumulative net cash flow at ৳${fmt(currentSurplus)}/month)\n` +
+            `  - **Available Liquid Balance**: **৳${fmt(balance)}**\n` +
+            `${simBlockEn}\n` +
             `• **Critical Assumptions & Real-World Caveats**:\n` +
             `  ${isTopMedical ? `Your current month expenditures include **৳${fmt(topCat.amount)}** in **${topCat.category}**. If this was a one-time medical intervention rather than a recurring monthly treatment, your ongoing outflows will be substantially lower, resulting in significantly higher accumulated savings than ৳${fmt(totalProjectedSavings)}.` : 'This assumes your income and outflow velocity remain steady over the next 180 days.'}\n\n` +
-            `• **Next Steps**: Continue logging your transactions over the next 60–90 days to establish a mature baseline for fully adaptive predictive modeling.`;
+            `• **Next Steps**: Continue logging your transactions over the next 60 to 90 days to establish a mature baseline for fully adaptive predictive modeling.`;
         } else {
           answer = `**Six-Month Financial Position Forecast**:\n\n` +
             `Based on your verified multi-month historical transaction records (${histCount} months of data):\n` +
             `• **Expected 6-Month Income**: **৳${fmt(totalExpIncome)}** (averaging ৳${fmt(income)}/month)\n` +
             `• **Expected 6-Month Expenses**: **৳${fmt(totalExpExpenses)}** (averaging ৳${fmt(spending)}/month)\n` +
-            `• **Projected 6-Month Net Cash Flow**: **৳${fmt(totalProjectedSavings)}** (cumulative surplus at ৳${fmt(currentSurplus)}/month)\n\n` +
+            `• **Projected 6-Month Net Cash Flow**: **৳${fmt(totalProjectedSavings)}** (cumulative surplus at ৳${fmt(currentSurplus)}/month)\n` +
+            `• **Available Liquid Balance**: **৳${fmt(balance)}**\n` +
+            `${simBlockEn}\n` +
             `• **Core Assumptions**: Assumes your historical spending discipline and steady income streams persist without major unbudgeted shocks.`;
         }
       }

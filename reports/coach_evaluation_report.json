@@ -1,0 +1,2723 @@
+{
+  "total": 100,
+  "passed": 100,
+  "failed": 0,
+  "needsReview": 0,
+  "passRate": 100,
+  "categoryBreakdown": {
+    "SPENDING_ANALYSIS": {
+      "total": 20,
+      "passed": 20,
+      "failed": 0,
+      "needsReview": 0,
+      "passRate": 100
+    },
+    "SAVINGS_PLANNING": {
+      "total": 20,
+      "passed": 20,
+      "failed": 0,
+      "needsReview": 0,
+      "passRate": 100
+    },
+    "BUDGET_PLANNING": {
+      "total": 20,
+      "passed": 20,
+      "failed": 0,
+      "needsReview": 0,
+      "passRate": 100
+    },
+    "FINANCIAL_PROJECTION": {
+      "total": 20,
+      "passed": 20,
+      "failed": 0,
+      "needsReview": 0,
+      "passRate": 100
+    },
+    "PERSONALIZED_RECOMMENDATIONS": {
+      "total": 20,
+      "passed": 20,
+      "failed": 0,
+      "needsReview": 0,
+      "passRate": 100
+    }
+  },
+  "criticalCalculationFailures": 0,
+  "intentClassificationFailures": 0,
+  "unsupportedClaimFailures": 0,
+  "dataSufficiencyFailures": 0,
+  "safetyFailures": 0,
+  "durationMs": 88,
+  "results": [
+    {
+      "id": "TC-001",
+      "number": 1,
+      "category": "SPENDING_ANALYSIS",
+      "question": "Where is all my money going?",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "spending_total | top_category",
+      "actualIntent": "spending_total",
+      "status": "PASS",
+      "answerExcerpt": "Your total spending for the current month is **৳50,000** against a recorded income of ৳80,000, leaving a net monthly surplus of ৳30,000. You...",
+      "factsUsed": [
+        "snapshot.monthlySpending",
+        "snapshot.monthlyIncome",
+        "snapshot.netSavings",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-002",
+      "number": 2,
+      "category": "SPENDING_ANALYSIS",
+      "question": "How much have I spent this month?",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "spending_total",
+      "actualIntent": "spending_total",
+      "status": "PASS",
+      "answerExcerpt": "Your total spending for the current month is **৳50,000** against a recorded income of ৳80,000, leaving a net monthly surplus of ৳30,000. You...",
+      "factsUsed": [
+        "snapshot.monthlySpending",
+        "snapshot.monthlyIncome",
+        "snapshot.netSavings",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-003",
+      "number": 3,
+      "category": "SPENDING_ANALYSIS",
+      "question": "Break down expenses by category.",
+      "fixtureKey": "MULTIPLE_CATEGORIES",
+      "expectedIntent": "spending_total | top_category",
+      "actualIntent": "spending_total",
+      "status": "PASS",
+      "answerExcerpt": "Your total spending for the current month is **৳85,000** against a recorded income of ৳120,000, leaving a net monthly surplus of ৳35,000. Yo...",
+      "factsUsed": [
+        "snapshot.monthlySpending",
+        "snapshot.monthlyIncome",
+        "snapshot.netSavings",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-004",
+      "number": 4,
+      "category": "SPENDING_ANALYSIS",
+      "question": "Which category has the highest spending?",
+      "fixtureKey": "MULTIPLE_CATEGORIES",
+      "expectedIntent": "top_category",
+      "actualIntent": "top_category",
+      "status": "PASS",
+      "answerExcerpt": "Your top spending category is **Rent & Living**, with **৳30,000** spent this month (35.3% of your total expenses). Moderating outflows in th...",
+      "factsUsed": [
+        "spending.topCategory",
+        "spending.topCategoryAmount",
+        "spending.topCategoryPercentage",
+        "spending.topCategoryMomChange"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-005",
+      "number": 5,
+      "category": "SPENDING_ANALYSIS",
+      "question": "Which category has the lowest spending?",
+      "fixtureKey": "MULTIPLE_CATEGORIES",
+      "expectedIntent": "lowest_category",
+      "actualIntent": "lowest_category",
+      "status": "PASS",
+      "answerExcerpt": "Your lowest spending category for this month is **Entertainment & Others**, with **৳4,500** spent (5.3% of your total expenses).",
+      "factsUsed": [
+        "spending.lowestCategory",
+        "spending.lowestCategoryAmount",
+        "spending.lowestCategoryPercentage",
+        "spending.lowestCategoryMomChange"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-006",
+      "number": 6,
+      "category": "SPENDING_ANALYSIS",
+      "question": "Compare this month with last month.",
+      "fixtureKey": "PREV_MONTH_RECORDS",
+      "expectedIntent": "mom_comparison",
+      "actualIntent": "mom_comparison",
+      "status": "PASS",
+      "answerExcerpt": "This month your spending is **৳55,500**. Compared to last month (৳50,000), your spending has increased by **11%** (+**৳5,500**).",
+      "factsUsed": [
+        "spending.totalSpending",
+        "spending.previousMonthSpending",
+        "spending.momChangePercentage"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-007",
+      "number": 7,
+      "category": "SPENDING_ANALYSIS",
+      "question": "Show my five largest expense transactions.",
+      "fixtureKey": "MULTIPLE_CATEGORIES",
+      "expectedIntent": "largest_expense | transaction_lookup",
+      "actualIntent": "largest_expense",
+      "status": "PASS",
+      "answerExcerpt": "Your single largest expense transaction this month was **৳30,000** in **Rent & Living** (Property Mgmt) on 2026-10-02.",
+      "factsUsed": [
+        "spending.largestExpenseAmount",
+        "spending.largestExpenseCategory"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-008",
+      "number": 8,
+      "category": "SPENDING_ANALYSIS",
+      "question": "Which merchants receive the most of my spending?",
+      "fixtureKey": "MULTIPLE_CATEGORIES",
+      "expectedIntent": "highest_merchant",
+      "actualIntent": "highest_merchant",
+      "status": "PASS",
+      "answerExcerpt": "Your highest spending merchant this month is **Property Mgmt**, with **৳30,000** spent across 1 transaction(s) (35.3% of your total expenses...",
+      "factsUsed": [
+        "spending.highestMerchant",
+        "spending.highestMerchantAmount",
+        "spending.highestMerchantPercentage"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-009",
+      "number": 9,
+      "category": "SPENDING_ANALYSIS",
+      "question": "Analyze everyday expenses.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "spending_total",
+      "actualIntent": "spending_total",
+      "status": "PASS",
+      "answerExcerpt": "Your total spending for the current month is **৳50,000** against a recorded income of ৳80,000, leaving a net monthly surplus of ৳30,000. You...",
+      "factsUsed": [
+        "snapshot.monthlySpending",
+        "snapshot.monthlyIncome",
+        "snapshot.netSavings",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-010",
+      "number": 10,
+      "category": "SPENDING_ANALYSIS",
+      "question": "Compare essential and discretionary spending.",
+      "fixtureKey": "ESSENTIAL_AND_DISCRETIONARY",
+      "expectedIntent": "budget_help | spending_total",
+      "actualIntent": "budget_help",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Monthly Income: **৳75,000**, Expenses: **৳45,000**), here is a realistic monthly budget alloc...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-011",
+      "number": 11,
+      "category": "SPENDING_ANALYSIS",
+      "question": "Identify categories requiring attention.",
+      "fixtureKey": "MULTIPLE_CATEGORIES",
+      "expectedIntent": "unusual_spending | top_category",
+      "actualIntent": "unusual_spending",
+      "status": "PASS",
+      "answerExcerpt": "No unusual spending spikes or anomalous transactions detected in your current ledger. Your outflow pace is well-controlled. However, your la...",
+      "factsUsed": [
+        "spending.anomaliesCount",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-012",
+      "number": 12,
+      "category": "SPENDING_ANALYSIS",
+      "question": "Detect unusual or potentially duplicate transactions.",
+      "fixtureKey": "MULTIPLE_CATEGORIES",
+      "expectedIntent": "unusual_spending",
+      "actualIntent": "unusual_spending",
+      "status": "PASS",
+      "answerExcerpt": "No unusual spending spikes or anomalous transactions detected in your current ledger. Your outflow pace is well-controlled. However, your la...",
+      "factsUsed": [
+        "spending.anomaliesCount",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-013",
+      "number": 13,
+      "category": "SPENDING_ANALYSIS",
+      "question": "Identify recurring expenses where evidence exists.",
+      "fixtureKey": "PREV_MONTH_RECORDS",
+      "expectedIntent": "unusual_spending | spending_total",
+      "actualIntent": "spending_total",
+      "status": "PASS",
+      "answerExcerpt": "Your total spending for the current month is **৳55,500** against a recorded income of ৳85,000, leaving a net monthly surplus of ৳29,500. You...",
+      "factsUsed": [
+        "snapshot.monthlySpending",
+        "snapshot.monthlyIncome",
+        "snapshot.netSavings",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-014",
+      "number": 14,
+      "category": "SPENDING_ANALYSIS",
+      "question": "Analyze spending habits affecting savings.",
+      "fixtureKey": "ESSENTIAL_AND_DISCRETIONARY",
+      "expectedIntent": "savings_plan | spending_total",
+      "actualIntent": "spending_total",
+      "status": "PASS",
+      "answerExcerpt": "Your total spending for the current month is **৳45,000** against a recorded income of ৳75,000, leaving a net monthly surplus of ৳30,000. You...",
+      "factsUsed": [
+        "snapshot.monthlySpending",
+        "snapshot.monthlyIncome",
+        "snapshot.netSavings",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-015",
+      "number": 15,
+      "category": "SPENDING_ANALYSIS",
+      "question": "Identify spending trends.",
+      "fixtureKey": "PREV_MONTH_RECORDS",
+      "expectedIntent": "mom_comparison | spending_total",
+      "actualIntent": "spending_total",
+      "status": "PASS",
+      "answerExcerpt": "Your total spending for the current month is **৳55,500** against a recorded income of ৳85,000, leaving a net monthly surplus of ৳29,500. You...",
+      "factsUsed": [
+        "snapshot.monthlySpending",
+        "snapshot.monthlyIncome",
+        "snapshot.netSavings",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-016",
+      "number": 16,
+      "category": "SPENDING_ANALYSIS",
+      "question": "Analyze spending by weekday when sufficient data exists.",
+      "fixtureKey": "PREV_MONTH_RECORDS",
+      "expectedIntent": "spending_total",
+      "actualIntent": "spending_total",
+      "status": "PASS",
+      "answerExcerpt": "Your total spending for the current month is **৳55,500** against a recorded income of ৳85,000, leaving a net monthly surplus of ৳29,500. You...",
+      "factsUsed": [
+        "snapshot.monthlySpending",
+        "snapshot.monthlyIncome",
+        "snapshot.netSavings",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-017",
+      "number": 17,
+      "category": "SPENDING_ANALYSIS",
+      "question": "Calculate average daily spending and a clearly labeled estimate.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "spending_total",
+      "actualIntent": "spending_total",
+      "status": "PASS",
+      "answerExcerpt": "Your total spending for the current month is **৳50,000** against a recorded income of ৳80,000, leaving a net monthly surplus of ৳30,000. You...",
+      "factsUsed": [
+        "snapshot.monthlySpending",
+        "snapshot.monthlyIncome",
+        "snapshot.netSavings",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-018",
+      "number": 18,
+      "category": "SPENDING_ANALYSIS",
+      "question": "Identify expenses affecting cash flow.",
+      "fixtureKey": "MULTIPLE_CATEGORIES",
+      "expectedIntent": "month_end_balance | spending_total",
+      "actualIntent": "month_end_balance",
+      "status": "PASS",
+      "answerExcerpt": "Based on your liquid balance of **৳80,000**, your projected month-end balance is approximately **৳-4,990** (AI-assisted forecast). • **Cash ...",
+      "factsUsed": [
+        "cashFlow.startingBalance",
+        "cashFlow.monthEndBalance",
+        "cashFlow.recommendedBuffer",
+        "cashFlow.recommendedWeeklyReduction",
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netSavings",
+        "spending.topCategory"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-019",
+      "number": 19,
+      "category": "SPENDING_ANALYSIS",
+      "question": "Evaluate a potential 10% spending reduction.",
+      "fixtureKey": "ESSENTIAL_AND_DISCRETIONARY",
+      "expectedIntent": "budget_help | savings_plan",
+      "actualIntent": "budget_help",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Monthly Income: **৳75,000**, Expenses: **৳45,000**), here is a realistic monthly budget alloc...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-020",
+      "number": 20,
+      "category": "SPENDING_ANALYSIS",
+      "question": "Summarize overall spending behavior.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "spending_total",
+      "actualIntent": "spending_total",
+      "status": "PASS",
+      "answerExcerpt": "Your total spending for the current month is **৳50,000** against a recorded income of ৳80,000, leaving a net monthly surplus of ৳30,000. You...",
+      "factsUsed": [
+        "snapshot.monthlySpending",
+        "snapshot.monthlyIncome",
+        "snapshot.netSavings",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-021",
+      "number": 21,
+      "category": "SAVINGS_PLANNING",
+      "question": "How to start saving money.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "savings_plan | general_education",
+      "actualIntent": "savings_plan",
+      "status": "PASS",
+      "answerExcerpt": "Your current monthly savings is ৳30,000 (savings rate: 37.5%). Practical steps to save more: 1. **Pay Yourself First**: Transfer your surplu...",
+      "factsUsed": [
+        "snapshot.netSavings",
+        "snapshot.savingsRate"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-022",
+      "number": 22,
+      "category": "SAVINGS_PLANNING",
+      "question": "Realistic monthly savings capacity.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "savings_plan",
+      "actualIntent": "savings_plan",
+      "status": "PASS",
+      "answerExcerpt": "Your current monthly savings is ৳30,000 (savings rate: 37.5%). Practical steps to save more: 1. **Pay Yourself First**: Transfer your surplu...",
+      "factsUsed": [
+        "snapshot.netSavings",
+        "snapshot.savingsRate"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-023",
+      "number": 23,
+      "category": "SAVINGS_PLANNING",
+      "question": "Save ৳6,000 per month.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "savings_plan",
+      "actualIntent": "savings_plan",
+      "status": "PASS",
+      "answerExcerpt": "To save **৳6,000 per month** (approximately **৳1,500 per week**): • **Recorded Inflow & Outflow**: Your recorded monthly income is **৳80,000...",
+      "factsUsed": [
+        "savingsPlan.targetAmount",
+        "savingsPlan.monthlyTarget",
+        "savingsPlan.weeklyTarget",
+        "savingsPlan.requiredMonthly",
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netSavings",
+        "savingsPlan.surplusDiff",
+        "savingsPlan.isFeasible"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-024",
+      "number": 24,
+      "category": "SAVINGS_PLANNING",
+      "question": "Weekly savings needed for a monthly target.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "savings_plan",
+      "actualIntent": "savings_plan",
+      "status": "PASS",
+      "answerExcerpt": "Your current monthly savings is ৳30,000 (savings rate: 37.5%). Practical steps to save more: 1. **Pay Yourself First**: Transfer your surplu...",
+      "factsUsed": [
+        "snapshot.netSavings",
+        "snapshot.savingsRate"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-025",
+      "number": 25,
+      "category": "SAVINGS_PLANNING",
+      "question": "Calculate savings rate.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "savings_plan | spending_total",
+      "actualIntent": "savings_plan",
+      "status": "PASS",
+      "answerExcerpt": "Your current monthly savings is ৳30,000 (savings rate: 37.5%). Practical steps to save more: 1. **Pay Yourself First**: Transfer your surplu...",
+      "factsUsed": [
+        "snapshot.netSavings",
+        "snapshot.savingsRate"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-026",
+      "number": 26,
+      "category": "SAVINGS_PLANNING",
+      "question": "Save ৳50,000.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "savings_plan",
+      "actualIntent": "savings_plan",
+      "status": "PASS",
+      "answerExcerpt": "To save **৳50,000 per month** (approximately **৳12,500 per week**): • **Recorded Inflow & Outflow**: Your recorded monthly income is **৳80,0...",
+      "factsUsed": [
+        "savingsPlan.targetAmount",
+        "savingsPlan.monthlyTarget",
+        "savingsPlan.weeklyTarget",
+        "savingsPlan.requiredMonthly",
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netSavings",
+        "savingsPlan.monthlyGap",
+        "savingsPlan.isFeasible"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-027",
+      "number": 27,
+      "category": "SAVINGS_PLANNING",
+      "question": "Save ৳100,000 within 12 months.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "savings_plan",
+      "actualIntent": "savings_plan",
+      "status": "PASS",
+      "answerExcerpt": "To save **৳100,000 in 12 months**, you need to save **৳8,333/month**. Your current monthly net surplus is ৳30,000. Your current monthly cash...",
+      "factsUsed": [
+        "savingsPlan.parsedTargetAmount",
+        "savingsPlan.parsedMonthsDuration",
+        "savingsPlan.requiredMonthly",
+        "snapshot.netSavings"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-028",
+      "number": 28,
+      "category": "SAVINGS_PLANNING",
+      "question": "Save for a laptop within a deadline.",
+      "fixtureKey": "SAVINGS_GOALS",
+      "expectedIntent": "savings_goal_progress | savings_plan",
+      "actualIntent": "savings_goal_progress",
+      "status": "PASS",
+      "answerExcerpt": "Progress for your goal **Work Laptop Upgrade**: • Target: ৳80,000 • Saved: ৳20,000 (25% completed) • Remaining Gap: ৳60,000 • Required Month...",
+      "factsUsed": [
+        "goals.goal1.title",
+        "goals.goal1.targetAmount",
+        "goals.goal1.currentAmount",
+        "goals.goal1.progressPercentage",
+        "goals.goal1.remainingAmount",
+        "goals.goal1.requiredMonthlyContribution"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-029",
+      "number": 29,
+      "category": "SAVINGS_PLANNING",
+      "question": "Prioritize multiple savings goals.",
+      "fixtureKey": "SAVINGS_GOALS",
+      "expectedIntent": "savings_goal_progress | savings_plan",
+      "actualIntent": "savings_goal_progress",
+      "status": "PASS",
+      "answerExcerpt": "Progress for your goal **Emergency Safety Net**: • Target: ৳100,000 • Saved: ৳45,000 (45% completed) • Remaining Gap: ৳55,000 • Required Mon...",
+      "factsUsed": [
+        "goals.goal1.title",
+        "goals.goal1.targetAmount",
+        "goals.goal1.currentAmount",
+        "goals.goal1.progressPercentage",
+        "goals.goal1.remainingAmount",
+        "goals.goal1.requiredMonthlyContribution"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-030",
+      "number": 30,
+      "category": "SAVINGS_PLANNING",
+      "question": "Evaluate existing savings-goal progress.",
+      "fixtureKey": "SAVINGS_GOALS",
+      "expectedIntent": "savings_goal_progress",
+      "actualIntent": "savings_goal_progress",
+      "status": "PASS",
+      "answerExcerpt": "Progress for your goal **Emergency Safety Net**: • Target: ৳100,000 • Saved: ৳45,000 (45% completed) • Remaining Gap: ৳55,000 • Required Mon...",
+      "factsUsed": [
+        "goals.goal1.title",
+        "goals.goal1.targetAmount",
+        "goals.goal1.currentAmount",
+        "goals.goal1.progressPercentage",
+        "goals.goal1.remainingAmount",
+        "goals.goal1.requiredMonthlyContribution"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-031",
+      "number": 31,
+      "category": "SAVINGS_PLANNING",
+      "question": "Explain why money is not left at month-end.",
+      "fixtureKey": "NEGATIVE_CASH_FLOW",
+      "expectedIntent": "month_end_balance | savings_plan | budget_help",
+      "actualIntent": "month_end_balance",
+      "status": "PASS",
+      "answerExcerpt": "Based on your liquid balance of **৳5,000**, your projected month-end balance is approximately **৳-46,990** (AI-assisted forecast). • **Cash ...",
+      "factsUsed": [
+        "cashFlow.startingBalance",
+        "cashFlow.monthEndBalance",
+        "cashFlow.recommendedBuffer",
+        "cashFlow.recommendedWeeklyReduction",
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netSavings",
+        "spending.topCategory"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-032",
+      "number": 32,
+      "category": "SAVINGS_PLANNING",
+      "question": "Address negative cash flow before saving.",
+      "fixtureKey": "NEGATIVE_CASH_FLOW",
+      "expectedIntent": "month_end_balance | savings_plan | budget_help",
+      "actualIntent": "month_end_balance",
+      "status": "PASS",
+      "answerExcerpt": "Based on your liquid balance of **৳5,000**, your projected month-end balance is approximately **৳-46,990** (AI-assisted forecast). • **Cash ...",
+      "factsUsed": [
+        "cashFlow.startingBalance",
+        "cashFlow.monthEndBalance",
+        "cashFlow.recommendedBuffer",
+        "cashFlow.recommendedWeeklyReduction",
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netSavings",
+        "spending.topCategory"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-033",
+      "number": 33,
+      "category": "SAVINGS_PLANNING",
+      "question": "Plan savings with variable income.",
+      "fixtureKey": "VARIABLE_INCOME",
+      "expectedIntent": "savings_plan | budget_help",
+      "actualIntent": "savings_plan",
+      "status": "PASS",
+      "answerExcerpt": "Your current monthly savings is ৳61,000 (savings rate: 69.3%). Practical steps to save more: 1. **Pay Yourself First**: Transfer your surplu...",
+      "factsUsed": [
+        "snapshot.netSavings",
+        "snapshot.savingsRate"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-034",
+      "number": 34,
+      "category": "SAVINGS_PLANNING",
+      "question": "Build an emergency fund.",
+      "fixtureKey": "SAVINGS_GOALS",
+      "expectedIntent": "savings_goal_progress | savings_plan",
+      "actualIntent": "savings_goal_progress",
+      "status": "PASS",
+      "answerExcerpt": "Progress for your goal **Emergency Safety Net**: • Target: ৳100,000 • Saved: ৳45,000 (45% completed) • Remaining Gap: ৳55,000 • Required Mon...",
+      "factsUsed": [
+        "goals.goal1.title",
+        "goals.goal1.targetAmount",
+        "goals.goal1.currentAmount",
+        "goals.goal1.progressPercentage",
+        "goals.goal1.remainingAmount",
+        "goals.goal1.requiredMonthlyContribution"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-035",
+      "number": 35,
+      "category": "SAVINGS_PLANNING",
+      "question": "Prioritize emergency savings versus other goals.",
+      "fixtureKey": "SAVINGS_GOALS",
+      "expectedIntent": "savings_goal_progress | savings_plan",
+      "actualIntent": "savings_goal_progress",
+      "status": "PASS",
+      "answerExcerpt": "Progress for your goal **Emergency Safety Net**: • Target: ৳100,000 • Saved: ৳45,000 (45% completed) • Remaining Gap: ৳55,000 • Required Mon...",
+      "factsUsed": [
+        "goals.goal1.title",
+        "goals.goal1.targetAmount",
+        "goals.goal1.currentAmount",
+        "goals.goal1.progressPercentage",
+        "goals.goal1.remainingAmount",
+        "goals.goal1.requiredMonthlyContribution"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-036",
+      "number": 36,
+      "category": "SAVINGS_PLANNING",
+      "question": "Create a weekly savings plan.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "savings_plan",
+      "actualIntent": "savings_plan",
+      "status": "PASS",
+      "answerExcerpt": "Your current monthly savings is ৳30,000 (savings rate: 37.5%). Practical steps to save more: 1. **Pay Yourself First**: Transfer your surplu...",
+      "factsUsed": [
+        "snapshot.netSavings",
+        "snapshot.savingsRate"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-037",
+      "number": 37,
+      "category": "SAVINGS_PLANNING",
+      "question": "Plan what to do on payday.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "savings_plan | budget_help",
+      "actualIntent": "savings_plan",
+      "status": "PASS",
+      "answerExcerpt": "Your current monthly savings is ৳30,000 (savings rate: 37.5%). Practical steps to save more: 1. **Pay Yourself First**: Transfer your surplu...",
+      "factsUsed": [
+        "snapshot.netSavings",
+        "snapshot.savingsRate"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-038",
+      "number": 38,
+      "category": "SAVINGS_PLANNING",
+      "question": "Estimate emergency reserves.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "savings_goal_progress | savings_plan | month_end_balance",
+      "actualIntent": "savings_goal_progress",
+      "status": "PASS",
+      "answerExcerpt": "You do not have any active savings goals set. Add a goal from the Savings Goals screen to track your progress.",
+      "factsUsed": [],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-039",
+      "number": 39,
+      "category": "SAVINGS_PLANNING",
+      "question": "Evaluate a 10% reduction in discretionary spending.",
+      "fixtureKey": "ESSENTIAL_AND_DISCRETIONARY",
+      "expectedIntent": "savings_plan | budget_help",
+      "actualIntent": "budget_help",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Monthly Income: **৳75,000**, Expenses: **৳45,000**), here is a realistic monthly budget alloc...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-040",
+      "number": 40,
+      "category": "SAVINGS_PLANNING",
+      "question": "Create a three-month savings improvement plan.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "savings_plan | financial_projection",
+      "actualIntent": "savings_plan",
+      "status": "PASS",
+      "answerExcerpt": "Your current monthly savings is ৳30,000 (savings rate: 37.5%). Practical steps to save more: 1. **Pay Yourself First**: Transfer your surplu...",
+      "factsUsed": [
+        "snapshot.netSavings",
+        "snapshot.savingsRate"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-041",
+      "number": 41,
+      "category": "BUDGET_PLANNING",
+      "question": "Explain budgeting to a beginner.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "general_education | budget_help",
+      "actualIntent": "budget_help",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Monthly Income: **৳80,000**, Expenses: **৳50,000**), here is a realistic monthly budget alloc...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-042",
+      "number": 42,
+      "category": "BUDGET_PLANNING",
+      "question": "Create a budget for next month.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "budget_help",
+      "actualIntent": "budget_help",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Monthly Income: **৳80,000**, Expenses: **৳50,000**), here is a realistic monthly budget alloc...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-043",
+      "number": 43,
+      "category": "BUDGET_PLANNING",
+      "question": "Allocate income among expenses and savings.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "budget_help",
+      "actualIntent": "budget_help",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Monthly Income: **৳80,000**, Expenses: **৳50,000**), here is a realistic monthly budget alloc...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-044",
+      "number": 44,
+      "category": "BUDGET_PLANNING",
+      "question": "Evaluate spending relative to income.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "budget_help | spending_total",
+      "actualIntent": "spending_total",
+      "status": "PASS",
+      "answerExcerpt": "Your total spending for the current month is **৳50,000** against a recorded income of ৳80,000, leaving a net monthly surplus of ৳30,000. You...",
+      "factsUsed": [
+        "snapshot.monthlySpending",
+        "snapshot.monthlyIncome",
+        "snapshot.netSavings",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-045",
+      "number": 45,
+      "category": "BUDGET_PLANNING",
+      "question": "Create a realistic monthly budget.",
+      "fixtureKey": "ESSENTIAL_AND_DISCRETIONARY",
+      "expectedIntent": "budget_help",
+      "actualIntent": "budget_help",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Monthly Income: **৳75,000**, Expenses: **৳45,000**), here is a realistic monthly budget alloc...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-046",
+      "number": 46,
+      "category": "BUDGET_PLANNING",
+      "question": "Recommend category-level budgets.",
+      "fixtureKey": "MULTIPLE_CATEGORIES",
+      "expectedIntent": "budget_help",
+      "actualIntent": "budget_help",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Monthly Income: **৳120,000**, Expenses: **৳85,000**), here is a realistic monthly budget allo...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-047",
+      "number": 47,
+      "category": "BUDGET_PLANNING",
+      "question": "Set category spending limits.",
+      "fixtureKey": "ESSENTIAL_AND_DISCRETIONARY",
+      "expectedIntent": "budget_help",
+      "actualIntent": "budget_help",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Monthly Income: **৳75,000**, Expenses: **৳45,000**), here is a realistic monthly budget alloc...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-048",
+      "number": 48,
+      "category": "BUDGET_PLANNING",
+      "question": "Identify justified spending reductions.",
+      "fixtureKey": "ESSENTIAL_AND_DISCRETIONARY",
+      "expectedIntent": "budget_help",
+      "actualIntent": "budget_help",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Monthly Income: **৳75,000**, Expenses: **৳45,000**), here is a realistic monthly budget alloc...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-049",
+      "number": 49,
+      "category": "BUDGET_PLANNING",
+      "question": "Reduce discretionary spending by 10%.",
+      "fixtureKey": "ESSENTIAL_AND_DISCRETIONARY",
+      "expectedIntent": "budget_help",
+      "actualIntent": "budget_help",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Monthly Income: **৳75,000**, Expenses: **৳45,000**), here is a realistic monthly budget alloc...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-050",
+      "number": 50,
+      "category": "BUDGET_PLANNING",
+      "question": "Estimate safe personal spending.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "budget_help | month_end_balance",
+      "actualIntent": "budget_help",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Monthly Income: **৳80,000**, Expenses: **৳50,000**), here is a realistic monthly budget alloc...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-051",
+      "number": 51,
+      "category": "BUDGET_PLANNING",
+      "question": "Address running out of money before month-end.",
+      "fixtureKey": "NEGATIVE_CASH_FLOW",
+      "expectedIntent": "month_end_balance | budget_help",
+      "actualIntent": "month_end_balance",
+      "status": "PASS",
+      "answerExcerpt": "Based on your liquid balance of **৳5,000**, your projected month-end balance is approximately **৳-46,990** (AI-assisted forecast). • **Cash ...",
+      "factsUsed": [
+        "cashFlow.startingBalance",
+        "cashFlow.monthEndBalance",
+        "cashFlow.recommendedBuffer",
+        "cashFlow.recommendedWeeklyReduction",
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netSavings",
+        "spending.topCategory"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-052",
+      "number": 52,
+      "category": "BUDGET_PLANNING",
+      "question": "Handle income arriving at different times.",
+      "fixtureKey": "VARIABLE_INCOME",
+      "expectedIntent": "budget_help",
+      "actualIntent": "budget_help",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Monthly Income: **৳88,000**, Expenses: **৳27,000**), here is a realistic monthly budget alloc...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-053",
+      "number": 53,
+      "category": "BUDGET_PLANNING",
+      "question": "Plan for unexpected expenses.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "budget_help | health_recommendations | savings_plan",
+      "actualIntent": "health_recommendations",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **84/100**, Rating: **Excellent**), here are the 3 most useful, prior...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "health.score",
+        "health.band",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-054",
+      "number": 54,
+      "category": "BUDGET_PLANNING",
+      "question": "Create a budget for reduced income.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "budget_help",
+      "actualIntent": "budget_help",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Monthly Income: **৳80,000**, Expenses: **৳50,000**), here is a realistic monthly budget alloc...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-055",
+      "number": 55,
+      "category": "BUDGET_PLANNING",
+      "question": "Handle fixed and variable expenses.",
+      "fixtureKey": "ESSENTIAL_AND_DISCRETIONARY",
+      "expectedIntent": "budget_help",
+      "actualIntent": "budget_help",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Monthly Income: **৳75,000**, Expenses: **৳45,000**), here is a realistic monthly budget alloc...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-056",
+      "number": 56,
+      "category": "BUDGET_PLANNING",
+      "question": "Compare actual spending with a stored budget, if available.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "budget_help",
+      "actualIntent": "budget_help",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Monthly Income: **৳80,000**, Expenses: **৳50,000**), here is a realistic monthly budget alloc...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-057",
+      "number": 57,
+      "category": "BUDGET_PLANNING",
+      "question": "Identify over-budget categories, if budget data exists.",
+      "fixtureKey": "MULTIPLE_CATEGORIES",
+      "expectedIntent": "budget_help | top_category",
+      "actualIntent": "budget_help",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Monthly Income: **৳120,000**, Expenses: **৳85,000**), here is a realistic monthly budget allo...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-058",
+      "number": 58,
+      "category": "BUDGET_PLANNING",
+      "question": "Calculate remaining spendable funds using available obligations.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "budget_help | month_end_balance",
+      "actualIntent": "budget_help",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Monthly Income: **৳80,000**, Expenses: **৳50,000**), here is a realistic monthly budget alloc...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-059",
+      "number": 59,
+      "category": "BUDGET_PLANNING",
+      "question": "Create a weekly plan for the remaining month.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "budget_help",
+      "actualIntent": "budget_help",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Monthly Income: **৳80,000**, Expenses: **৳50,000**), here is a realistic monthly budget alloc...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-060",
+      "number": 60,
+      "category": "BUDGET_PLANNING",
+      "question": "Review budget performance.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "budget_help | spending_total",
+      "actualIntent": "budget_help",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Monthly Income: **৳80,000**, Expenses: **৳50,000**), here is a realistic monthly budget alloc...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-061",
+      "number": 61,
+      "category": "FINANCIAL_PROJECTION",
+      "question": "Estimate month-end spending.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "month_end_balance | financial_projection",
+      "actualIntent": "month_end_balance",
+      "status": "PASS",
+      "answerExcerpt": "Based on your liquid balance of **৳45,000**, your projected month-end balance is approximately **৳-5,010** (AI-assisted forecast). • **Cash ...",
+      "factsUsed": [
+        "cashFlow.startingBalance",
+        "cashFlow.monthEndBalance",
+        "cashFlow.recommendedBuffer",
+        "cashFlow.recommendedWeeklyReduction",
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netSavings",
+        "spending.topCategory"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-062",
+      "number": 62,
+      "category": "FINANCIAL_PROJECTION",
+      "question": "Estimate month-end cash flow.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "month_end_balance | financial_projection",
+      "actualIntent": "month_end_balance",
+      "status": "PASS",
+      "answerExcerpt": "Based on your liquid balance of **৳45,000**, your projected month-end balance is approximately **৳-5,010** (AI-assisted forecast). • **Cash ...",
+      "factsUsed": [
+        "cashFlow.startingBalance",
+        "cashFlow.monthEndBalance",
+        "cashFlow.recommendedBuffer",
+        "cashFlow.recommendedWeeklyReduction",
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netSavings",
+        "spending.topCategory"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-063",
+      "number": 63,
+      "category": "FINANCIAL_PROJECTION",
+      "question": "Assess the risk of running out of money.",
+      "fixtureKey": "NEGATIVE_CASH_FLOW",
+      "expectedIntent": "month_end_balance | financial_projection",
+      "actualIntent": "month_end_balance",
+      "status": "PASS",
+      "answerExcerpt": "Based on your liquid balance of **৳5,000**, your projected month-end balance is approximately **৳-46,990** (AI-assisted forecast). • **Cash ...",
+      "factsUsed": [
+        "cashFlow.startingBalance",
+        "cashFlow.monthEndBalance",
+        "cashFlow.recommendedBuffer",
+        "cashFlow.recommendedWeeklyReduction",
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netSavings",
+        "spending.topCategory"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-064",
+      "number": 64,
+      "category": "FINANCIAL_PROJECTION",
+      "question": "Estimate safe spending for the rest of the month.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "month_end_balance | budget_help",
+      "actualIntent": "month_end_balance",
+      "status": "PASS",
+      "answerExcerpt": "Based on your liquid balance of **৳45,000**, your projected month-end balance is approximately **৳-5,010** (AI-assisted forecast). • **Cash ...",
+      "factsUsed": [
+        "cashFlow.startingBalance",
+        "cashFlow.monthEndBalance",
+        "cashFlow.recommendedBuffer",
+        "cashFlow.recommendedWeeklyReduction",
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netSavings",
+        "spending.topCategory"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-065",
+      "number": 65,
+      "category": "FINANCIAL_PROJECTION",
+      "question": "Project next month's financial position.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "financial_projection | month_end_balance",
+      "actualIntent": "financial_projection",
+      "status": "PASS",
+      "answerExcerpt": "**Six-Month Financial Projection Analysis (Data Limitations & Illustrative Scenario)**: • **Data Sufficiency & Limitation**: A statistically...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "snapshot.currentBalance"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-066",
+      "number": 66,
+      "category": "FINANCIAL_PROJECTION",
+      "question": "Estimate next month's savings.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "financial_projection | savings_plan",
+      "actualIntent": "financial_projection",
+      "status": "PASS",
+      "answerExcerpt": "**Six-Month Financial Projection Analysis (Data Limitations & Illustrative Scenario)**: • **Data Sufficiency & Limitation**: A statistically...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "snapshot.currentBalance"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-067",
+      "number": 67,
+      "category": "FINANCIAL_PROJECTION",
+      "question": "Simulate a 15% increase in expenses.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "financial_projection",
+      "actualIntent": "financial_projection",
+      "status": "PASS",
+      "answerExcerpt": "**Six-Month Financial Projection Analysis (Data Limitations & Illustrative Scenario)**: • **Data Sufficiency & Limitation**: A statistically...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "snapshot.currentBalance"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-068",
+      "number": 68,
+      "category": "FINANCIAL_PROJECTION",
+      "question": "Simulate a 20% reduction in income.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "financial_projection",
+      "actualIntent": "financial_projection",
+      "status": "PASS",
+      "answerExcerpt": "**Six-Month Financial Projection Analysis (Data Limitations & Illustrative Scenario)**: • **Data Sufficiency & Limitation**: A statistically...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "snapshot.currentBalance"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-069",
+      "number": 69,
+      "category": "FINANCIAL_PROJECTION",
+      "question": "Project three months of financial activity.",
+      "fixtureKey": "PREV_MONTH_RECORDS",
+      "expectedIntent": "financial_projection",
+      "actualIntent": "financial_projection",
+      "status": "PASS",
+      "answerExcerpt": "**Six-Month Financial Position Forecast**: Based on your verified multi-month historical transaction records (3 months of data): • **Expecte...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "snapshot.currentBalance"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-070",
+      "number": 70,
+      "category": "FINANCIAL_PROJECTION",
+      "question": "Evaluate the reliability of a six-month projection.",
+      "fixtureKey": "NO_PREV_MONTH",
+      "expectedIntent": "financial_projection",
+      "actualIntent": "financial_projection",
+      "status": "PASS",
+      "answerExcerpt": "**Six-Month Financial Projection Analysis (Data Limitations & Illustrative Scenario)**: • **Data Sufficiency & Limitation**: A statistically...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "snapshot.currentBalance"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-071",
+      "number": 71,
+      "category": "FINANCIAL_PROJECTION",
+      "question": "Simulate expenses increasing by 5% monthly.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "financial_projection",
+      "actualIntent": "financial_projection",
+      "status": "PASS",
+      "answerExcerpt": "**Six-Month Financial Projection Analysis (Data Limitations & Illustrative Scenario)**: • **Data Sufficiency & Limitation**: A statistically...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "snapshot.currentBalance"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-072",
+      "number": 72,
+      "category": "FINANCIAL_PROJECTION",
+      "question": "Simulate saving an additional ৳2,000 monthly.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "financial_projection | savings_plan",
+      "actualIntent": "financial_projection",
+      "status": "PASS",
+      "answerExcerpt": "**Six-Month Financial Projection Analysis (Data Limitations & Illustrative Scenario)**: • **Data Sufficiency & Limitation**: A statistically...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "snapshot.currentBalance"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-073",
+      "number": 73,
+      "category": "FINANCIAL_PROJECTION",
+      "question": "Estimate the time required to build an emergency fund.",
+      "fixtureKey": "SAVINGS_GOALS",
+      "expectedIntent": "savings_goal_progress | financial_projection",
+      "actualIntent": "savings_goal_progress",
+      "status": "PASS",
+      "answerExcerpt": "Progress for your goal **Emergency Safety Net**: • Target: ৳100,000 • Saved: ৳45,000 (45% completed) • Remaining Gap: ৳55,000 • Required Mon...",
+      "factsUsed": [
+        "goals.goal1.title",
+        "goals.goal1.targetAmount",
+        "goals.goal1.currentAmount",
+        "goals.goal1.progressPercentage",
+        "goals.goal1.remainingAmount",
+        "goals.goal1.requiredMonthlyContribution"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-074",
+      "number": 74,
+      "category": "FINANCIAL_PROJECTION",
+      "question": "Simulate a 10% income increase.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "financial_projection",
+      "actualIntent": "financial_projection",
+      "status": "PASS",
+      "answerExcerpt": "**Six-Month Financial Projection Analysis (Data Limitations & Illustrative Scenario)**: • **Data Sufficiency & Limitation**: A statistically...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "snapshot.currentBalance"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-075",
+      "number": 75,
+      "category": "FINANCIAL_PROJECTION",
+      "question": "Simulate an additional ৳5,000 in essential expenses.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "financial_projection",
+      "actualIntent": "financial_projection",
+      "status": "PASS",
+      "answerExcerpt": "**Six-Month Financial Projection Analysis (Data Limitations & Illustrative Scenario)**: • **Data Sufficiency & Limitation**: A statistically...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "snapshot.currentBalance"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-076",
+      "number": 76,
+      "category": "FINANCIAL_PROJECTION",
+      "question": "Compare optimistic, expected, and pessimistic scenarios.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "financial_projection",
+      "actualIntent": "financial_projection",
+      "status": "PASS",
+      "answerExcerpt": "**Six-Month Financial Projection Analysis (Data Limitations & Illustrative Scenario)**: • **Data Sufficiency & Limitation**: A statistically...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "snapshot.currentBalance"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-077",
+      "number": 77,
+      "category": "FINANCIAL_PROJECTION",
+      "question": "Evaluate income-loss resilience using verified available balances.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "financial_projection | financial_health",
+      "actualIntent": "financial_projection",
+      "status": "PASS",
+      "answerExcerpt": "**Six-Month Financial Projection Analysis (Data Limitations & Illustrative Scenario)**: • **Data Sufficiency & Limitation**: A statistically...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "snapshot.currentBalance"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-078",
+      "number": 78,
+      "category": "FINANCIAL_PROJECTION",
+      "question": "Simulate an unexpected ৳20,000 expense.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "financial_projection",
+      "actualIntent": "financial_projection",
+      "status": "PASS",
+      "answerExcerpt": "**Six-Month Financial Projection Analysis (Data Limitations & Illustrative Scenario)**: • **Data Sufficiency & Limitation**: A statistically...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "snapshot.currentBalance"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-079",
+      "number": 79,
+      "category": "FINANCIAL_PROJECTION",
+      "question": "Identify financial stability risks.",
+      "fixtureKey": "NEGATIVE_CASH_FLOW",
+      "expectedIntent": "financial_health | financial_projection | month_end_balance",
+      "actualIntent": "financial_projection",
+      "status": "PASS",
+      "answerExcerpt": "**Six-Month Financial Projection Analysis (Data Limitations & Illustrative Scenario)**: • **Data Sufficiency & Limitation**: A statistically...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "snapshot.currentBalance"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-080",
+      "number": 80,
+      "category": "FINANCIAL_PROJECTION",
+      "question": "Identify data needed for better future projections.",
+      "fixtureKey": "NO_PREV_MONTH",
+      "expectedIntent": "financial_projection",
+      "actualIntent": "financial_projection",
+      "status": "PASS",
+      "answerExcerpt": "**Six-Month Financial Projection Analysis (Data Limitations & Illustrative Scenario)**: • **Data Sufficiency & Limitation**: A statistically...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "snapshot.currentBalance"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-081",
+      "number": 81,
+      "category": "PERSONALIZED_RECOMMENDATIONS",
+      "question": "Explain the user's financial situation to a beginner.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "financial_health | spending_total",
+      "actualIntent": "financial_health",
+      "status": "PASS",
+      "answerExcerpt": "Based on your recorded monthly income of **৳80,000** and total expenses of **৳50,000** (net savings: **৳30,000**), your ArthoBachao AI Finan...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netSavings",
+        "health.score",
+        "health.band",
+        "health.savingConsistency",
+        "health.spendingControl",
+        "health.cashFlowStability",
+        "health.goalProgress"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-082",
+      "number": 82,
+      "category": "PERSONALIZED_RECOMMENDATIONS",
+      "question": "Identify three financial problems and possible actions.",
+      "fixtureKey": "NEGATIVE_CASH_FLOW",
+      "expectedIntent": "health_recommendations | financial_health",
+      "actualIntent": "health_recommendations",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **0/100**, Rating: **Needs Attention**), here are the 3 most useful, ...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "health.score",
+        "health.band",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-083",
+      "number": 83,
+      "category": "PERSONALIZED_RECOMMENDATIONS",
+      "question": "Recommend three personalized improvements.",
+      "fixtureKey": "ESSENTIAL_AND_DISCRETIONARY",
+      "expectedIntent": "health_recommendations",
+      "actualIntent": "health_recommendations",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **87/100**, Rating: **Excellent**), here are the 3 most useful, prior...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "health.score",
+        "health.band",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-084",
+      "number": 84,
+      "category": "PERSONALIZED_RECOMMENDATIONS",
+      "question": "Identify good habits and areas for improvement.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "financial_health | health_recommendations",
+      "actualIntent": "health_recommendations",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **84/100**, Rating: **Excellent**), here are the 3 most useful, prior...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "health.score",
+        "health.band",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-085",
+      "number": 85,
+      "category": "PERSONALIZED_RECOMMENDATIONS",
+      "question": "Recommend one priority action.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "health_recommendations",
+      "actualIntent": "health_recommendations",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **84/100**, Rating: **Excellent**), here are the 3 most useful, prior...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "health.score",
+        "health.band",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-086",
+      "number": 86,
+      "category": "PERSONALIZED_RECOMMENDATIONS",
+      "question": "Prioritize expense reduction, savings, and cash-flow stability.",
+      "fixtureKey": "ESSENTIAL_AND_DISCRETIONARY",
+      "expectedIntent": "health_recommendations",
+      "actualIntent": "health_recommendations",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **87/100**, Rating: **Excellent**), here are the 3 most useful, prior...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "health.score",
+        "health.band",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-087",
+      "number": 87,
+      "category": "PERSONALIZED_RECOMMENDATIONS",
+      "question": "Recommend habits for the next 30 days.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "health_recommendations",
+      "actualIntent": "health_recommendations",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **84/100**, Rating: **Excellent**), here are the 3 most useful, prior...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "health.score",
+        "health.band",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-088",
+      "number": 88,
+      "category": "PERSONALIZED_RECOMMENDATIONS",
+      "question": "Create a weekly financial action plan.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "health_recommendations | budget_help",
+      "actualIntent": "health_recommendations",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **84/100**, Rating: **Excellent**), here are the 3 most useful, prior...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "health.score",
+        "health.band",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-089",
+      "number": 89,
+      "category": "PERSONALIZED_RECOMMENDATIONS",
+      "question": "Find realistic savings opportunities.",
+      "fixtureKey": "ESSENTIAL_AND_DISCRETIONARY",
+      "expectedIntent": "savings_plan | health_recommendations | budget_help",
+      "actualIntent": "savings_plan",
+      "status": "PASS",
+      "answerExcerpt": "Your current monthly savings is ৳30,000 (savings rate: 40%). Practical steps to save more: 1. **Pay Yourself First**: Transfer your surplus ...",
+      "factsUsed": [
+        "snapshot.netSavings",
+        "snapshot.savingsRate"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-090",
+      "number": 90,
+      "category": "PERSONALIZED_RECOMMENDATIONS",
+      "question": "Estimate the impact of specific spending changes.",
+      "fixtureKey": "ESSENTIAL_AND_DISCRETIONARY",
+      "expectedIntent": "health_recommendations | financial_projection",
+      "actualIntent": "health_recommendations",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **87/100**, Rating: **Excellent**), here are the 3 most useful, prior...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "health.score",
+        "health.band",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-091",
+      "number": 91,
+      "category": "PERSONALIZED_RECOMMENDATIONS",
+      "question": "Explain how to evaluate expensive purchases.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "general_education | health_recommendations",
+      "actualIntent": "general_education",
+      "status": "PASS",
+      "answerExcerpt": "The 50/30/20 rule allocates 50% of income to essentials (rent, groceries, utilities), 30% to discretionary choices (dining, hobbies), and 20...",
+      "factsUsed": [
+        "snapshot.savingsRate"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-092",
+      "number": 92,
+      "category": "PERSONALIZED_RECOMMENDATIONS",
+      "question": "Address repeated overspending.",
+      "fixtureKey": "NEGATIVE_CASH_FLOW",
+      "expectedIntent": "health_recommendations | unusual_spending | month_end_balance",
+      "actualIntent": "health_recommendations",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **0/100**, Rating: **Needs Attention**), here are the 3 most useful, ...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "health.score",
+        "health.band",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-093",
+      "number": 93,
+      "category": "PERSONALIZED_RECOMMENDATIONS",
+      "question": "Prepare for unexpected expenses.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "health_recommendations | savings_plan",
+      "actualIntent": "health_recommendations",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **84/100**, Rating: **Excellent**), here are the 3 most useful, prior...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "health.score",
+        "health.band",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-094",
+      "number": 94,
+      "category": "PERSONALIZED_RECOMMENDATIONS",
+      "question": "Identify financial risks.",
+      "fixtureKey": "NEGATIVE_CASH_FLOW",
+      "expectedIntent": "financial_health | health_recommendations",
+      "actualIntent": "health_recommendations",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **0/100**, Rating: **Needs Attention**), here are the 3 most useful, ...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "health.score",
+        "health.band",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-095",
+      "number": 95,
+      "category": "PERSONALIZED_RECOMMENDATIONS",
+      "question": "Explain the user's financial position in simple language.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "financial_health | spending_total",
+      "actualIntent": "financial_health",
+      "status": "PASS",
+      "answerExcerpt": "Based on your recorded monthly income of **৳80,000** and total expenses of **৳50,000** (net savings: **৳30,000**), your ArthoBachao AI Finan...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netSavings",
+        "health.score",
+        "health.band",
+        "health.savingConsistency",
+        "health.spendingControl",
+        "health.cashFlowStability",
+        "health.goalProgress"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-096",
+      "number": 96,
+      "category": "PERSONALIZED_RECOMMENDATIONS",
+      "question": "Ask useful clarifying questions when required.",
+      "fixtureKey": "INCOMPLETE_HISTORY",
+      "expectedIntent": "health_recommendations | budget_help | spending_total",
+      "actualIntent": "spending_total",
+      "status": "PASS",
+      "answerExcerpt": "Your total spending for the current month is **৳4,700** against a recorded income of ৳65,000, leaving a net monthly surplus of ৳60,300. Your...",
+      "factsUsed": [
+        "snapshot.monthlySpending",
+        "snapshot.monthlyIncome",
+        "snapshot.netSavings",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-097",
+      "number": 97,
+      "category": "PERSONALIZED_RECOMMENDATIONS",
+      "question": "Prioritize financial goals.",
+      "fixtureKey": "SAVINGS_GOALS",
+      "expectedIntent": "savings_goal_progress | health_recommendations",
+      "actualIntent": "savings_goal_progress",
+      "status": "PASS",
+      "answerExcerpt": "Progress for your goal **Emergency Safety Net**: • Target: ৳100,000 • Saved: ৳45,000 (45% completed) • Remaining Gap: ৳55,000 • Required Mon...",
+      "factsUsed": [
+        "goals.goal1.title",
+        "goals.goal1.targetAmount",
+        "goals.goal1.currentAmount",
+        "goals.goal1.progressPercentage",
+        "goals.goal1.remainingAmount",
+        "goals.goal1.requiredMonthlyContribution"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-098",
+      "number": 98,
+      "category": "PERSONALIZED_RECOMMENDATIONS",
+      "question": "Identify one habit to stop, continue, and start.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "health_recommendations",
+      "actualIntent": "health_recommendations",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **84/100**, Rating: **Excellent**), here are the 3 most useful, prior...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "health.score",
+        "health.band",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-099",
+      "number": 99,
+      "category": "PERSONALIZED_RECOMMENDATIONS",
+      "question": "Create a payday, mid-month, and month-end checklist.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "health_recommendations | budget_help",
+      "actualIntent": "health_recommendations",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **84/100**, Rating: **Excellent**), here are the 3 most useful, prior...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "health.score",
+        "health.band",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    },
+    {
+      "id": "TC-100",
+      "number": 100,
+      "category": "PERSONALIZED_RECOMMENDATIONS",
+      "question": "Create a personalized 90-day financial improvement plan.",
+      "fixtureKey": "INCOME_AND_EXPENSES",
+      "expectedIntent": "health_recommendations | savings_plan",
+      "actualIntent": "health_recommendations",
+      "status": "PASS",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **84/100**, Rating: **Excellent**), here are the 3 most useful, prior...",
+      "factsUsed": [
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending",
+        "snapshot.netCashFlow",
+        "health.score",
+        "health.band",
+        "spending.topCategory",
+        "spending.topCategoryAmount"
+      ],
+      "failureReasons": [],
+      "codeLocation": "server/services/coachFallbackEngine.ts",
+      "metrics": {
+        "intentMatch": true,
+        "numberValidationPassed": true,
+        "requiredNumbersPresent": true,
+        "safetyChecksPassed": true,
+        "unrecognizedNumbers": []
+      }
+    }
+  ]
+}
