@@ -15,6 +15,7 @@ import {
   getPreviousMonth,
   getLatestTransactionMonth,
   parseLocalDate,
+  calculateFactualAnalysis,
 } from '../../src/services/financialCalculations';
 import { Transaction, SavingsGoal } from '../../src/types/financial';
 
@@ -56,7 +57,18 @@ export interface CoachContext {
       amount: number;
       percentage: number;
       momChangePercentage: number;
+      isTie?: boolean;
+      tiedCategories?: string[];
     } | null;
+    lowestCategory: {
+      category: string;
+      amount: number;
+      percentage: number;
+      momChangePercentage: number;
+      isTie?: boolean;
+      tiedCategories?: string[];
+    } | null;
+    zeroSpendingCategories: string[];
     topCategories: Array<{
       category: string;
       amount: number;
@@ -65,6 +77,48 @@ export interface CoachContext {
     }>;
     categoryTotals: Record<string, number>;
     categoryPercentages: Record<string, number>;
+    merchants: {
+      highestMerchant: {
+        merchant: string;
+        amount: number;
+        percentage: number;
+        count: number;
+        isTie?: boolean;
+        tiedMerchants?: string[];
+      } | null;
+      lowestMerchant: {
+        merchant: string;
+        amount: number;
+        percentage: number;
+        count: number;
+        isTie?: boolean;
+        tiedMerchants?: string[];
+      } | null;
+      merchantTotals: Record<string, number>;
+    };
+    extrema: {
+      largestExpense: {
+        amount: number;
+        category: string;
+        description: string;
+        date: string;
+        merchant?: string;
+      } | null;
+      smallestExpense: {
+        amount: number;
+        category: string;
+        description: string;
+        date: string;
+        merchant?: string;
+      } | null;
+    };
+    comparison: {
+      previousMonth: string;
+      previousSpending: number;
+      difference: number;
+      percentageChange: number;
+      direction: 'higher' | 'lower' | 'equal';
+    };
     anomalies: Array<{
       category: string;
       amount: number;
@@ -328,10 +382,36 @@ export async function buildCoachContext(
   };
 
   // 2. Spending Fact Group
+  const factual = calculateFactualAnalysis(eligibleTransactions, activeMonth);
+
   const topCategories = monthlyOverview.categories
     .filter((c) => c.amount > 0)
     .sort((a, b) => b.amount - a.amount);
-  const topCategoryItem = topCategories[0] || null;
+  const topCategoryItem = factual.highestCategory
+    ? {
+        category: factual.highestCategory.category,
+        amount: factual.highestCategory.amount,
+        percentage: factual.highestCategory.percentage,
+        momChangePercentage:
+          monthlyOverview.categories.find((c) => c.category === factual.highestCategory?.category)
+            ?.momChangePercentage || 0,
+        isTie: factual.highestCategory.isTie,
+        tiedCategories: factual.highestCategory.tiedCategories,
+      }
+    : null;
+
+  const lowestCategoryItem = factual.lowestCategory
+    ? {
+        category: factual.lowestCategory.category,
+        amount: factual.lowestCategory.amount,
+        percentage: factual.lowestCategory.percentage,
+        momChangePercentage:
+          monthlyOverview.categories.find((c) => c.category === factual.lowestCategory?.category)
+            ?.momChangePercentage || 0,
+        isTie: factual.lowestCategory.isTie,
+        tiedCategories: factual.lowestCategory.tiedCategories,
+      }
+    : null;
 
   const categoryTotals: Record<string, number> = {};
   const categoryPercentages: Record<string, number> = {};
@@ -376,6 +456,97 @@ export async function buildCoachContext(
       available: topCategoryItem !== null,
       labelEn: 'Top Category Spending Share (%)',
       labelBn: 'শীর্ষ খাতের ব্যয়ের অংশ (%)',
+    },
+    'spending.lowestCategory': {
+      key: 'spending.lowestCategory',
+      value: lowestCategoryItem ? lowestCategoryItem.category : 'None',
+      available: lowestCategoryItem !== null,
+      labelEn: 'Lowest Spending Category',
+      labelBn: 'সর্বনিম্ন খরচের খাত',
+    },
+    'spending.lowestCategoryAmount': {
+      key: 'spending.lowestCategoryAmount',
+      value: lowestCategoryItem ? lowestCategoryItem.amount : 0,
+      available: lowestCategoryItem !== null,
+      labelEn: 'Lowest Category Spending Amount',
+      labelBn: 'সর্বনিম্ন খাতের খরচের পরিমাণ',
+    },
+    'spending.lowestCategoryPercentage': {
+      key: 'spending.lowestCategoryPercentage',
+      value: lowestCategoryItem ? lowestCategoryItem.percentage : 0,
+      available: lowestCategoryItem !== null,
+      labelEn: 'Lowest Category Spending Share (%)',
+      labelBn: 'সর্বনিম্ন খাতের ব্যয়ের অংশ (%)',
+    },
+    'spending.highestMerchant': {
+      key: 'spending.highestMerchant',
+      value: factual.highestMerchant ? factual.highestMerchant.merchant : 'None',
+      available: factual.highestMerchant !== null,
+      labelEn: 'Highest Spending Merchant',
+      labelBn: 'সর্বোচ্চ খরচের মার্চেন্ট',
+    },
+    'spending.highestMerchantAmount': {
+      key: 'spending.highestMerchantAmount',
+      value: factual.highestMerchant ? factual.highestMerchant.amount : 0,
+      available: factual.highestMerchant !== null,
+      labelEn: 'Highest Merchant Spending Amount',
+      labelBn: 'সর্বোচ্চ মার্চেন্টে খরচের পরিমাণ',
+    },
+    'spending.lowestMerchant': {
+      key: 'spending.lowestMerchant',
+      value: factual.lowestMerchant ? factual.lowestMerchant.merchant : 'None',
+      available: factual.lowestMerchant !== null,
+      labelEn: 'Lowest Spending Merchant',
+      labelBn: 'সর্বনিম্ন খরচের মার্চেন্ট',
+    },
+    'spending.lowestMerchantAmount': {
+      key: 'spending.lowestMerchantAmount',
+      value: factual.lowestMerchant ? factual.lowestMerchant.amount : 0,
+      available: factual.lowestMerchant !== null,
+      labelEn: 'Lowest Merchant Spending Amount',
+      labelBn: 'সর্বনিম্ন মার্চেন্টে খরচের পরিমাণ',
+    },
+    'spending.largestExpenseAmount': {
+      key: 'spending.largestExpenseAmount',
+      value: factual.largestExpense ? factual.largestExpense.amount : 0,
+      available: factual.largestExpense !== null,
+      labelEn: 'Largest Single Expense Amount',
+      labelBn: 'একক সর্বোচ্চ খরচের পরিমাণ',
+    },
+    'spending.largestExpenseCategory': {
+      key: 'spending.largestExpenseCategory',
+      value: factual.largestExpense ? factual.largestExpense.category : 'None',
+      available: factual.largestExpense !== null,
+      labelEn: 'Largest Single Expense Category',
+      labelBn: 'একক সর্বোচ্চ খরচের খাত',
+    },
+    'spending.smallestExpenseAmount': {
+      key: 'spending.smallestExpenseAmount',
+      value: factual.smallestExpense ? factual.smallestExpense.amount : 0,
+      available: factual.smallestExpense !== null,
+      labelEn: 'Smallest Single Expense Amount',
+      labelBn: 'একক সর্বনিম্ন খরচের পরিমাণ',
+    },
+    'spending.smallestExpenseCategory': {
+      key: 'spending.smallestExpenseCategory',
+      value: factual.smallestExpense ? factual.smallestExpense.category : 'None',
+      available: factual.smallestExpense !== null,
+      labelEn: 'Smallest Single Expense Category',
+      labelBn: 'একক সর্বনিম্ন খরচের খাত',
+    },
+    'spending.momChangePercentage': {
+      key: 'spending.momChangePercentage',
+      value: factual.momComparison.percentageChange,
+      available: factual.momComparison.previousSpending > 0,
+      labelEn: 'MoM Spending Change (%)',
+      labelBn: 'মাসভিত্তিক খরচ পরিবর্তন (%)',
+    },
+    'spending.previousMonthSpending': {
+      key: 'spending.previousMonthSpending',
+      value: factual.momComparison.previousSpending,
+      available: factual.momComparison.previousSpending > 0,
+      labelEn: 'Previous Month Total Spending',
+      labelBn: 'পূর্ববর্তী মাসের মোট খরচ',
     },
     'spending.anomaliesCount': {
       key: 'spending.anomaliesCount',
@@ -655,8 +826,21 @@ export async function buildCoachContext(
             amount: topCategoryItem.amount,
             percentage: topCategoryItem.percentage,
             momChangePercentage: topCategoryItem.momChangePercentage,
+            isTie: topCategoryItem.isTie,
+            tiedCategories: topCategoryItem.tiedCategories,
           }
         : null,
+      lowestCategory: lowestCategoryItem
+        ? {
+            category: lowestCategoryItem.category,
+            amount: lowestCategoryItem.amount,
+            percentage: lowestCategoryItem.percentage,
+            momChangePercentage: lowestCategoryItem.momChangePercentage,
+            isTie: lowestCategoryItem.isTie,
+            tiedCategories: lowestCategoryItem.tiedCategories,
+          }
+        : null,
+      zeroSpendingCategories: factual.zeroSpendingCategories,
       topCategories: topCategories.map((c) => ({
         category: c.category,
         amount: c.amount,
@@ -665,6 +849,22 @@ export async function buildCoachContext(
       })),
       categoryTotals,
       categoryPercentages,
+      merchants: {
+        highestMerchant: factual.highestMerchant,
+        lowestMerchant: factual.lowestMerchant,
+        merchantTotals: factual.merchantTotals,
+      },
+      extrema: {
+        largestExpense: factual.largestExpense,
+        smallestExpense: factual.smallestExpense,
+      },
+      comparison: {
+        previousMonth: prevMonth1,
+        previousSpending: factual.momComparison.previousSpending,
+        difference: factual.momComparison.difference,
+        percentageChange: factual.momComparison.percentageChange,
+        direction: factual.momComparison.direction,
+      },
       anomalies,
       anomaliesCount: anomalies.length,
       facts: spendingFacts,

@@ -865,8 +865,21 @@ export {
   calculateAverageMonthlySpending,
   calculateAverageMonthlySavings,
   getHighestSpendingCategory,
+  getLowestSpendingCategory,
+  getHighestSpendingMerchant,
+  getLowestSpendingMerchant,
+  getLargestIndividualExpense,
+  getSmallestIndividualExpense,
+  calculateFactualAnalysis,
   generateFinancialSummary,
   validateFinancialData,
+} from './financialService';
+
+export type {
+  RankedCategoryResult,
+  RankedMerchantResult,
+  IndividualExpenseExtrema,
+  FactualAnalysis,
 } from './financialService';
 
 export {

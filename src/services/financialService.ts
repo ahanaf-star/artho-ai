@@ -197,23 +197,310 @@ export function calculateAverageMonthlySavings(
 /**
  * J. Get Highest Spending Category
  */
-export function getHighestSpendingCategory(categories: SpendingCategory[]): {
+export interface RankedCategoryResult {
   category: CategoryName;
   amount: number;
   percentage: number;
-} {
-  const sorted = [...categories].sort((a, b) => b.amount - a.amount);
-  if (sorted.length > 0) {
+  isTie?: boolean;
+  tiedCategories?: string[];
+}
+
+export interface RankedMerchantResult {
+  merchant: string;
+  amount: number;
+  percentage: number;
+  count: number;
+  isTie?: boolean;
+  tiedMerchants?: string[];
+}
+
+export interface IndividualExpenseExtrema {
+  amount: number;
+  category: string;
+  description: string;
+  date: string;
+  merchant?: string;
+}
+
+export interface FactualAnalysis {
+  hasExpenses: boolean;
+  highestCategory: RankedCategoryResult | null;
+  lowestCategory: RankedCategoryResult | null;
+  zeroSpendingCategories: string[];
+  highestMerchant: RankedMerchantResult | null;
+  lowestMerchant: RankedMerchantResult | null;
+  merchantTotals: Record<string, number>;
+  largestExpense: IndividualExpenseExtrema | null;
+  smallestExpense: IndividualExpenseExtrema | null;
+  totalIncome: number;
+  totalExpenses: number;
+  netSavings: number;
+  momComparison: {
+    currentSpending: number;
+    previousSpending: number;
+    difference: number;
+    percentageChange: number;
+    direction: 'higher' | 'lower' | 'equal';
+  };
+}
+
+/**
+ * J. Get Highest Spending Category (with tie detection)
+ */
+export function getHighestSpendingCategory(categories: SpendingCategory[]): RankedCategoryResult {
+  const positive = categories.filter((c) => c.amount > 0);
+  if (positive.length === 0) {
     return {
-      category: sorted[0].category,
-      amount: sorted[0].amount,
-      percentage: sorted[0].percentage,
+      category: (categories[0]?.category as CategoryName) || 'Food & Groceries',
+      amount: 0,
+      percentage: 0,
+      isTie: false,
     };
   }
+
+  positive.sort((a, b) => b.amount - a.amount || a.category.localeCompare(b.category));
+  const maxAmount = positive[0].amount;
+  const tied = positive.filter((c) => c.amount === maxAmount);
+
   return {
-    category: 'Food & Groceries',
-    amount: 0,
-    percentage: 0,
+    category: positive[0].category,
+    amount: positive[0].amount,
+    percentage: positive[0].percentage,
+    isTie: tied.length > 1,
+    tiedCategories: tied.length > 1 ? tied.map((c) => c.category) : undefined,
+  };
+}
+
+/**
+ * K. Get Lowest Positive Spending Category (excludes zero spending by default, handles ties)
+ */
+export function getLowestSpendingCategory(
+  categories: SpendingCategory[],
+  includeZero: boolean = false
+): RankedCategoryResult | null {
+  const eligible = categories.filter((c) => (includeZero ? true : c.amount > 0));
+  if (eligible.length === 0) {
+    return null;
+  }
+
+  eligible.sort((a, b) => a.amount - b.amount || a.category.localeCompare(b.category));
+  const minAmount = eligible[0].amount;
+  const tied = eligible.filter((c) => c.amount === minAmount);
+
+  return {
+    category: eligible[0].category,
+    amount: eligible[0].amount,
+    percentage: eligible[0].percentage,
+    isTie: tied.length > 1,
+    tiedCategories: tied.length > 1 ? tied.map((c) => c.category) : undefined,
+  };
+}
+
+/**
+ * L. Get Highest Spending Merchant (excludes transfers, handles ties)
+ */
+export function getHighestSpendingMerchant(
+  transactions: Transaction[],
+  monthKey?: string
+): RankedMerchantResult | null {
+  const monthTxs = (monthKey ? filterTransactionsByMonth(transactions, monthKey) : transactions)
+    .filter((t) => t.type === 'expense' && t.amount > 0);
+  if (monthTxs.length === 0) return null;
+
+  const totalSpending = monthTxs.reduce((sum, t) => sum + t.amount, 0);
+  const merchMap: Record<string, { amount: number; count: number }> = {};
+
+  for (const t of monthTxs) {
+    const raw = (t.merchant || '').trim();
+    const name = raw || 'General Merchant';
+    if (!merchMap[name]) merchMap[name] = { amount: 0, count: 0 };
+    merchMap[name].amount += t.amount;
+    merchMap[name].count += 1;
+  }
+
+  const merchants = Object.entries(merchMap).map(([merchant, data]) => ({
+    merchant,
+    amount: data.amount,
+    percentage: totalSpending > 0 ? Number(((data.amount / totalSpending) * 100).toFixed(1)) : 0,
+    count: data.count,
+  }));
+
+  merchants.sort((a, b) => b.amount - a.amount || a.merchant.localeCompare(b.merchant));
+  const maxAmount = merchants[0].amount;
+  const tied = merchants.filter((m) => m.amount === maxAmount);
+
+  return {
+    merchant: merchants[0].merchant,
+    amount: merchants[0].amount,
+    percentage: merchants[0].percentage,
+    count: merchants[0].count,
+    isTie: tied.length > 1,
+    tiedMerchants: tied.length > 1 ? tied.map((m) => m.merchant) : undefined,
+  };
+}
+
+/**
+ * M. Get Lowest Positive Spending Merchant (handles ties)
+ */
+export function getLowestSpendingMerchant(
+  transactions: Transaction[],
+  monthKey?: string,
+  includeZero: boolean = false
+): RankedMerchantResult | null {
+  const monthTxs = (monthKey ? filterTransactionsByMonth(transactions, monthKey) : transactions)
+    .filter((t) => t.type === 'expense' && (includeZero ? true : t.amount > 0));
+  if (monthTxs.length === 0) return null;
+
+  const totalSpending = monthTxs.reduce((sum, t) => sum + t.amount, 0);
+  const merchMap: Record<string, { amount: number; count: number }> = {};
+
+  for (const t of monthTxs) {
+    const raw = (t.merchant || '').trim();
+    const name = raw || 'General Merchant';
+    if (!merchMap[name]) merchMap[name] = { amount: 0, count: 0 };
+    merchMap[name].amount += t.amount;
+    merchMap[name].count += 1;
+  }
+
+  const merchants = Object.entries(merchMap)
+    .filter(([_, data]) => (includeZero ? true : data.amount > 0))
+    .map(([merchant, data]) => ({
+      merchant,
+      amount: data.amount,
+      percentage: totalSpending > 0 ? Number(((data.amount / totalSpending) * 100).toFixed(1)) : 0,
+      count: data.count,
+    }));
+
+  if (merchants.length === 0) return null;
+
+  merchants.sort((a, b) => a.amount - b.amount || a.merchant.localeCompare(b.merchant));
+  const minAmount = merchants[0].amount;
+  const tied = merchants.filter((m) => m.amount === minAmount);
+
+  return {
+    merchant: merchants[0].merchant,
+    amount: merchants[0].amount,
+    percentage: merchants[0].percentage,
+    count: merchants[0].count,
+    isTie: tied.length > 1,
+    tiedMerchants: tied.length > 1 ? tied.map((m) => m.merchant) : undefined,
+  };
+}
+
+/**
+ * N. Get Largest Individual Expense Transaction
+ */
+export function getLargestIndividualExpense(
+  transactions: Transaction[],
+  monthKey?: string
+): IndividualExpenseExtrema | null {
+  const monthTxs = (monthKey ? filterTransactionsByMonth(transactions, monthKey) : transactions)
+    .filter((t) => t.type === 'expense' && t.amount > 0);
+  if (monthTxs.length === 0) return null;
+
+  monthTxs.sort((a, b) => b.amount - a.amount || b.date.localeCompare(a.date));
+  const top = monthTxs[0];
+  return {
+    amount: top.amount,
+    category: top.category,
+    description: top.description,
+    date: top.date,
+    merchant: top.merchant,
+  };
+}
+
+/**
+ * O. Get Smallest Individual Expense Transaction
+ */
+export function getSmallestIndividualExpense(
+  transactions: Transaction[],
+  monthKey?: string
+): IndividualExpenseExtrema | null {
+  const monthTxs = (monthKey ? filterTransactionsByMonth(transactions, monthKey) : transactions)
+    .filter((t) => t.type === 'expense' && t.amount > 0);
+  if (monthTxs.length === 0) return null;
+
+  monthTxs.sort((a, b) => a.amount - b.amount || a.date.localeCompare(b.date));
+  const smallest = monthTxs[0];
+  return {
+    amount: smallest.amount,
+    category: smallest.category,
+    description: smallest.description,
+    date: smallest.date,
+    merchant: smallest.merchant,
+  };
+}
+
+/**
+ * P. Calculate Comprehensive Factual Financial Analysis
+ */
+export function calculateFactualAnalysis(
+  transactions: Transaction[],
+  monthKey?: string
+): FactualAnalysis {
+  const activeMonth = monthKey || (transactions.length > 0 ? transactions[0].date.slice(0, 7) : '2024-10');
+  const [yStr, mStr] = activeMonth.split('-');
+  const y = parseInt(yStr, 10);
+  const m = parseInt(mStr, 10);
+  const prevMonthKey = `${m === 1 ? y - 1 : y}-${String(m === 1 ? 12 : m - 1).padStart(2, '0')}`;
+
+  const currentMonthExpenses = filterTransactionsByMonth(transactions, activeMonth).filter(
+    (t) => t.type === 'expense' && t.amount > 0
+  );
+  const currentMonthIncomes = filterTransactionsByMonth(transactions, activeMonth).filter(
+    (t) => t.type === 'income' && t.amount > 0
+  );
+  const prevMonthExpenses = filterTransactionsByMonth(transactions, prevMonthKey).filter(
+    (t) => t.type === 'expense' && t.amount > 0
+  );
+
+  const totalExpenses = currentMonthExpenses.reduce((sum, t) => sum + t.amount, 0);
+  const totalIncome = currentMonthIncomes.reduce((sum, t) => sum + t.amount, 0);
+  const netSavings = Math.max(0, totalIncome - totalExpenses);
+  const prevTotalExpenses = prevMonthExpenses.reduce((sum, t) => sum + t.amount, 0);
+
+  const diff = totalExpenses - prevTotalExpenses;
+  const momPct = prevTotalExpenses > 0 ? Number(((diff / prevTotalExpenses) * 100).toFixed(1)) : 0;
+  const direction: 'higher' | 'lower' | 'equal' = diff > 0 ? 'higher' : diff < 0 ? 'lower' : 'equal';
+
+  const categories = calculateCategorySpending(transactions, activeMonth, prevMonthKey);
+  const highestCategory = getHighestSpendingCategory(categories);
+  const lowestCategory = getLowestSpendingCategory(categories, false);
+  const zeroSpendingCategories = categories.filter((c) => c.amount === 0).map((c) => c.category);
+
+  const highestMerchant = getHighestSpendingMerchant(transactions, activeMonth);
+  const lowestMerchant = getLowestSpendingMerchant(transactions, activeMonth, false);
+
+  const merchMap: Record<string, number> = {};
+  for (const t of currentMonthExpenses) {
+    const raw = (t.merchant || '').trim();
+    const name = raw || 'General Merchant';
+    merchMap[name] = (merchMap[name] || 0) + t.amount;
+  }
+
+  const largestExpense = getLargestIndividualExpense(transactions, activeMonth);
+  const smallestExpense = getSmallestIndividualExpense(transactions, activeMonth);
+
+  return {
+    hasExpenses: currentMonthExpenses.length > 0,
+    highestCategory: currentMonthExpenses.length > 0 ? highestCategory : null,
+    lowestCategory: currentMonthExpenses.length > 0 ? lowestCategory : null,
+    zeroSpendingCategories,
+    highestMerchant,
+    lowestMerchant,
+    merchantTotals: merchMap,
+    largestExpense,
+    smallestExpense,
+    totalIncome,
+    totalExpenses,
+    netSavings,
+    momComparison: {
+      currentSpending: totalExpenses,
+      previousSpending: prevTotalExpenses,
+      difference: diff,
+      percentageChange: momPct,
+      direction,
+    },
   };
 }
 

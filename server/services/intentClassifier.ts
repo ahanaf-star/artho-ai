@@ -3,6 +3,14 @@ import { CoachContext, FactItem } from './coachContextBuilder';
 export type CoachIntent =
   | 'spending_total'
   | 'top_category'
+  | 'lowest_category'
+  | 'highest_merchant'
+  | 'lowest_merchant'
+  | 'largest_expense'
+  | 'smallest_expense'
+  | 'income_total'
+  | 'mom_comparison'
+  | 'zero_spending'
   | 'month_end_balance'
   | 'savings_goal_progress'
   | 'savings_plan'
@@ -237,24 +245,227 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     }
   }
 
-  // 3. Top Spending Category
+  // 3. Extrema & Direct Factual Spending Queries
+  // 3a. Lowest Spending Merchant (checked before category queries so "least spent merchant" doesn't hit category)
+  const lowestMerchPatterns = [
+    'lowest merchant',
+    'lowest spending merchant',
+    'least spending merchant',
+    'which merchant did i spend least',
+    'which merchant did i spend the least',
+    'spend least at',
+    'spend the least at',
+    'least spent merchant',
+    'lowest vendor',
+    'সবচেয়ে কম মার্চেন্ট',
+    'কোন মার্চেন্টে কম',
+    'সর্বনিম্ন মার্চেন্ট',
+    'কোন মার্চেন্টে সবচেয়ে কম',
+  ];
+  for (const p of lowestMerchPatterns) {
+    if (norm.includes(p)) {
+      return { intent: 'lowest_merchant', confidence: 0.94, matchedKeywords: [p] };
+    }
+  }
+
+  // 3b. Highest Spending Merchant
+  const highestMerchPatterns = [
+    'highest merchant',
+    'top merchant',
+    'highest spending merchant',
+    'most spending merchant',
+    'which merchant did i spend most',
+    'which merchant did i spend the most',
+    'spend most at',
+    'spend the most at',
+    'top vendor',
+    'highest vendor',
+    'সবচেয়ে বেশি মার্চেন্ট',
+    'কোন মার্চেন্টে বেশি',
+    'শীর্ষ মার্চেন্ট',
+    'সর্বোচ্চ মার্চেন্ট',
+    'কোন মার্চেন্টে সবচেয়ে বেশি',
+  ];
+  for (const p of highestMerchPatterns) {
+    if (norm.includes(p)) {
+      return { intent: 'highest_merchant', confidence: 0.94, matchedKeywords: [p] };
+    }
+  }
+
+  // 3c. Lowest Spending Category
+  const lowestCatPatterns = [
+    'lowest category',
+    'lowest spending category',
+    'least spending category',
+    'least spent category',
+    'lowest expense category',
+    'lowest category spending',
+    'where do i spend least',
+    'where do i spend the least',
+    'spend the least',
+    'lowest spending',
+    'lowest spend',
+    'lowest expense',
+    'least expense',
+    'smallest category',
+    'minimum spending category',
+    'minimum spend',
+    'সর্বনিম্ন খরচ',
+    'সবচেয়ে কম খরচ',
+    'সবচেয়ে কম ব্যয়',
+    'কোন খাতে সবচেয়ে কম',
+    'কোন খাতে কম',
+    'কম খরচ',
+    'ন্যূনতম খরচ',
+    'সর্বনিম্ন ব্যয়ের খাত',
+    'সবচেয়ে কম খরচের খাত',
+    'সবচেয়ে কম খরচের খাত',
+  ];
+  for (const p of lowestCatPatterns) {
+    if (norm.includes(p)) {
+      return { intent: 'lowest_category', confidence: 0.94, matchedKeywords: [p] };
+    }
+  }
+
+  // 3d. Top / Highest Spending Category
   const topCatPatterns = [
     'top category',
+    'top spending category',
+    'highest spending category',
+    'highest expense category',
+    'biggest expense category',
     'top spending',
     'highest category',
+    'highest spending',
     'highest expense',
+    'biggest expense',
     'where do i spend most',
+    'where do i spend the most',
     'spend the most',
     'biggest outflow',
+    'highest category spending',
+    'most expensive category',
     'শীর্ষ খাত',
     'সবচেয়ে বেশি খরচ',
     'কোন খাতে বেশি',
     'কোথায় বেশি খরচ',
     'সর্বোচ্চ খরচ',
+    'সর্বোচ্চ খরচের খাত',
   ];
   for (const p of topCatPatterns) {
     if (norm.includes(p)) {
-      return { intent: 'top_category', confidence: 0.92, matchedKeywords: [p] };
+      return { intent: 'top_category', confidence: 0.93, matchedKeywords: [p] };
+    }
+  }
+
+  // 3e. Largest Individual Expense Transaction
+  const largestExpensePatterns = [
+    'largest individual expense',
+    'largest transaction',
+    'largest single expense',
+    'biggest single expense',
+    'highest transaction',
+    'biggest transaction',
+    'biggest purchase',
+    'largest purchase',
+    'single largest',
+    'single biggest',
+    'maximum transaction',
+    'একক সর্বোচ্চ খরচ',
+    'সবচেয়ে বড় লেনদেন',
+    'সবচেয়ে বড় খরচ',
+    'সবচেয়ে দামি কেনাকাটা',
+    'এককালীন সর্বোচ্চ',
+  ];
+  for (const p of largestExpensePatterns) {
+    if (norm.includes(p)) {
+      return { intent: 'largest_expense', confidence: 0.92, matchedKeywords: [p] };
+    }
+  }
+
+  // 3f. Smallest Individual Expense Transaction
+  const smallestExpensePatterns = [
+    'smallest individual expense',
+    'smallest transaction',
+    'smallest single expense',
+    'lowest transaction',
+    'smallest purchase',
+    'minimum transaction',
+    'single smallest',
+    'একক সর্বনিম্ন খরচ',
+    'সবচেয়ে ছোট লেনদেন',
+    'সবচেয়ে ছোট খরচ',
+    'ক্ষুদ্রতম লেনদেন',
+  ];
+  for (const p of smallestExpensePatterns) {
+    if (norm.includes(p)) {
+      return { intent: 'smallest_expense', confidence: 0.92, matchedKeywords: [p] };
+    }
+  }
+
+  // 3g. Zero Spending Categories
+  const zeroSpendingPatterns = [
+    'zero spending',
+    'zero expense',
+    'no spending',
+    'no expense',
+    'categories with no spend',
+    'where did i not spend',
+    'did not spend',
+    'didn t spend',
+    'didn\'t spend',
+    'কোনো খরচ হয়নি',
+    'কোন খরচ হয়নি',
+    'খরচ হয়নি এমন খাত',
+    'শূন্য খরচ',
+    'যে খাতে খরচ হয়নি',
+  ];
+  for (const p of zeroSpendingPatterns) {
+    if (norm.includes(p)) {
+      return { intent: 'zero_spending', confidence: 0.92, matchedKeywords: [p] };
+    }
+  }
+
+  // 3h. Month-over-Month Comparison
+  const momComparisonPatterns = [
+    'spend more than last month',
+    'spend less than last month',
+    'compared to last month',
+    'comparison with last month',
+    'month over month',
+    'mom spending',
+    'vs last month',
+    'versus last month',
+    'last month vs this month',
+    'গত মাসের চেয়ে বেশি',
+    'গত মাসের চেয়ে কম',
+    'গত মাসের তুলনায়',
+    'গত মাসের সাথে তুলনা',
+    'আগের মাসের চেয়ে',
+  ];
+  for (const p of momComparisonPatterns) {
+    if (norm.includes(p)) {
+      return { intent: 'mom_comparison', confidence: 0.92, matchedKeywords: [p] };
+    }
+  }
+
+  // 3i. Total Income Inquiries
+  const incomeTotalPatterns = [
+    'total income',
+    'how much did i earn',
+    'how much income',
+    'my earnings',
+    'income this month',
+    'monthly income',
+    'মোট আয়',
+    'এ মাসের আয়',
+    'কত টাকা আয়',
+    'আমার আয় কত',
+    'উপার্জন কত',
+  ];
+  for (const p of incomeTotalPatterns) {
+    if (norm.includes(p)) {
+      return { intent: 'income_total', confidence: 0.92, matchedKeywords: [p] };
     }
   }
 
@@ -392,10 +603,13 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
 
   // 11. General Education
   const generalEduPatterns = [
-    'what is',
-    'explain',
+    'what is the 50/30/20',
+    'what is 50/30/20',
+    '50/30/20 rule',
     '50/30/20',
-    'rule',
+    'budgeting rule',
+    'explain 50/30/20',
+    'explain rule',
     'কীভাবে কাজ করে',
     'কাকে বলে',
   ];
@@ -445,8 +659,105 @@ export function sliceContext(fullContext: CoachContext, intentResult: IntentResu
         addFact('spending.topCategoryAmount', fullContext.spending.topCategory.amount);
         addFact('spending.topCategoryPercentage', fullContext.spending.topCategory.percentage);
         addFact('spending.topCategoryMomChange', fullContext.spending.topCategory.momChangePercentage);
+        if (fullContext.spending.topCategory.isTie && fullContext.spending.topCategory.tiedCategories) {
+          addFact('spending.topCategoryTied', fullContext.spending.topCategory.tiedCategories);
+        }
       }
       addFact('spending.totalSpending', fullContext.spending.totalSpending);
+      break;
+
+    case 'lowest_category':
+      includeSnapshot(true);
+      if (fullContext.spending.lowestCategory) {
+        addFact('spending.lowestCategory', fullContext.spending.lowestCategory.category);
+        addFact('spending.lowestCategoryAmount', fullContext.spending.lowestCategory.amount);
+        addFact('spending.lowestCategoryPercentage', fullContext.spending.lowestCategory.percentage);
+        addFact('spending.lowestCategoryMomChange', fullContext.spending.lowestCategory.momChangePercentage);
+        if (fullContext.spending.lowestCategory.isTie && fullContext.spending.lowestCategory.tiedCategories) {
+          addFact('spending.lowestCategoryTied', fullContext.spending.lowestCategory.tiedCategories);
+        }
+      }
+      if (fullContext.spending.topCategory) {
+        addFact('spending.topCategory', fullContext.spending.topCategory.category);
+        addFact('spending.topCategoryAmount', fullContext.spending.topCategory.amount);
+      }
+      addFact('spending.totalSpending', fullContext.spending.totalSpending);
+      break;
+
+    case 'highest_merchant':
+      includeSnapshot(true);
+      if (fullContext.spending.merchants.highestMerchant) {
+        addFact('spending.highestMerchant', fullContext.spending.merchants.highestMerchant.merchant);
+        addFact('spending.highestMerchantAmount', fullContext.spending.merchants.highestMerchant.amount);
+        addFact('spending.highestMerchantPercentage', fullContext.spending.merchants.highestMerchant.percentage);
+        addFact('spending.highestMerchantCount', fullContext.spending.merchants.highestMerchant.count);
+        if (fullContext.spending.merchants.highestMerchant.isTie && fullContext.spending.merchants.highestMerchant.tiedMerchants) {
+          addFact('spending.highestMerchantTied', fullContext.spending.merchants.highestMerchant.tiedMerchants);
+        }
+      }
+      addFact('spending.totalSpending', fullContext.spending.totalSpending);
+      break;
+
+    case 'lowest_merchant':
+      includeSnapshot(true);
+      if (fullContext.spending.merchants.lowestMerchant) {
+        addFact('spending.lowestMerchant', fullContext.spending.merchants.lowestMerchant.merchant);
+        addFact('spending.lowestMerchantAmount', fullContext.spending.merchants.lowestMerchant.amount);
+        addFact('spending.lowestMerchantPercentage', fullContext.spending.merchants.lowestMerchant.percentage);
+        addFact('spending.lowestMerchantCount', fullContext.spending.merchants.lowestMerchant.count);
+        if (fullContext.spending.merchants.lowestMerchant.isTie && fullContext.spending.merchants.lowestMerchant.tiedMerchants) {
+          addFact('spending.lowestMerchantTied', fullContext.spending.merchants.lowestMerchant.tiedMerchants);
+        }
+      }
+      addFact('spending.totalSpending', fullContext.spending.totalSpending);
+      break;
+
+    case 'largest_expense':
+      includeSnapshot(true);
+      if (fullContext.spending.extrema.largestExpense) {
+        addFact('spending.largestExpenseAmount', fullContext.spending.extrema.largestExpense.amount);
+        addFact('spending.largestExpenseCategory', fullContext.spending.extrema.largestExpense.category);
+        addFact('spending.largestExpenseDate', fullContext.spending.extrema.largestExpense.date);
+        if (fullContext.spending.extrema.largestExpense.merchant) {
+          addFact('spending.largestExpenseMerchant', fullContext.spending.extrema.largestExpense.merchant);
+        }
+      }
+      addFact('spending.totalSpending', fullContext.spending.totalSpending);
+      break;
+
+    case 'smallest_expense':
+      includeSnapshot(true);
+      if (fullContext.spending.extrema.smallestExpense) {
+        addFact('spending.smallestExpenseAmount', fullContext.spending.extrema.smallestExpense.amount);
+        addFact('spending.smallestExpenseCategory', fullContext.spending.extrema.smallestExpense.category);
+        addFact('spending.smallestExpenseDate', fullContext.spending.extrema.smallestExpense.date);
+        if (fullContext.spending.extrema.smallestExpense.merchant) {
+          addFact('spending.smallestExpenseMerchant', fullContext.spending.extrema.smallestExpense.merchant);
+        }
+      }
+      addFact('spending.totalSpending', fullContext.spending.totalSpending);
+      break;
+
+    case 'zero_spending':
+      includeSnapshot(false);
+      addFact('spending.zeroSpendingCategories', fullContext.spending.zeroSpendingCategories);
+      addFact('spending.totalSpending', fullContext.spending.totalSpending);
+      break;
+
+    case 'mom_comparison':
+      includeSnapshot(true);
+      addFact('spending.totalSpending', fullContext.spending.totalSpending);
+      addFact('spending.previousMonthSpending', fullContext.spending.comparison.previousSpending);
+      addFact('spending.momDifference', fullContext.spending.comparison.difference);
+      addFact('spending.momPercentageChange', fullContext.spending.comparison.percentageChange);
+      addFact('spending.momDirection', fullContext.spending.comparison.direction);
+      break;
+
+    case 'income_total':
+      includeSnapshot(true);
+      addFact('snapshot.monthlyIncome', fullContext.snapshot.monthlyIncome);
+      addFact('snapshot.netSavings', fullContext.snapshot.netSavings);
+      addFact('snapshot.savingsRate', fullContext.snapshot.savingsRate);
       break;
 
     case 'spending_total':

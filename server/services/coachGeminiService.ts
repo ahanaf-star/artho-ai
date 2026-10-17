@@ -62,6 +62,23 @@ export async function executeCoachInquiry(params: CoachCallParams): Promise<Coac
     return generateDeterministicCoachResponse(intentResult, fullContext, language);
   }
 
+  // 1b. Direct factual routing for deterministic extrema queries (highest/lowest spending category, merchant, extrema, zero spending, MoM)
+  // Ensures 100% precision, zero arithmetic error, zero hallucination, and instant responsiveness
+  const directFactualIntents = [
+    'top_category',
+    'lowest_category',
+    'highest_merchant',
+    'lowest_merchant',
+    'largest_expense',
+    'smallest_expense',
+    'zero_spending',
+    'mom_comparison',
+    'income_total',
+  ];
+  if (directFactualIntents.includes(intentResult.intent)) {
+    return generateDeterministicCoachResponse(intentResult, fullContext, language);
+  }
+
   // 2. Slice context deterministically
   const sliced = sliceContext(fullContext, intentResult);
 
@@ -150,7 +167,12 @@ export async function executeCoachInquiry(params: CoachCallParams): Promise<Coac
         }
 
         // 5. Strict Number & Safety Validation
-        const validation = validateCoachNumbers(parsed.answer, fullContext, additionalPrecomputed);
+        const validation = validateCoachNumbers(
+          parsed.answer,
+          fullContext,
+          additionalPrecomputed,
+          intentResult.intent
+        );
         if (!validation.valid) {
           console.warn(
             `[Gemini Validation Rejected] Reason: ${validation.reason}. Falling back to deterministic response.`

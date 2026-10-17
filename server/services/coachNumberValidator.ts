@@ -61,6 +61,12 @@ export function extractAllowedNumbers(ctx: CoachContext, additionalAllowed: numb
     allowed.add(Math.round(ctx.spending.topCategory.percentage));
     allowed.add(Math.abs(ctx.spending.topCategory.momChangePercentage));
   }
+  if (ctx.spending.lowestCategory) {
+    allowed.add(ctx.spending.lowestCategory.amount);
+    allowed.add(ctx.spending.lowestCategory.percentage);
+    allowed.add(Math.round(ctx.spending.lowestCategory.percentage));
+    allowed.add(Math.abs(ctx.spending.lowestCategory.momChangePercentage));
+  }
   for (const cat of ctx.spending.topCategories) {
     allowed.add(cat.amount);
     allowed.add(cat.percentage);
@@ -73,6 +79,37 @@ export function extractAllowedNumbers(ctx: CoachContext, additionalAllowed: numb
   for (const pct of Object.values(ctx.spending.categoryPercentages)) {
     allowed.add(pct);
     allowed.add(Math.round(pct));
+  }
+  if (ctx.spending.merchants) {
+    if (ctx.spending.merchants.highestMerchant) {
+      allowed.add(ctx.spending.merchants.highestMerchant.amount);
+      allowed.add(ctx.spending.merchants.highestMerchant.count);
+      allowed.add(ctx.spending.merchants.highestMerchant.percentage);
+      allowed.add(Math.round(ctx.spending.merchants.highestMerchant.percentage));
+    }
+    if (ctx.spending.merchants.lowestMerchant) {
+      allowed.add(ctx.spending.merchants.lowestMerchant.amount);
+      allowed.add(ctx.spending.merchants.lowestMerchant.count);
+      allowed.add(ctx.spending.merchants.lowestMerchant.percentage);
+      allowed.add(Math.round(ctx.spending.merchants.lowestMerchant.percentage));
+    }
+    for (const amt of Object.values(ctx.spending.merchants.merchantTotals || {})) {
+      allowed.add(amt);
+    }
+  }
+  if (ctx.spending.extrema) {
+    if (ctx.spending.extrema.largestExpense) {
+      allowed.add(ctx.spending.extrema.largestExpense.amount);
+    }
+    if (ctx.spending.extrema.smallestExpense) {
+      allowed.add(ctx.spending.extrema.smallestExpense.amount);
+    }
+  }
+  if (ctx.spending.comparison) {
+    allowed.add(ctx.spending.comparison.previousSpending);
+    allowed.add(Math.abs(ctx.spending.comparison.difference));
+    allowed.add(Math.abs(ctx.spending.comparison.percentageChange));
+    allowed.add(Math.round(Math.abs(ctx.spending.comparison.percentageChange)));
   }
   for (const anom of ctx.spending.anomalies) {
     allowed.add(anom.amount);
@@ -151,12 +188,14 @@ export function extractNumbersFromText(text: string): number[] {
 }
 
 /**
- * Validates that every financial figure cited by Gemini exists in the authoritative context
+ * Validates that every financial figure cited by Gemini exists in the authoritative context,
+ * and detects semantic contradictions (e.g. reporting top category when lowest was asked).
  */
 export function validateCoachNumbers(
   answer: string,
   ctx: CoachContext,
-  additionalPrecomputed: number[] = []
+  additionalPrecomputed: number[] = [],
+  intent?: string
 ): ValidationResult {
   if (!answer || typeof answer !== 'string' || !answer.trim()) {
     return { valid: false, reason: 'Answer is empty or not a string' };
@@ -185,6 +224,39 @@ export function validateCoachNumbers(
       reason: `Disallowed regulatory/liability phrase detected: ${matchedDisallowed.join(', ')}`,
       disallowedPhrases: matchedDisallowed,
     };
+  }
+
+  // Semantic contradiction checks
+  if (intent === 'lowest_category') {
+    const top = ctx.spending.topCategory;
+    const lowest = ctx.spending.lowestCategory;
+    if (top && lowest && top.category.toLowerCase() !== lowest.category.toLowerCase()) {
+      // If the answer quotes the top category name without mentioning the lowest category name,
+      // it's a semantic inversion contradiction
+      const mentionsTop = lower.includes(top.category.toLowerCase());
+      const mentionsLowest = lower.includes(lowest.category.toLowerCase()) ||
+        (lowest.tiedCategories && lowest.tiedCategories.some(c => lower.includes(c.toLowerCase())));
+      if (mentionsTop && !mentionsLowest) {
+        return {
+          valid: false,
+          reason: `Semantic contradiction: Answer cites top category (${top.category}) when lowest category was requested.`,
+        };
+      }
+    }
+  } else if (intent === 'top_category') {
+    const top = ctx.spending.topCategory;
+    const lowest = ctx.spending.lowestCategory;
+    if (top && lowest && top.category.toLowerCase() !== lowest.category.toLowerCase()) {
+      const mentionsLowest = lower.includes(lowest.category.toLowerCase());
+      const mentionsTop = lower.includes(top.category.toLowerCase()) ||
+        (top.tiedCategories && top.tiedCategories.some(c => lower.includes(c.toLowerCase())));
+      if (mentionsLowest && !mentionsTop) {
+        return {
+          valid: false,
+          reason: `Semantic contradiction: Answer cites lowest category (${lowest.category}) when top category was requested.`,
+        };
+      }
+    }
   }
 
   // Extract all numbers from the generated response
