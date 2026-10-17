@@ -416,14 +416,9 @@ export const Header: React.FC<HeaderProps> = ({
                 <span>{user.name ? user.name.slice(0, 2).toUpperCase() : 'AR'}</span>
               )}
             </div>
-            <div className="hidden md:flex flex-col text-left">
-              <span className="font-title-md text-title-md leading-none text-on-surface truncate max-w-[120px]">
-                {user.name.split(' ')[0]}
-              </span>
-              <span className="font-label-sm text-label-sm leading-none text-secondary font-semibold mt-1">
-                {user.memberStatus || 'Pro Member'}
-              </span>
-            </div>
+            <span className="font-title-md text-title-md text-on-surface truncate max-w-[130px] hidden md:block">
+              {user.name ? user.name.split(' ')[0] : 'User'}
+            </span>
             <span className="material-symbols-outlined text-[16px] text-outline hidden sm:inline">
               expand_more
             </span>
