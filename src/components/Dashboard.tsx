@@ -8,6 +8,7 @@ import {
   formatMonthName,
 } from '../services/financialCalculations';
 import { NavScreen } from './Sidebar';
+import { AICoachModal } from './modals/AICoachModal';
 
 interface DashboardProps {
   transactions: Transaction[];
@@ -32,7 +33,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenCreateGoal,
   isBangla,
 }) => {
-  const [budgetApplied, setBudgetApplied] = useState(false);
+  const [isCoachModalOpen, setIsCoachModalOpen] = useState(false);
 
   // Dynamic calculations based on live synthetic state
   const activeMonth = getLatestTransactionMonth(transactions);
@@ -76,14 +77,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     : 0;
 
   const firstName = user?.name?.trim() ? user.name.trim().split(' ')[0] : '';
-
-  // Handle Apply Suggested Budget
-  const handleApplyBudget = () => {
-    setBudgetApplied(true);
-    setTimeout(() => {
-      // Keep feedback active
-    }, 4000);
-  };
 
   return (
     <div className="flex flex-col w-full gap-space-lg pb-space-xl">
@@ -469,93 +462,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </button>
         </div>
 
-        {/* Module 2: AI Financial Insight Spotlight (Span 8) */}
-        <div className="lg:col-span-8 rounded-xl bg-surface-container-lowest p-space-md shadow-sm relative overflow-hidden flex flex-col justify-between border border-outline-variant/20">
-          <div className="absolute -right-16 -top-16 w-80 h-80 rounded-full bg-gradient-to-br from-tertiary-fixed-dim/20 to-secondary-container/20 blur-3xl pointer-events-none"></div>
-
-          <div>
-            {/* AI Top Bar */}
-            <div className="flex items-center justify-between pb-3 border-b border-outline-variant/15">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-tertiary-container text-tertiary-fixed flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-label-sm text-label-sm font-semibold text-on-surface uppercase tracking-wider">
-                    ArthoBachao AI Intelligence
-                  </span>
-                  <span className="font-body-sm text-body-sm text-on-surface-variant">
-                    Personalized Algorithmic Insight • Gulshan &amp; Banani Zone
-                  </span>
-                </div>
-              </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-surface-container text-on-surface font-label-sm text-label-sm font-medium flex items-center gap-1">
-                <span className="inline-block w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
-                High Impact
-              </span>
-            </div>
-
-            {/* Highlight Content Box */}
-            <div className="mt-3 p-space-md rounded-xl bg-surface-container-low/70 backdrop-blur-sm border border-outline-variant/20">
-              <p className="font-body-lg text-body-lg text-on-surface leading-relaxed">
-                You are saving consistently, but your weekend dining and coffee spending has
-                increased by <span className="font-semibold text-error">18%</span>. Reducing
-                discretionary food spend by about{' '}
-                <strong className="font-bold text-on-surface">৳900 per week</strong> would allow you
-                to reach your <span className="text-secondary font-semibold">Emergency Fund</span>{' '}
-                target <span className="underline decoration-secondary font-bold">18 days earlier</span>.
-              </p>
-
-              {/* Micro context chips */}
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-space-sm pt-2">
-                <div className="p-2.5 rounded-lg bg-surface-container-lowest shadow-sm flex flex-col border border-outline-variant/20">
-                  <span className="font-label-sm text-label-sm text-outline">Observed Surge</span>
-                  <span className="font-title-md text-title-md text-error mt-0.5">৳3,600 / mo</span>
-                </div>
-                <div className="p-2.5 rounded-lg bg-surface-container-lowest shadow-sm flex flex-col border border-outline-variant/20">
-                  <span className="font-label-sm text-label-sm text-outline">Suggested Cap</span>
-                  <span className="font-title-md text-title-md text-secondary mt-0.5">
-                    ৳2,700 / wk
-                  </span>
-                </div>
-                <div className="p-2.5 rounded-lg bg-surface-container-lowest shadow-sm flex flex-col border border-outline-variant/20">
-                  <span className="font-label-sm text-label-sm text-outline">Speedup Horizon</span>
-                  <span className="font-title-md text-title-md text-on-surface mt-0.5">
-                    -18 Days Goal
-                  </span>
-                </div>
-              </div>
-            </div>
+        {/* Compact AI Coach Action (Span 8) */}
+        <div className="lg:col-span-8 rounded-xl bg-surface-container-lowest p-space-md shadow-sm border border-outline-variant/20 flex flex-col justify-center items-center text-center py-8">
+          <div className="w-12 h-12 rounded-2xl bg-secondary-container/40 text-on-secondary-container flex items-center justify-center mb-3">
+            <span className="material-symbols-outlined text-[26px] text-secondary">smart_toy</span>
           </div>
-
-          {/* Action Strip */}
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-space-sm pt-2 border-t border-outline-variant/15">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleApplyBudget}
-                className={`flex items-center gap-2 px-space-md py-2.5 rounded-xl font-title-md text-title-md transition-all shadow-sm ${budgetApplied
-                    ? 'bg-secondary text-on-secondary'
-                    : 'bg-primary text-on-primary hover:bg-inverse-surface active:scale-95'
-                  }`}
-              >
-                <span className="material-symbols-outlined text-[18px] text-secondary-container">
-                  {budgetApplied ? 'check_circle' : 'tune'}
-                </span>
-                <span>{budgetApplied ? 'Budget Rule Active (৳2,700/wk)' : 'Apply Suggested Budget'}</span>
-              </button>
-              <button
-                onClick={() => onNavigate('ai-coach')}
-                className="flex items-center gap-2 px-space-md py-2.5 rounded-xl bg-surface-container text-on-surface font-title-md text-title-md hover:bg-surface-container-high transition-all"
-              >
-                <span className="material-symbols-outlined text-[18px]">chat</span>
-                <span>Ask ArthoBachao AI Details</span>
-              </button>
-            </div>
-            <span className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
-              <span className="material-symbols-outlined text-[16px] text-secondary">verified</span>
-              Verified against 4 months history
-            </span>
-          </div>
+          <h3 className="font-title-lg text-title-lg text-on-surface font-bold">
+            {isBangla ? 'অর্থবাঁচাও এআই কোচ' : 'ArthoBachao AI Coach'}
+          </h3>
+          <p className="font-body-sm text-body-sm text-on-surface-variant max-w-sm mt-1 mb-4">
+            {isBangla
+              ? 'আপনার এআই কোচের কাছ থেকে ব্যক্তিগত আর্থিক দিকনির্দেশনা নিন।'
+              : 'Get personalized financial guidance from your AI Coach.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => setIsCoachModalOpen(true)}
+            className="flex items-center gap-2 px-space-md py-2.5 rounded-xl bg-primary text-on-primary font-title-md text-title-md shadow-sm hover:opacity-95 active:scale-95 transition-all"
+          >
+            <span className="material-symbols-outlined text-[18px] text-secondary-container">chat</span>
+            <span>{isBangla ? 'এআই কোচকে জিজ্ঞাসা করুন' : 'Ask AI Coach'}</span>
+          </button>
         </div>
       </div>
 
@@ -812,6 +739,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* AI Coach Popup Modal */}
+      <AICoachModal
+        isOpen={isCoachModalOpen}
+        onClose={() => setIsCoachModalOpen(false)}
+        onOpenCoach={() => onNavigate('ai-coach')}
+        isBangla={isBangla}
+      />
     </div>
   );
 };
