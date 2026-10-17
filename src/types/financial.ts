@@ -179,6 +179,7 @@ export interface FinancialHealth {
   percentile: number | null;
   factors: FinancialHealthFactorBreakdown;
   explanation: string;
+  confidence?: 'high' | 'medium' | 'low';
 }
 
 export type FinancialHealthMetrics = FinancialHealth; // Alias for backward compatibility

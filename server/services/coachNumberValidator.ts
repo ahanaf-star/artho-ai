@@ -51,6 +51,16 @@ export function extractAllowedNumbers(
     todayParts.forEach((n) => !isNaN(n) && allowed.add(n));
   } catch {}
 
+  // Data Window & History indicators
+  if (ctx.metadata?.dataWindow) {
+    if (ctx.metadata.dataWindow.totalTransactions !== undefined) {
+      allowed.add(ctx.metadata.dataWindow.totalTransactions);
+    }
+    if (ctx.metadata.dataWindow.historicalMonthsCount !== undefined) {
+      allowed.add(ctx.metadata.dataWindow.historicalMonthsCount);
+    }
+  }
+
   // 1. Snapshot numbers
   allowed.add(ctx.snapshot.monthlyIncome);
   allowed.add(ctx.snapshot.monthlySpending);
@@ -168,6 +178,13 @@ export function extractAllowedNumbers(
       allowed.add(Number(p.toFixed(1)));
       allowed.add(Math.round(p));
     });
+  }
+
+  // Precomputed baseline recommendations for health_recommendations
+  if (intent === 'health_recommendations') {
+    for (const p of [0.1, 0.15, 0.2, 0.25, 0.3]) {
+      allowed.add(Math.round(inc * p));
+    }
   }
 
   // Multi-Month Projections (6, 10, 12 months scoped strictly to financial_projection intent or projection queries)

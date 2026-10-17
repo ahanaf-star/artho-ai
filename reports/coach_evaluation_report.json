@@ -50,7 +50,7 @@
   "unsupportedClaimFailures": 0,
   "dataSufficiencyFailures": 0,
   "safetyFailures": 0,
-  "durationMs": 198,
+  "durationMs": 152,
   "results": [
     {
       "id": "TC-001",
@@ -1717,7 +1717,7 @@
       "expectedIntent": "budget_help",
       "actualIntent": "budget_help",
       "status": "PASS",
-      "answerExcerpt": "আপনার যাচাইকৃত আর্থিক লেজার অনুযায়ী বিভিন্ন খাতে আয় বণ্টন (মাসিক আয়: **৳0**, ব্যয়: **৳42,000**) (কোনো রেকর্ড করা আয় না থাকলে — zero income ব...",
+      "answerExcerpt": "আপনার যাচাইকৃত আর্থিক লেজার অনুযায়ী বিভিন্ন খাতে আয় বণ্টন (মাসিক আয়: **৳0**, ব্যয়: **৳42,000**) (কোনো record করা আয় না থাকলে — zero income ব...",
       "factsUsed": [
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
@@ -2328,13 +2328,14 @@
       "expectedIntent": "health_recommendations",
       "actualIntent": "health_recommendations",
       "status": "PASS",
-      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **84/100**, Rating: **Excellent**), here are the 3 most useful, prior...",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **84/100**, Rating: **Excellent** — Preliminary due to limited histor...",
       "factsUsed": [
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
         "snapshot.netCashFlow",
         "health.score",
         "health.band",
+        "health.confidence",
         "spending.topCategory",
         "spending.topCategoryAmount"
       ],
@@ -2387,13 +2388,14 @@
       "expectedIntent": "health_recommendations",
       "actualIntent": "health_recommendations",
       "status": "PASS",
-      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **84/100**, Rating: **Excellent**), here are the 3 most useful, prior...",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **84/100**, Rating: **Excellent** — Preliminary due to limited histor...",
       "factsUsed": [
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
         "snapshot.netCashFlow",
         "health.score",
         "health.band",
+        "health.confidence",
         "spending.topCategory",
         "spending.topCategoryAmount"
       ],
@@ -2478,13 +2480,14 @@
       "expectedIntent": "health_recommendations | budget_help",
       "actualIntent": "health_recommendations",
       "status": "PASS",
-      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **76/100**, Rating: **Good**), here are the 3 most useful, prioritize...",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **76/100**, Rating: **Good** — Preliminary due to limited history), h...",
       "factsUsed": [
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
         "snapshot.netCashFlow",
         "health.score",
         "health.band",
+        "health.confidence",
         "spending.topCategory",
         "spending.topCategoryAmount"
       ],
@@ -2509,13 +2512,14 @@
       "expectedIntent": "health_recommendations",
       "actualIntent": "health_recommendations",
       "status": "PASS",
-      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **84/100**, Rating: **Excellent**), here are the 3 most useful, prior...",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **84/100**, Rating: **Excellent** — Preliminary due to limited histor...",
       "factsUsed": [
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
         "snapshot.netCashFlow",
         "health.score",
         "health.band",
+        "health.confidence",
         "spending.topCategory",
         "spending.topCategoryAmount"
       ],
@@ -2540,13 +2544,14 @@
       "expectedIntent": "health_recommendations",
       "actualIntent": "health_recommendations",
       "status": "PASS",
-      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **84/100**, Rating: **Excellent**), here are the 3 most useful, prior...",
+      "answerExcerpt": "Based on your authenticated financial records (Financial Health Score: **84/100**, Rating: **Excellent** — Preliminary due to limited histor...",
       "factsUsed": [
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
         "snapshot.netCashFlow",
         "health.score",
         "health.band",
+        "health.confidence",
         "spending.topCategory",
         "spending.topCategoryAmount"
       ],
@@ -2631,13 +2636,14 @@
       "expectedIntent": "health_recommendations",
       "actualIntent": "health_recommendations",
       "status": "PASS",
-      "answerExcerpt": "আপনার আর্থিক তথ্য (হেলথ স্কোর: **84/১০০**, রেটিং: **Excellent**) বিশ্লেষণ করে আর্থিক সক্ষমতা ও স্বাস্থ্য উন্নত করার ৩টি অগ্রাধিকারভিত্তিক কা...",
+      "answerExcerpt": "আপনার আর্থিক তথ্য (প্রাথমিক হেলথ স্কোর: **84/১০০**, রেটিং: **Excellent** — সীমিত তথ্যের কারণে প্রাথমিক) বিশ্লেষণ করে আর্থিক সক্ষমতা ও স্বাস্...",
       "factsUsed": [
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
         "snapshot.netCashFlow",
         "health.score",
         "health.band",
+        "health.confidence",
         "spending.topCategory",
         "spending.topCategoryAmount"
       ],
@@ -2690,13 +2696,14 @@
       "expectedIntent": "health_recommendations",
       "actualIntent": "health_recommendations",
       "status": "PASS",
-      "answerExcerpt": "আপনার আর্থিক তথ্য (হেলথ স্কোর: **84/১০০**, রেটিং: **Excellent**) বিশ্লেষণ করে আর্থিক সক্ষমতা ও স্বাস্থ্য উন্নত করার ৩টি অগ্রাধিকারভিত্তিক কা...",
+      "answerExcerpt": "আপনার আর্থিক তথ্য (প্রাথমিক হেলথ স্কোর: **84/১০০**, রেটিং: **Excellent** — সীমিত তথ্যের কারণে প্রাথমিক) বিশ্লেষণ করে আর্থিক সক্ষমতা ও স্বাস্...",
       "factsUsed": [
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
         "snapshot.netCashFlow",
         "health.score",
         "health.band",
+        "health.confidence",
         "spending.topCategory",
         "spending.topCategoryAmount"
       ],
@@ -2781,13 +2788,14 @@
       "expectedIntent": "health_recommendations | budget_help",
       "actualIntent": "health_recommendations",
       "status": "PASS",
-      "answerExcerpt": "আপনার আর্থিক তথ্য (হেলথ স্কোর: **76/১০০**, রেটিং: **Good**) বিশ্লেষণ করে আর্থিক সক্ষমতা ও স্বাস্থ্য উন্নত করার ৩টি অগ্রাধিকারভিত্তিক কার্যকর...",
+      "answerExcerpt": "আপনার আর্থিক তথ্য (প্রাথমিক হেলথ স্কোর: **76/১০০**, রেটিং: **Good** — সীমিত তথ্যের কারণে প্রাথমিক) বিশ্লেষণ করে আর্থিক সক্ষমতা ও স্বাস্থ্য উ...",
       "factsUsed": [
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
         "snapshot.netCashFlow",
         "health.score",
         "health.band",
+        "health.confidence",
         "spending.topCategory",
         "spending.topCategoryAmount"
       ],
@@ -2812,13 +2820,14 @@
       "expectedIntent": "health_recommendations",
       "actualIntent": "health_recommendations",
       "status": "PASS",
-      "answerExcerpt": "আপনার আর্থিক তথ্য (হেলথ স্কোর: **84/১০০**, রেটিং: **Excellent**) বিশ্লেষণ করে আর্থিক সক্ষমতা ও স্বাস্থ্য উন্নত করার ৩টি অগ্রাধিকারভিত্তিক কা...",
+      "answerExcerpt": "আপনার আর্থিক তথ্য (প্রাথমিক হেলথ স্কোর: **84/১০০**, রেটিং: **Excellent** — সীমিত তথ্যের কারণে প্রাথমিক) বিশ্লেষণ করে আর্থিক সক্ষমতা ও স্বাস্...",
       "factsUsed": [
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
         "snapshot.netCashFlow",
         "health.score",
         "health.band",
+        "health.confidence",
         "spending.topCategory",
         "spending.topCategoryAmount"
       ],
@@ -2843,13 +2852,14 @@
       "expectedIntent": "health_recommendations",
       "actualIntent": "health_recommendations",
       "status": "PASS",
-      "answerExcerpt": "আপনার আর্থিক তথ্য (হেলথ স্কোর: **84/১০০**, রেটিং: **Excellent**) বিশ্লেষণ করে আর্থিক সক্ষমতা ও স্বাস্থ্য উন্নত করার ৩টি অগ্রাধিকারভিত্তিক কা...",
+      "answerExcerpt": "আপনার আর্থিক তথ্য (প্রাথমিক হেলথ স্কোর: **84/১০০**, রেটিং: **Excellent** — সীমিত তথ্যের কারণে প্রাথমিক) বিশ্লেষণ করে আর্থিক সক্ষমতা ও স্বাস্...",
       "factsUsed": [
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
         "snapshot.netCashFlow",
         "health.score",
         "health.band",
+        "health.confidence",
         "spending.topCategory",
         "spending.topCategoryAmount"
       ],
@@ -2907,7 +2917,7 @@
       "expectedIntent": "health_recommendations | spending_total",
       "actualIntent": "health_recommendations",
       "status": "PASS",
-      "answerExcerpt": "আপনার আর্থিক তথ্য বিশ্লেষণ করে আর্থিক সক্ষমতা ও স্বাস্থ্য উন্নত করার ৩টি অগ্রাধিকারভিত্তিক কার্যকর পদক্ষেপ: ১. **পৃথক জরুরি চিকিৎসা তহবিল (M...",
+      "answerExcerpt": "আপনার আর্থিক তথ্য বিশ্লেষণ করে আর্থিক সক্ষমতা ও স্বাস্থ্য উন্নত করার ৩টি অগ্রাধিকারভিত্তিক কার্যকর পদক্ষেপ: ১. **লিকুইড জরুরি জীবনযাত্রার তহ...",
       "factsUsed": [
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",

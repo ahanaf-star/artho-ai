@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { CoachContext } from './coachContextBuilder';
-import { IntentResult, SlicedContext, sliceContext } from './intentClassifier';
+import { IntentResult, SlicedContext, sliceContext, classifyIntent } from './intentClassifier';
 import { generateDeterministicCoachResponse, CoachResponsePayload } from './coachFallbackEngine';
 import { validateCoachNumbers } from './coachNumberValidator';
 
@@ -10,12 +10,12 @@ export interface ChatHistoryTurn {
 }
 
 export interface CoachCallParams {
-  userId: string;
+  userId?: string;
   query: string;
   language: 'en' | 'bn';
   history?: ChatHistoryTurn[];
   fullContext: CoachContext;
-  intentResult: IntentResult;
+  intentResult?: IntentResult;
   aiClient?: GoogleGenAI | null;
 }
 
@@ -44,6 +44,10 @@ CORE MISSION & ETHICS:
 10. Never present speculative future predictions as guaranteed facts. Distinguish rough illustrative run-rate scenarios from verified historical data.
 11. When asked for recommendations to improve financial health, provide exactly three prioritized, actionable recommendations grounded in the user's authentic records.
 12. Do NOT make unsupported peer benchmark claims (e.g. outperforming peers in Dhaka).
+13. PRESERVE CATEGORY ACCURACY: Every expense must strictly retain its authentic category label. NEVER describe or attribute spending in "Education" (or any non-medical category) to healthcare, medical, or clinic outflows. Never infer or reclassify categories without explicit record evidence.
+14. UNRECORDED LIVING EXPENSES & SAVINGS CAPACITY: The difference between recorded income and recorded expenses is an unallocated remainder, NOT confirmed disposable income or guaranteed safe savings capacity. If recorded expenses are minimal or sparse (e.g. only 1 or 2 categories logged, or no food/rent logged), explain that recurring living costs likely remain unrecorded, and advise establishing a living expense baseline before committing unallocated cash to long-term savings.
+15. FINANCIAL HEALTH SCORE GROUNDING: When citing the Financial Health Score, check data confidence. If history is short or transaction count is low, explicitly state that the score is preliminary rather than asserting unconditional excellence. Do not treat unrecorded expenses as zero.
+16. FEATURE TRUTH: Do NOT claim that ArthoBachao AI has a built-in "dedicated savings vault", "high-yield savings vault", or "automated payday transfer". Present banking actions (such as high-yield accounts, DPS, or automated bank transfers) as external financial practices or general advice, not built-in app products.
 
 OUTPUT FORMAT REQUIREMENTS:
 You MUST respond with a single, strictly valid JSON object matching this exact schema:
@@ -62,7 +66,8 @@ Every single monetary value (৳), percentage (%), or metric in "answer" must EX
  * Calls Gemini with structured output enforcement, 12s timeout, 1-retry backoff, and strict number validation
  */
 export async function executeCoachInquiry(params: CoachCallParams): Promise<CoachResponsePayload> {
-  const { query, language, history, fullContext, intentResult, aiClient } = params;
+  const { query, language, history, fullContext, aiClient } = params;
+  const intentResult = params.intentResult || classifyIntent(query);
 
   // 1. If intent is out of scope, immediately return deterministic educational boundary message
   if (intentResult.intent === 'out_of_scope') {
@@ -120,6 +125,22 @@ export async function executeCoachInquiry(params: CoachCallParams): Promise<Coac
     if (p.monthsDuration !== undefined) {
       additionalPrecomputed.push(p.monthsDuration);
     }
+  }
+
+  if (intentResult.intent === 'health_recommendations') {
+    const inc = fullContext.snapshot.monthlyIncome || 0;
+    const exp = fullContext.spending.totalSpending || 0;
+    const surplus = inc - exp;
+    additionalPrecomputed.push(
+      Math.round(inc * 0.1),
+      Math.round(inc * 0.15),
+      Math.round(inc * 0.2),
+      Math.round(inc * 0.25),
+      Math.round(inc * 0.3),
+      Math.round(surplus / 4),
+      fullContext.metadata.dataWindow.totalTransactions,
+      fullContext.metadata.dataWindow.historicalMonthsCount ?? 1
+    );
   }
 
   // If Gemini client is not initialized, run deterministic fallback

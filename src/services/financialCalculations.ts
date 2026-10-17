@@ -748,6 +748,7 @@ export function calculateFinancialHealthScore(
     score: scoreVal,
     status: statusVal as any,
     percentile: result.percentile ?? null,
+    confidence: result.confidence,
     factors: {
       savingConsistency: result.components?.find((c) => c.key === 'savings_rate')?.score ?? null,
       spendingControl: result.components?.find((c) => c.key === 'expense_control')?.score ?? null,
