@@ -55,8 +55,6 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
 
-  const [alertActive, setAlertActive] = useState(false);
-  const [occasionExcluded, setOccasionExcluded] = useState(false);
   const [reclassifyModalOpen, setReclassifyModalOpen] = useState(false);
 
   // Category Details Modal State
@@ -265,13 +263,6 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
     } finally {
       setDeletingCatId(null);
     }
-  };
-
-  const handleDiscussWithCoach = () => {
-    if (onCoachQuery) {
-      onCoachQuery(`Why did my Food spending increase 14% this month and how can I cut ${formatMoney(1400)}?`);
-    }
-    onNavigate('ai-coach');
   };
 
   return (
@@ -964,170 +955,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
         </div>
       </div>
 
-      {/* Section 2: Deep AI Spending Insight Card */}
-      <div className="rounded-xl bg-surface-container-lowest shadow-md overflow-hidden flex flex-col border border-outline-variant/20">
-        {/* AI Header Strip */}
-        <div className="bg-surface-container-high px-space-lg py-space-md flex flex-col md:flex-row md:items-center justify-between gap-space-sm border-b border-outline-variant/20">
-          <div className="flex items-center gap-space-sm">
-            <div className="w-9 h-9 rounded-xl bg-tertiary-container flex items-center justify-center text-on-tertiary shadow-sm">
-              <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
-            </div>
-            <div>
-              <span className="font-label-sm text-label-sm uppercase tracking-wider text-tertiary-container font-bold">
-                ArthoBachao AI Diagnostic Engine
-              </span>
-              <h2 className="font-headline-md text-headline-md text-on-surface leading-snug font-bold">
-                AI Spending Insight: Food &amp; Dining Surge
-              </h2>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-1 rounded-full bg-surface-container-lowest text-on-surface font-label-md text-label-md font-semibold shadow-sm border border-outline-variant/30">
-              Impact: -{formatMoney(1400)} to Monthly Goal
-            </span>
-            <span className="px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-semibold">
-              98% Confidence
-            </span>
-          </div>
-        </div>
-
-        {/* Explanatory Body */}
-        <div className="p-space-lg grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-center">
-          {/* Visual Context */}
-          <div className="lg:col-span-4 flex flex-col gap-space-md">
-            <div className="relative rounded-xl overflow-hidden h-48 w-full shadow-sm">
-              <img
-                className="object-cover w-full h-full"
-                alt="Dhaka Dining out lifestyle"
-                src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-primary-container/85 via-transparent to-transparent flex items-end p-space-md">
-                <span className="text-on-primary font-body-sm text-body-sm">
-                  Dining Out peak: Fri-Sun 8:30 PM - 11:30 PM
-                </span>
-              </div>
-            </div>
-            <div className="p-space-md rounded-xl bg-surface-container-low flex flex-col gap-1 border border-outline-variant/20">
-              <span className="font-label-sm text-label-sm text-outline uppercase font-semibold">
-                Spending Deviation
-              </span>
-              <div className="flex items-baseline justify-between">
-                <span className="font-title-md text-title-md text-on-surface font-bold">
-                  {occasionExcluded ? `${formatMoney(6800)} Recalibrated` : `${formatMoney(8200)} Current`}
-                </span>
-                <span className="font-body-sm text-body-sm text-on-surface-variant">
-                  Baseline: {formatMoney(6800)}
-                </span>
-              </div>
-              <div className="h-2 w-full bg-surface-container rounded-full mt-1 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-700 ${
-                    occasionExcluded ? 'bg-secondary' : 'bg-error'
-                  }`}
-                  style={{ width: occasionExcluded ? '100%' : '120%' }}
-                ></div>
-              </div>
-            </div>
-          </div>
-
-          {/* Explanatory Reasoning & Recommendations */}
-          <div className="lg:col-span-8 flex flex-col gap-space-md">
-            <div className="p-space-md rounded-xl bg-surface-container-low border border-outline-variant/20">
-              <div className="flex items-center gap-space-xs mb-1">
-                <span className="material-symbols-outlined text-[18px] text-tertiary-container">
-                  psychology
-                </span>
-                <h4 className="font-title-md text-title-md text-on-surface uppercase tracking-wide font-bold">
-                  Why This Matters
-                </h4>
-              </div>
-              <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
-                Food spending reached <strong className="text-on-surface font-bold">{formatMoney(8200)}</strong>,
-                which is <strong className="text-error font-bold">{formatMoney(1400)} higher</strong> than your 3-month
-                rolling baseline. Most of this increase occurred between Friday and Sunday evenings via
-                quick-commerce and delivery platforms, compounding incremental surcharge delivery fees.
-              </p>
-            </div>
-
-            {/* Actionable Steps */}
-            <div className="flex flex-col gap-space-xs">
-              <div className="flex items-center gap-space-xs mb-1">
-                <span className="material-symbols-outlined text-[18px] text-secondary">
-                  task_alt
-                </span>
-                <h4 className="font-title-md text-title-md text-on-surface uppercase tracking-wide font-bold">
-                  What You Can Do (Estimated Savings: {formatMoney(1400)})
-                </h4>
-              </div>
-              <ul className="flex flex-col gap-space-xs">
-                <li className="p-space-sm rounded-xl bg-surface-container-lowest shadow-sm flex items-start gap-space-sm border border-outline-variant/20">
-                  <span className="w-6 h-6 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-bold flex items-center justify-center shrink-0 mt-0.5">
-                    1
-                  </span>
-                  <p className="font-body-sm text-body-sm text-on-surface">
-                    <strong>Cap weekend delivery orders</strong> to twice a week instead of 4 times
-                    (potential monthly saving: <span className="text-secondary font-semibold">{formatMoney(900)}</span>).
-                  </p>
-                </li>
-                <li className="p-space-sm rounded-xl bg-surface-container-lowest shadow-sm flex items-start gap-space-sm border border-outline-variant/20">
-                  <span className="w-6 h-6 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-bold flex items-center justify-center shrink-0 mt-0.5">
-                    2
-                  </span>
-                  <p className="font-body-sm text-body-sm text-on-surface">
-                    <strong>Batch grocery purchases</strong> from local superstores (e.g. Shwapno) weekly to avoid small recurring delivery markups.
-                  </p>
-                </li>
-                <li className="p-space-sm rounded-xl bg-surface-container-lowest shadow-sm flex items-start gap-space-sm border border-outline-variant/20">
-                  <span className="w-6 h-6 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-bold flex items-center justify-center shrink-0 mt-0.5">
-                    3
-                  </span>
-                  <p className="font-body-sm text-body-sm text-on-surface">
-                    Activate ArthoBachao AI's <strong>'Dining Out Budget Alert'</strong> capped at {formatMoney(1500)}/week to receive pro-active nudges before checkout.
-                  </p>
-                </li>
-              </ul>
-            </div>
-
-            {/* Action Strip Buttons */}
-            <div className="flex flex-wrap items-center gap-space-sm pt-space-xs border-t border-outline-variant/15">
-              <button
-                onClick={() => setAlertActive(!alertActive)}
-                className={`px-space-md py-2.5 rounded-xl font-title-md text-title-md shadow-sm transition-all flex items-center gap-2 ${
-                  alertActive
-                    ? 'bg-secondary text-on-secondary'
-                    : 'bg-primary-container text-on-primary hover:opacity-90'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[18px] text-secondary-container">
-                  {alertActive ? 'check_circle' : 'notifications_active'}
-                </span>
-                <span>
-                  {alertActive ? `Budget Alert Activated (${formatMoney(1500)}/wk)` : `Activate Budget Alert (${formatMoney(1500)}/wk)`}
-                </span>
-              </button>
-              <button
-                onClick={() => setOccasionExcluded(!occasionExcluded)}
-                className={`px-space-md py-2.5 rounded-xl font-title-md text-title-md transition-colors border border-outline-variant/30 ${
-                  occasionExcluded
-                    ? 'bg-secondary-container text-on-secondary-container font-bold'
-                    : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
-                }`}
-              >
-                {occasionExcluded ? '✓ Excluded (Baseline Recalibrated)' : 'Exclude One-time Occasion'}
-              </button>
-              <button
-                onClick={handleDiscussWithCoach}
-                className="px-space-md py-2.5 rounded-xl bg-surface-container-lowest hover:bg-surface-container-low text-tertiary-container font-title-md text-title-md shadow-sm transition-colors flex items-center gap-1.5 ml-auto border border-outline-variant/30"
-              >
-                <span className="material-symbols-outlined text-[18px]">chat</span>
-                <span>Discuss with Coach</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Section 3: Recent Transaction Log with AI Classification */}
+      {/* Section 2: Recent Transaction Log with AI Classification */}
       <div className="flex flex-col gap-space-md">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
           <div>
