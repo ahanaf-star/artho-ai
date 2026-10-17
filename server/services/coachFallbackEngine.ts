@@ -3,6 +3,7 @@ import { IntentResult } from './intentClassifier';
 
 export interface CoachResponsePayload {
   source: 'ai' | 'fallback';
+  modelUsed?: string;
   answer: string;
   factsUsed: string[];
   followUps: string[];

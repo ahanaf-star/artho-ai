@@ -7,6 +7,7 @@ import { EVALUATION_TEST_CASES, TestCase } from './testCases';
 import { classifyIntent } from '../services/intentClassifier';
 import { executeCoachInquiry } from '../services/coachGeminiService';
 import { validateCoachNumbers, verifyLanguageMatch } from '../services/coachNumberValidator';
+import { isConfiguredApiKey, APPROVED_GEMINI_MODELS } from '../config/geminiConfig';
 
 // Select 10 representative cases (5 English + 5 Bangla, 2 per category)
 const SMOKE_CASE_IDS = [
@@ -29,6 +30,7 @@ export interface SmokeResult {
   question: string;
   geminiGenerated: boolean;
   fallbackUsed: boolean;
+  modelUsed?: string;
   languageMatch: boolean;
   numbersValid: boolean;
   unverifiedNumbers: number[];
@@ -45,21 +47,26 @@ export async function runLiveGeminiSmokeTest() {
   console.log('================================================================');
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey.length < 20 || !apiKey.startsWith('AIza')) {
+  const isKeyConfigured = isConfiguredApiKey(apiKey);
+
+  if (!isKeyConfigured) {
     const reason = !apiKey
       ? 'GEMINI_API_KEY is not configured in environment or .env'
-      : `GEMINI_API_KEY appears invalid/truncated (length: ${apiKey.length}, expected 39-character AIza... key)`;
+      : 'GEMINI_API_KEY contains a placeholder value or is too short';
 
     console.log(`\n[API CONFIGURATION WARNING] ${reason}.`);
     console.log('Live Gemini calls cannot succeed without a valid Google GenAI key.');
     console.log('Security Notice: No secrets or credentials will be logged.');
     console.log('\nTo configure a valid key securely:');
-    console.log('  1. In development: Add GEMINI_API_KEY="AIzaSy..." to your local .env (never commit .env)');
+    console.log('  1. In development: Add GEMINI_API_KEY="..." to your local .env (never commit .env)');
     console.log('  2. In production: Add GEMINI_API_KEY to Render Environment Variables dashboard');
     console.log('  3. Then re-run: npm run test:coach-smoke\n');
+  } else {
+    console.log(`\n[API CONFIGURATION] Detected configured GEMINI_API_KEY (${apiKey!.trim().length} chars). Testing live model calls.`);
+    console.log(`[MODEL CONFIGURATION] Approved models: ${APPROVED_GEMINI_MODELS.join(', ')}`);
   }
 
-  const aiClient = apiKey ? new GoogleGenAI({ apiKey }) : null;
+  const aiClient = isKeyConfigured ? new GoogleGenAI({ apiKey: apiKey!.trim() }) : null;
   const fixtures = createFixtures();
   const selectedCases = EVALUATION_TEST_CASES.filter((tc) => SMOKE_CASE_IDS.includes(tc.id));
   console.log(`Evaluating ${selectedCases.length} representative cases (5 EN + 5 BN, 2 per category)...`);
@@ -133,7 +140,7 @@ export async function runLiveGeminiSmokeTest() {
       if (geminiGenerated) {
         if (response.answer.length > 20 && langMatch && numberVal.valid && healthcareProtected) {
           status = 'LIVE_GEMINI_PASS';
-          notes = 'Live Gemini generation verified & compliant';
+          notes = `Live Gemini generation verified & compliant (model: ${response.modelUsed || 'approved'})`;
         } else {
           status = 'API_ERROR';
           notes = `Live Gemini failed guards: ${unrecognized.length ? `unverified numbers [${unrecognized.join(', ')}]` : !langMatch ? 'language mismatch' : 'healthcare breach'}`;
@@ -150,6 +157,7 @@ export async function runLiveGeminiSmokeTest() {
         question: tc.question,
         geminiGenerated,
         fallbackUsed,
+        modelUsed: response.modelUsed,
         languageMatch: langMatch,
         numbersValid: numberVal.valid,
         unverifiedNumbers: unrecognized,
@@ -160,9 +168,9 @@ export async function runLiveGeminiSmokeTest() {
         notes,
       });
 
-      console.log(`  [${status}] ${tc.id} (${tc.language.toUpperCase()}) - ${tc.question.slice(0, 45)}...`);
+      console.log(`  [${status}] ${tc.id} (${tc.language.toUpperCase()}) - ${tc.question.slice(0, 45)}... ${response.modelUsed ? `[${response.modelUsed}]` : ''}`);
     } catch (err: any) {
-      const sanitizedMsg = (err.message || 'Unknown API Error').replace(/AIza[0-9A-Za-z-_]{35}/g, '[REDACTED_KEY]');
+      const sanitizedMsg = (err.message || 'Unknown API Error').replace(/(?:AIza[0-9A-Za-z-_]{35}|[0-9A-Za-z-_]{50,60})/g, '[REDACTED_KEY]');
       results.push({
         id: tc.id,
         category: tc.category,

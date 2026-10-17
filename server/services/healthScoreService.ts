@@ -10,6 +10,7 @@ import {
   FinancialHealthResult,
 } from '../../src/types/financial';
 import { GoogleGenAI } from '@google/genai';
+import { PRIMARY_GEMINI_MODEL } from '../config/geminiConfig';
 
 export interface HealthScoreExplanation {
   summary: string;
@@ -327,7 +328,7 @@ Output MUST strictly be valid JSON adhering to this exact schema:
 
   try {
     const response = await aiClient.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: PRIMARY_GEMINI_MODEL,
       contents: JSON.stringify(factsPayload),
       config: {
         systemInstruction,

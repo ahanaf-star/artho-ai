@@ -19,7 +19,9 @@ export interface CoachCallParams {
   aiClient?: GoogleGenAI | null;
 }
 
-const APPROVED_MODELS = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+import { APPROVED_GEMINI_MODELS } from '../config/geminiConfig';
+
+const APPROVED_MODELS = APPROVED_GEMINI_MODELS;
 
 /**
  * Builds the authoritative system prompt for the AI Financial Coach
@@ -212,6 +214,7 @@ export async function executeCoachInquiry(params: CoachCallParams): Promise<Coac
         // Valid AI response
         return {
           source: 'ai',
+          modelUsed: model,
           answer: parsed.answer,
           factsUsed: Array.isArray(parsed.factsUsed) ? parsed.factsUsed : sliced.factKeys,
           followUps: Array.isArray(parsed.followUps) ? parsed.followUps.slice(0, 2) : [],

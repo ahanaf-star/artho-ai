@@ -18,6 +18,7 @@ import {
 import { buildCoachContext } from './server/services/coachContextBuilder';
 import { classifyIntent } from './server/services/intentClassifier';
 import { executeCoachInquiry } from './server/services/coachGeminiService';
+import { APPROVED_GEMINI_MODELS } from './server/config/geminiConfig';
 
 dotenv.config();
 
@@ -123,7 +124,7 @@ async function startServer() {
   });
 
   // Resilient Gemini generator with automatic fallback across approved models
-  const APPROVED_MODELS = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+  const APPROVED_MODELS = APPROVED_GEMINI_MODELS;
 
   async function callGeminiWithRetry(contents: string, config: any) {
     if (!ai) throw new Error('Gemini client not initialized');
