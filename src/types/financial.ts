@@ -84,7 +84,21 @@ export interface User {
     accountNumber: string;
     type: 'MFS' | 'Bank Account' | 'Credit Card' | string;
   }>;
+  walletAccounts?: WalletAccount[];
   recurringObligations?: RecurringObligation[];
+}
+
+export interface WalletAccount {
+  id: string;
+  userId?: string;
+  accountType: 'Mobile Financial Service (MFS)' | 'Bank Account' | 'Other Financial Account' | string;
+  provider: string;
+  displayName?: string;
+  accountNumber?: string;
+  balance?: number;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type UserProfile = User; // Alias for backward-compatibility

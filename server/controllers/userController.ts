@@ -256,3 +256,273 @@ export async function createUser(req: Request, res: Response) {
   }
 }
 
+// In-memory store for wallet accounts when MongoDB is offline / standalone
+const fallbackWalletsByUser = new Map<string, any[]>();
+
+/**
+ * GET /api/users/:id/wallets
+ * Get all manually managed wallet & bank accounts for user
+ */
+export async function getWalletAccounts(req: Request, res: Response) {
+  const { id } = req.params;
+  const authUser = (req as any).user;
+  if (authUser) {
+    const isOwner =
+      authUser.customId === id ||
+      authUser.id === id ||
+      authUser._id?.toString() === id ||
+      authUser.email?.toLowerCase() === id.toLowerCase();
+    if (!isOwner) {
+      return res.status(403).json({ error: "Access forbidden: You cannot access another user's accounts" });
+    }
+  } else if (id !== 'usr-ahmed-01' && id !== INITIAL_USER.email) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  if (!isDbConnected()) {
+    return res.json(fallbackWalletsByUser.get(id) || []);
+  }
+
+  try {
+    const isObjectId = mongoose.Types.ObjectId.isValid(id);
+    const user = await UserModel.findOne({
+      $or: [
+        ...(isObjectId ? [{ _id: id }] : []),
+        { customId: id },
+        { email: id.toLowerCase() },
+      ],
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    return res.json(user.walletAccounts || []);
+  } catch (err: any) {
+    console.error('Error fetching wallet accounts:', err.message);
+    return res.status(500).json({ error: 'Failed to fetch wallet accounts' });
+  }
+}
+
+/**
+ * POST /api/users/:id/wallets
+ * Add a new manually managed wallet or bank account
+ */
+export async function addWalletAccount(req: Request, res: Response) {
+  const { id } = req.params;
+  const { accountType, provider, displayName, accountNumber, balance, notes } = req.body;
+
+  const authUser = (req as any).user;
+  if (authUser) {
+    const isOwner =
+      authUser.customId === id ||
+      authUser.id === id ||
+      authUser._id?.toString() === id ||
+      authUser.email?.toLowerCase() === id.toLowerCase();
+    if (!isOwner) {
+      return res.status(403).json({ error: "Access forbidden: You cannot modify another user's accounts" });
+    }
+  } else if (id !== 'usr-ahmed-01' && id !== INITIAL_USER.email) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  if (!provider || typeof provider !== 'string' || !provider.trim()) {
+    return res.status(400).json({ error: 'Provider / Institution name is required' });
+  }
+
+  let parsedBalance: number | undefined = undefined;
+  if (balance !== undefined && balance !== null && balance !== '') {
+    const num = Number(balance);
+    if (isNaN(num) || !isFinite(num) || num < 0) {
+      return res.status(400).json({ error: 'Current balance must be a non-negative number' });
+    }
+    parsedBalance = num;
+  }
+
+  const newAccount = {
+    id: `wlt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    userId: id,
+    accountType: accountType || 'Mobile Financial Service (MFS)',
+    provider: provider.trim(),
+    displayName: displayName ? String(displayName).trim() : '',
+    accountNumber: accountNumber ? String(accountNumber).trim() : '',
+    balance: parsedBalance !== undefined ? parsedBalance : 0,
+    notes: notes ? String(notes).trim() : '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (!isDbConnected()) {
+    const list = fallbackWalletsByUser.get(id) || [];
+    list.push(newAccount);
+    fallbackWalletsByUser.set(id, list);
+    return res.status(201).json(newAccount);
+  }
+
+  try {
+    const isObjectId = mongoose.Types.ObjectId.isValid(id);
+    const user = await UserModel.findOneAndUpdate(
+      {
+        $or: [
+          ...(isObjectId ? [{ _id: id }] : []),
+          { customId: id },
+          { email: id.toLowerCase() },
+        ],
+      },
+      { $push: { walletAccounts: newAccount } },
+      { new: true, runValidators: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    return res.status(201).json(newAccount);
+  } catch (err: any) {
+    console.error('Error adding wallet account:', err.message);
+    return res.status(500).json({ error: 'Failed to add wallet account' });
+  }
+}
+
+/**
+ * PUT /api/users/:id/wallets/:accountId
+ * Update an existing wallet or bank account
+ */
+export async function updateWalletAccount(req: Request, res: Response) {
+  const { id, accountId } = req.params;
+  const updates = req.body;
+
+  const authUser = (req as any).user;
+  if (authUser) {
+    const isOwner =
+      authUser.customId === id ||
+      authUser.id === id ||
+      authUser._id?.toString() === id ||
+      authUser.email?.toLowerCase() === id.toLowerCase();
+    if (!isOwner) {
+      return res.status(403).json({ error: "Access forbidden: You cannot modify another user's accounts" });
+    }
+  } else if (id !== 'usr-ahmed-01' && id !== INITIAL_USER.email) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  if (updates.balance !== undefined && updates.balance !== null && updates.balance !== '') {
+    const num = Number(updates.balance);
+    if (isNaN(num) || !isFinite(num) || num < 0) {
+      return res.status(400).json({ error: 'Current balance must be a non-negative number' });
+    }
+    updates.balance = num;
+  }
+
+  if (updates.provider !== undefined && (!updates.provider || !String(updates.provider).trim())) {
+    return res.status(400).json({ error: 'Provider / Institution name cannot be empty' });
+  }
+
+  if (!isDbConnected()) {
+    const list = fallbackWalletsByUser.get(id) || [];
+    const idx = list.findIndex((a) => a.id === accountId);
+    if (idx === -1) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+    const updated = {
+      ...list[idx],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+    list[idx] = updated;
+    fallbackWalletsByUser.set(id, list);
+    return res.json(updated);
+  }
+
+  try {
+    const isObjectId = mongoose.Types.ObjectId.isValid(id);
+    const user = await UserModel.findOne({
+      $or: [
+        ...(isObjectId ? [{ _id: id }] : []),
+        { customId: id },
+        { email: id.toLowerCase() },
+      ],
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const account = user.walletAccounts?.find((a: any) => a.id === accountId);
+    if (!account) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+
+    if (updates.accountType !== undefined) account.accountType = updates.accountType;
+    if (updates.provider !== undefined) account.provider = String(updates.provider).trim();
+    if (updates.displayName !== undefined) account.displayName = String(updates.displayName).trim();
+    if (updates.accountNumber !== undefined) account.accountNumber = String(updates.accountNumber).trim();
+    if (updates.balance !== undefined) account.balance = Number(updates.balance);
+    if (updates.notes !== undefined) account.notes = String(updates.notes).trim();
+    account.updatedAt = new Date().toISOString();
+
+    await user.save();
+    return res.json(account);
+  } catch (err: any) {
+    console.error('Error updating wallet account:', err.message);
+    return res.status(500).json({ error: 'Failed to update wallet account' });
+  }
+}
+
+/**
+ * DELETE /api/users/:id/wallets/:accountId
+ * Delete an existing wallet or bank account
+ */
+export async function deleteWalletAccount(req: Request, res: Response) {
+  const { id, accountId } = req.params;
+
+  const authUser = (req as any).user;
+  if (authUser) {
+    const isOwner =
+      authUser.customId === id ||
+      authUser.id === id ||
+      authUser._id?.toString() === id ||
+      authUser.email?.toLowerCase() === id.toLowerCase();
+    if (!isOwner) {
+      return res.status(403).json({ error: "Access forbidden: You cannot modify another user's accounts" });
+    }
+  } else if (id !== 'usr-ahmed-01' && id !== INITIAL_USER.email) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  if (!isDbConnected()) {
+    const list = fallbackWalletsByUser.get(id) || [];
+    const idx = list.findIndex((a) => a.id === accountId);
+    if (idx === -1) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+    list.splice(idx, 1);
+    fallbackWalletsByUser.set(id, list);
+    return res.json({ success: true, message: 'Account deleted' });
+  }
+
+  try {
+    const isObjectId = mongoose.Types.ObjectId.isValid(id);
+    const user = await UserModel.findOneAndUpdate(
+      {
+        $or: [
+          ...(isObjectId ? [{ _id: id }] : []),
+          { customId: id },
+          { email: id.toLowerCase() },
+        ],
+      },
+      { $pull: { walletAccounts: { id: accountId } } },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    return res.json({ success: true, message: 'Account deleted successfully' });
+  } catch (err: any) {
+    console.error('Error deleting wallet account:', err.message);
+    return res.status(500).json({ error: 'Failed to delete wallet account' });
+  }
+}
+

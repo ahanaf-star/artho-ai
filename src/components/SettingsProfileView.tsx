@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserProfile, Transaction, SavingsGoal } from '../types/financial';
 import { SUPPORTED_CURRENCIES, normalizeCurrencyCode, formatCurrency, convertAmount } from '../services/currencyService';
+import { WalletsManagementSection } from './WalletsManagementSection';
 
 interface SettingsProfileViewProps {
   user: UserProfile;
@@ -21,14 +22,28 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
   onResetData,
   onLogout,
   isBangla,
-  onToggleBangla,
+  onToggleBangla: _onToggleBangla,
 }) => {
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
   const [profileImage, setProfileImage] = useState(user.profileImage || '');
-  const [preferredLanguage, setPreferredLanguage] = useState<'en' | 'bn'>(user.preferredLanguage || 'en');
+  const [monthlyIncome, setMonthlyIncome] = useState<string>(
+    user.monthlyIncome !== undefined && user.monthlyIncome !== null ? user.monthlyIncome.toString() : ''
+  );
+  const [monthlyIncomeError, setMonthlyIncomeError] = useState<string | null>(null);
   const [currency, setCurrency] = useState(normalizeCurrencyCode(user.currency));
   const [savedMsg, setSavedMsg] = useState(false);
+
+  // Sync state if user changes externally
+  useEffect(() => {
+    setName(user.name || '');
+    setEmail(user.email || '');
+    setProfileImage(user.profileImage || '');
+    setMonthlyIncome(
+      user.monthlyIncome !== undefined && user.monthlyIncome !== null ? user.monthlyIncome.toString() : ''
+    );
+    setCurrency(normalizeCurrencyCode(user.currency));
+  }, [user.id, user.name, user.email, user.profileImage, user.monthlyIncome, user.currency]);
 
   // Quick avatar choices
   const sampleAvatars = [
@@ -45,20 +60,32 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    setMonthlyIncomeError(null);
+
+    let parsedIncome: number | undefined = undefined;
+    const trimmedIncome = monthlyIncome.trim();
+    if (trimmedIncome !== '') {
+      const num = Number(trimmedIncome);
+      if (isNaN(num) || !isFinite(num) || num < 0) {
+        setMonthlyIncomeError(
+          isBangla
+            ? 'অনুগ্রহ করে একটি বৈধ এবং অ-ঋণাত্মক আর্থিক পরিমাণ লিখুন।'
+            : 'Please enter a valid, non-negative monetary value.'
+        );
+        return;
+      }
+      parsedIncome = Math.round(num * 100) / 100;
+    }
+
     const updated: UserProfile = {
       ...user,
       name: name.trim(),
       email: email.trim(),
       profileImage: profileImage.trim() || undefined,
-      preferredLanguage,
+      monthlyIncome: parsedIncome,
       currency,
     };
     onUpdateUser(updated);
-    if (preferredLanguage === 'bn' && !isBangla) {
-      onToggleBangla(true);
-    } else if (preferredLanguage === 'en' && isBangla) {
-      onToggleBangla(false);
-    }
     setSavedMsg(true);
     setTimeout(() => setSavedMsg(false), 3000);
   };
@@ -194,19 +221,58 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
             />
           </div>
 
-          {/* Preferred Language */}
+          {/* Monthly Inflow Baseline (BDT) */}
           <div className="flex flex-col gap-1.5">
-            <label className="font-label-md text-xs font-semibold text-outline uppercase tracking-wider">
-              {isBangla ? 'পছন্দের ভাষা' : 'Preferred Language'}
-            </label>
-            <select
-              value={preferredLanguage}
-              onChange={(e) => setPreferredLanguage(e.target.value as 'en' | 'bn')}
-              className="p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-body-md text-sm"
-            >
-              <option value="en">English (Default)</option>
-              <option value="bn">বাংলা (Bengali)</option>
-            </select>
+            <div className="flex items-center justify-between">
+              <label className="font-label-md text-xs font-semibold text-outline uppercase tracking-wider">
+                {isBangla ? 'মাসিক নিয়মিত আয় (BDT)' : 'MONTHLY INFLOW BASELINE (BDT)'}
+              </label>
+              <span className="text-[11px] text-outline font-normal">
+                {isBangla ? '(ঐচ্ছিক)' : '(Optional)'}
+              </span>
+            </div>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-secondary text-sm pointer-events-none select-none">
+                ৳
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={monthlyIncome}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setMonthlyIncome(val);
+                  if (monthlyIncomeError) setMonthlyIncomeError(null);
+                  if (val.trim() !== '') {
+                    const num = Number(val);
+                    if (isNaN(num) || !isFinite(num) || num < 0) {
+                      setMonthlyIncomeError(
+                        isBangla
+                          ? 'মান ০ বা তার বেশি হতে হবে।'
+                          : 'Value must be zero or a positive number.'
+                      );
+                    }
+                  }
+                }}
+                placeholder={isBangla ? 'যেমন: ৩৫০০০ (ঐচ্ছিক আয়)' : 'e.g. 35000 (Optional baseline)'}
+                className={`w-full pl-8 pr-3 py-3 rounded-xl border bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 font-body-md text-sm transition-all ${
+                  monthlyIncomeError
+                    ? 'border-error focus:ring-error text-error'
+                    : 'border-outline-variant/30 focus:ring-secondary'
+                }`}
+              />
+            </div>
+            {monthlyIncomeError ? (
+              <span className="text-xs text-error font-medium flex items-center gap-1">
+                <span className="material-symbols-outlined text-[14px]">error</span>
+                {monthlyIncomeError}
+              </span>
+            ) : (
+              <span className="text-[11px] text-outline">
+                {isBangla ? 'বাজেট এবং নগদ প্রবাহ হিসাবের ভিত্তি হিসেবে ব্যবহৃত হবে।' : 'Used for liquidity buffer and cash flow projections.'}
+              </span>
+            )}
           </div>
 
           {/* Currency */}
@@ -238,7 +304,19 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
         </div>
       </form>
 
-
+      {/* Wallets & Banking Accounts */}
+      <WalletsManagementSection
+        walletAccounts={user.walletAccounts || []}
+        onUpdateWalletAccounts={(accounts) => {
+          onUpdateUser({
+            ...user,
+            walletAccounts: accounts,
+          });
+        }}
+        userId={user.id}
+        isBangla={isBangla}
+        currency={currency}
+      />
 
       {/* Linked Accounts */}
       <div className="p-space-lg rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/20 flex flex-col gap-space-md">

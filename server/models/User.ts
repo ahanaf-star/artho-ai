@@ -23,6 +23,18 @@ export interface IUser extends Document {
     accountNumber: string;
     type: string;
   }>;
+  walletAccounts?: Array<{
+    id: string;
+    userId?: string;
+    accountType: string;
+    provider: string;
+    displayName?: string;
+    accountNumber?: string;
+    balance?: number;
+    notes?: string;
+    createdAt?: string;
+    updatedAt?: string;
+  }>;
   recurringObligations?: Array<{
     id: string;
     name: string;
@@ -121,6 +133,20 @@ const UserSchema = new Schema<IUser>(
         balance: { type: Number, default: 0 },
         accountNumber: { type: String, default: '' },
         type: { type: String, default: 'MFS' },
+      },
+    ],
+    walletAccounts: [
+      {
+        id: { type: String, required: true },
+        userId: { type: String, required: false },
+        accountType: { type: String, required: true, default: 'Mobile Financial Service (MFS)' },
+        provider: { type: String, required: true },
+        displayName: { type: String, default: '' },
+        accountNumber: { type: String, default: '' },
+        balance: { type: Number, default: 0 },
+        notes: { type: String, default: '' },
+        createdAt: { type: String },
+        updatedAt: { type: String },
       },
     ],
     recurringObligations: [
