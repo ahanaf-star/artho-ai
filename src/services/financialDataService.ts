@@ -17,6 +17,10 @@ function getCategoriesKey(userId: string): string {
   return `${PREFIX}_${userId}_categories`;
 }
 
+function getLastUpdatedKey(userId: string): string {
+  return `${PREFIX}_${userId}_last_updated`;
+}
+
 
 
 export const financialDataService = {
@@ -183,5 +187,34 @@ export const financialDataService = {
       console.warn('[financialDataService] Backend categories sync skipped:', err);
     }
     return null;
+  },
+
+  /**
+   * Get the persisted authoritative last financial update UTC timestamp for a user
+   */
+  getLastUpdated(userId: string): string | null {
+    if (!userId) return null;
+    try {
+      const key = getLastUpdatedKey(userId);
+      return localStorage.getItem(key);
+    } catch (err) {
+      console.error(`Failed reading last-updated timestamp for user ${userId}:`, err);
+      return null;
+    }
+  },
+
+  /**
+   * Record the authoritative last financial update UTC timestamp for a user
+   */
+  setLastUpdated(userId: string, timestamp?: string): string {
+    const isoString = timestamp || new Date().toISOString();
+    if (!userId) return isoString;
+    try {
+      const key = getLastUpdatedKey(userId);
+      localStorage.setItem(key, isoString);
+    } catch (err) {
+      console.error(`Failed saving last-updated timestamp for user ${userId}:`, err);
+    }
+    return isoString;
   },
 };

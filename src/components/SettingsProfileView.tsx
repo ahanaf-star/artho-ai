@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { UserProfile, Transaction, SavingsGoal } from '../types/financial';
 import { validateFinancialData } from '../services/financialCalculations';
 import { SUPPORTED_CURRENCIES, normalizeCurrencyCode, formatCurrency, convertAmount } from '../services/currencyService';
+import { COMMON_TIMEZONES, resolveTimeZone } from '../services/dateTimeService';
 
 interface SettingsProfileViewProps {
   user: UserProfile;
@@ -29,6 +30,8 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
   const [profileImage, setProfileImage] = useState(user.profileImage || '');
   const [preferredLanguage, setPreferredLanguage] = useState<'en' | 'bn'>(user.preferredLanguage || 'en');
   const [currency, setCurrency] = useState(normalizeCurrencyCode(user.currency));
+  const [timeZone, setTimeZone] = useState(resolveTimeZone(user.timeZone));
+  const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>(user.timeFormat || '24h');
   const [monthlyIncome, setMonthlyIncome] = useState(user.monthlyIncome ? user.monthlyIncome.toString() : '');
   const [riskTolerance, setRiskTolerance] = useState(user.riskTolerance);
   const [savedMsg, setSavedMsg] = useState(false);
@@ -60,6 +63,8 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
       profileImage: profileImage.trim() || undefined,
       preferredLanguage,
       currency,
+      timeZone,
+      timeFormat,
       monthlyIncome: isNaN(parsedIncome) ? 0 : parsedIncome,
       riskTolerance,
     };
@@ -237,6 +242,39 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
                   {c.code} ({c.displaySymbol}) — {isBangla ? c.nameBn : c.name} {c.code === 'BDT' ? '(Default)' : ''}
                 </option>
               ))}
+            </select>
+          </div>
+
+          {/* Timezone Preference */}
+          <div className="flex flex-col gap-1.5">
+            <label className="font-label-md text-xs font-semibold text-outline uppercase tracking-wider">
+              {isBangla ? 'টাইমজোন (Timezone)' : 'Primary Timezone'}
+            </label>
+            <select
+              value={timeZone}
+              onChange={(e) => setTimeZone(e.target.value)}
+              className="p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-body-md text-sm cursor-pointer"
+            >
+              {COMMON_TIMEZONES.map((tz) => (
+                <option key={tz.value} value={tz.value}>
+                  {tz.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Time Format (12h vs 24h) */}
+          <div className="flex flex-col gap-1.5">
+            <label className="font-label-md text-xs font-semibold text-outline uppercase tracking-wider">
+              {isBangla ? 'সময়ের ফরম্যাট' : 'Time Display Format'}
+            </label>
+            <select
+              value={timeFormat}
+              onChange={(e) => setTimeFormat(e.target.value as '12h' | '24h')}
+              className="p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-body-md text-sm cursor-pointer"
+            >
+              <option value="24h">24-Hour (e.g. 09:52, 18:30)</option>
+              <option value="12h">12-Hour (e.g. 09:52 AM, 06:30 PM)</option>
             </select>
           </div>
 

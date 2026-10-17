@@ -12,6 +12,11 @@ import {
   normalizeCurrencyCode,
 } from '../services/currencyService';
 import { NavScreen } from './Sidebar';
+import {
+  useLiveFormattedTimestamp,
+  formatExactDateTime,
+  resolveTimeZone,
+} from '../services/dateTimeService';
 
 interface DashboardProps {
   transactions: Transaction[];
@@ -23,6 +28,9 @@ interface DashboardProps {
   onOpenMonthlyReport: () => void;
   onOpenCreateGoal: () => void;
   isBangla: boolean;
+  lastUpdated?: string | null;
+  onRefreshData?: () => Promise<void> | void;
+  isRefreshing?: boolean;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -35,6 +43,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenMonthlyReport,
   onOpenCreateGoal,
   isBangla,
+  lastUpdated,
+  onRefreshData,
+  isRefreshing = false,
 }) => {
   // Dynamic calculations based on live synthetic state
   const activeMonth = getLatestTransactionMonth(transactions);
@@ -73,6 +84,45 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const firstName = user?.name?.trim() ? user.name.trim().split(' ')[0] : '';
 
+  // Timezone and dynamic update timestamp
+  const effectiveTimeZone = resolveTimeZone(user?.timeZone);
+  const formattedLastUpdated = useLiveFormattedTimestamp(lastUpdated, {
+    timeZone: effectiveTimeZone,
+    isBangla,
+    hour12: user?.timeFormat === '12h',
+  });
+  const exactTooltip = formatExactDateTime(
+    lastUpdated,
+    effectiveTimeZone,
+    isBangla ? 'bn-BD' : 'en-US'
+  );
+
+  // Timezone-aware greeting calculation
+  const getZonedHour = (): number => {
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: effectiveTimeZone,
+        hour: 'numeric',
+        hour12: false,
+      }).formatToParts(new Date());
+      const hourPart = parts.find((p) => p.type === 'hour');
+      return hourPart ? parseInt(hourPart.value, 10) : new Date().getHours();
+    } catch {
+      return new Date().getHours();
+    }
+  };
+  const zonedHour = getZonedHour();
+  const getGreeting = (): string => {
+    if (isBangla) {
+      if (zonedHour < 12) return firstName ? `শুভ সকাল, ${firstName}` : 'শুভ সকাল';
+      if (zonedHour < 17) return firstName ? `শুভ দুপুর, ${firstName}` : 'শুভ দুপুর';
+      return firstName ? `শুভ সন্ধ্যা, ${firstName}` : 'শুভ সন্ধ্যা';
+    }
+    if (zonedHour < 12) return firstName ? `Good morning, ${firstName}` : 'Good morning';
+    if (zonedHour < 17) return firstName ? `Good afternoon, ${firstName}` : 'Good afternoon';
+    return firstName ? `Good evening, ${firstName}` : 'Good evening';
+  };
+
   return (
     <div className="flex flex-col w-full gap-space-lg pb-space-xl">
       {/* Welcome Header Strip */}
@@ -80,19 +130,45 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="flex flex-col">
           <div className="flex items-center gap-space-xs">
             <h1 className="font-headline-xl text-headline-xl text-on-surface tracking-tight font-bold">
-              {isBangla
-                ? (firstName ? `শুভ সকাল, ${firstName}` : 'শুভ সকাল')
-                : (firstName ? `Good morning, ${firstName}` : 'Good morning')}
+              {getGreeting()}
             </h1>
           </div>
-          <p className="font-body-md text-body-md text-on-surface-variant mt-1 flex items-center gap-2">
+          <p className="font-body-md text-body-md text-on-surface-variant mt-1 flex flex-wrap items-center gap-2">
             <span>
               {isBangla
                 ? 'চলতি মাসে আপনার আর্থিক অবস্থার সামগ্রিক বিবরণ'
                 : "Here's how your money is doing this month"}
             </span>
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-outline-variant"></span>
-            <span className="text-on-surface-variant/80">Updated today at 09:42 AM</span>
+            <span
+              className="text-on-surface-variant/80 flex items-center gap-1.5 select-none"
+              title={`${isBangla ? 'সর্বশেষ ডেটা আপডেট' : 'Last successful update'}: ${exactTooltip}`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full transition-all ${
+                  isRefreshing ? 'bg-secondary animate-ping' : 'bg-secondary'
+                }`}
+              />
+              <span className="font-medium text-on-surface-variant">{formattedLastUpdated}</span>
+              {onRefreshData && (
+                <button
+                  type="button"
+                  onClick={() => onRefreshData()}
+                  disabled={isRefreshing}
+                  className="p-1 -my-1 rounded-lg hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-50 flex items-center justify-center cursor-pointer"
+                  title={isBangla ? 'এখনই তথ্য রিফ্রেশ করুন' : 'Refresh live financial data now'}
+                  aria-label="Refresh financial data"
+                >
+                  <span
+                    className={`material-symbols-outlined text-[15px] leading-none text-outline hover:text-secondary transition-transform ${
+                      isRefreshing ? 'animate-spin text-secondary' : ''
+                    }`}
+                  >
+                    refresh
+                  </span>
+                </button>
+              )}
+            </span>
           </p>
         </div>
 

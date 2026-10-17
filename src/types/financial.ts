@@ -66,7 +66,11 @@ export interface User {
   profileImage?: string;
   preferredLanguage: 'en' | 'bn';
   currency: string;
+  timeZone?: string;
+  timeFormat?: '12h' | '24h';
+  lastFinancialUpdate?: string;
   createdAt: string;
+  updatedAt?: string;
   tagline?: string;
   memberStatus?: string;
   city?: string;

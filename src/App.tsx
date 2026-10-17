@@ -152,6 +152,19 @@ export default function App() {
     return user ? financialDataService.getCategories(user.id) : [];
   });
 
+  // Authoritative dynamic update timestamp for financial overview
+  const [lastFinancialUpdate, setLastFinancialUpdate] = useState<string | null>(() => {
+    const user = authService.getCurrentUser();
+    if (!user) return null;
+    return (
+      financialDataService.getLastUpdated(user.id) ||
+      user.lastFinancialUpdate ||
+      user.updatedAt ||
+      null
+    );
+  });
+  const [isRefreshingFinancialData, setIsRefreshingFinancialData] = useState<boolean>(false);
+
   // Modal States
   const [isAddTxOpen, setIsAddTxOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -244,8 +257,17 @@ export default function App() {
     }
   }, []);
 
+  // Helper to record authoritative financial update timestamp
+  const recordFinancialUpdateTimestamp = (userId: string, timestamp?: string): string => {
+    const ts = timestamp || new Date().toISOString();
+    financialDataService.setLastUpdated(userId, ts);
+    setLastFinancialUpdate(ts);
+    return ts;
+  };
+
   // Helper to revalidate financial data directly from MongoDB backend
   const refreshFinancialData = async (userId: string) => {
+    setIsRefreshingFinancialData(true);
     try {
       const [backendTxs, backendGoals, backendCats] = await Promise.all([
         apiService.getTransactions(userId),
@@ -264,8 +286,14 @@ export default function App() {
         setCustomCategories(backendCats);
         financialDataService.saveCategories(userId, backendCats);
       }
+
+      // Record successful live data refresh timestamp
+      const nowIso = recordFinancialUpdateTimestamp(userId);
+      apiService.updateUser(userId, { lastFinancialUpdate: nowIso }).catch(() => {});
     } catch (e) {
       console.warn('[App] Failed fetching live data from backend:', e);
+    } finally {
+      setIsRefreshingFinancialData(false);
     }
   };
 
@@ -285,6 +313,14 @@ export default function App() {
     setTransactions(userTxs);
     setGoals(userGoals);
     setCustomCategories(userCats);
+
+    const savedTs =
+      financialDataService.getLastUpdated(session.user.id) ||
+      session.user.lastFinancialUpdate ||
+      session.user.updatedAt ||
+      null;
+    setLastFinancialUpdate(savedTs);
+
     navigateTo('dashboard', session.user);
     await refreshFinancialData(session.user.id);
   };
@@ -296,6 +332,7 @@ export default function App() {
     setTransactions([]);
     setGoals([]);
     setCustomCategories([]);
+    setLastFinancialUpdate(null);
     navigateTo('landing', null);
   };
 
@@ -709,6 +746,13 @@ export default function App() {
               onOpenMonthlyReport={() => setIsMonthlyReportOpen(true)}
               onOpenCreateGoal={() => setIsCreateGoalOpen(true)}
               isBangla={isBangla}
+              lastUpdated={lastFinancialUpdate}
+              onRefreshData={() => {
+                if (currentUser?.id) {
+                  return refreshFinancialData(currentUser.id);
+                }
+              }}
+              isRefreshing={isRefreshingFinancialData}
             />
           )}
 

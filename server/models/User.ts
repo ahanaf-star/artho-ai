@@ -8,6 +8,9 @@ export interface IUser extends Document {
   profileImage?: string;
   preferredLanguage: 'en' | 'bn';
   currency: string;
+  timeZone?: string;
+  timeFormat?: '12h' | '24h';
+  lastFinancialUpdate?: string;
   monthlyIncome?: number;
   riskTolerance?: 'Low' | 'Moderate' | 'Aggressive';
   tagline?: string;
@@ -69,6 +72,20 @@ const UserSchema = new Schema<IUser>(
       default: 'BDT',
       trim: true,
     },
+    timeZone: {
+      type: String,
+      default: 'Asia/Dhaka',
+      trim: true,
+    },
+    timeFormat: {
+      type: String,
+      enum: ['12h', '24h'],
+      default: '24h',
+    },
+    lastFinancialUpdate: {
+      type: String,
+      required: false,
+    },
     monthlyIncome: {
       type: Number,
       required: false,
@@ -127,6 +144,12 @@ const UserSchema = new Schema<IUser>(
         delete ret.__v;
         delete ret.passwordHash;
         ret.currency = normalizeCurrency(ret.currency);
+        if (ret.updatedAt instanceof Date) {
+          ret.updatedAt = ret.updatedAt.toISOString();
+        }
+        if (ret.createdAt instanceof Date) {
+          ret.createdAt = ret.createdAt.toISOString();
+        }
         return ret;
       },
     },
