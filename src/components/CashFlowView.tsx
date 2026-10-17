@@ -255,6 +255,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           {/* Simulate Expense Cut Toggle */}
           <button
             onClick={() => setIsSimulated(!isSimulated)}
+            aria-pressed={isSimulated}
             className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-title-md text-sm transition-all shadow-sm ${
               isSimulated
                 ? 'bg-secondary-container text-on-secondary-container font-bold ring-2 ring-secondary'
@@ -263,13 +264,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           >
             <span className="material-symbols-outlined text-[18px] text-secondary">tune</span>
             <span>
-              {isSimulated
-                ? isBangla
-                  ? `সিমুলেশন সক্রিয় (+${formatMoney(simulationSaving || 300)}/দিন)`
-                  : `Simulation Active (+${formatMoney(simulationSaving || 300)}/day)`
-                : isBangla
-                ? 'খরচ হ্রাস সিমুলেট করুন'
-                : 'Simulate Expense Cut'}
+              {isBangla ? 'খরচ হ্রাস সিমুলেট করুন' : 'Simulate Expense Cut'}
             </span>
           </button>
         </div>
