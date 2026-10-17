@@ -142,14 +142,15 @@ export default function App() {
   const [isMonthlyReportOpen, setIsMonthlyReportOpen] = useState(false);
 
   // Navigate with URL history and strict access protection
-  const navigateTo = (screen: NavScreen) => {
+  const navigateTo = (screen: NavScreen, userOverride?: UserProfile | null) => {
     let target = screen;
+    const activeUser = userOverride !== undefined ? userOverride : currentUser;
 
-    if (!currentUser && PRIVATE_SCREENS.includes(screen)) {
+    if (!activeUser && PRIVATE_SCREENS.includes(screen)) {
       target = 'login';
     }
 
-    if (currentUser && (screen === 'login' || screen === 'signup')) {
+    if (activeUser && (screen === 'login' || screen === 'signup')) {
       target = 'dashboard';
     }
 
@@ -188,7 +189,17 @@ export default function App() {
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [currentUser]);
+  }, [currentUser, activeScreen]);
+
+  // Ensure authenticated user never remains stuck on login or signup screen
+  useEffect(() => {
+    if (currentUser && (activeScreen === 'login' || activeScreen === 'signup')) {
+      setActiveScreen('dashboard');
+      if (typeof window !== 'undefined' && (window.location.pathname === '/login' || window.location.pathname === '/signup')) {
+        window.history.replaceState(null, '', '/dashboard');
+      }
+    }
+  }, [currentUser, activeScreen]);
 
   // Session validation with backend token verification on mount
   useEffect(() => {
@@ -249,7 +260,7 @@ export default function App() {
     const userGoals = financialDataService.getGoals(session.user.id);
     setTransactions(userTxs);
     setGoals(userGoals);
-    navigateTo('dashboard');
+    navigateTo('dashboard', session.user);
     await refreshFinancialData(session.user.id);
   };
 
@@ -259,7 +270,7 @@ export default function App() {
     setCurrentUser(null);
     setTransactions([]);
     setGoals([]);
-    navigateTo('landing');
+    navigateTo('landing', null);
   };
 
   // Sync transactions to user-scoped storage fallback
@@ -564,11 +575,15 @@ export default function App() {
   // Calculate health metrics for current user
   const healthMetrics = calculateFinancialHealthScore(transactions, goals, currentUser.monthlyIncome);
 
+  // Authenticated user view routing: never render blank if screen is login/signup or unrecognized
+  const resolvedScreen: NavScreen =
+    activeScreen === 'login' || activeScreen === 'signup' ? 'dashboard' : activeScreen;
+
   return (
     <div className="min-h-screen bg-background font-body-md text-on-surface antialiased flex flex-col">
       {/* Sidebar Navigation */}
       <Sidebar
-        activeScreen={activeScreen}
+        activeScreen={resolvedScreen}
         onNavigate={(screen) => navigateTo(screen)}
         isOpenMobile={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
@@ -597,7 +612,7 @@ export default function App() {
 
         {/* View Routing */}
         <main className="flex-1 pt-20 bg-background w-full px-4 sm:px-space-lg py-space-lg">
-          {activeScreen === 'landing' && (
+          {resolvedScreen === 'landing' && (
             <LandingPage
               onNavigate={navigateTo}
               isBangla={isBangla}
@@ -616,7 +631,8 @@ export default function App() {
             />
           )}
 
-          {activeScreen === 'dashboard' && (
+          {(resolvedScreen === 'dashboard' ||
+            (!['landing', 'spending-analysis', 'savings-goals', 'ai-coach', 'cash-flow-forecast', 'financial-health', 'insights-alerts', 'settings-profile'].includes(resolvedScreen))) && (
             <Dashboard
               transactions={transactions}
               goals={goals}
@@ -630,7 +646,7 @@ export default function App() {
             />
           )}
 
-          {activeScreen === 'spending-analysis' && (
+          {resolvedScreen === 'spending-analysis' && (
             <SpendingAnalysis
               transactions={transactions}
               onNavigate={navigateTo}
@@ -644,7 +660,7 @@ export default function App() {
             />
           )}
 
-          {activeScreen === 'savings-goals' && (
+          {resolvedScreen === 'savings-goals' && (
             <SavingsGoals
               goals={goals}
               onUpdateGoal={handleUpdateGoal}
@@ -656,7 +672,7 @@ export default function App() {
             />
           )}
 
-          {activeScreen === 'ai-coach' && (
+          {resolvedScreen === 'ai-coach' && (
             <AICoach
               transactions={transactions}
               goals={goals}
@@ -670,7 +686,7 @@ export default function App() {
             />
           )}
 
-          {activeScreen === 'cash-flow-forecast' && (
+          {resolvedScreen === 'cash-flow-forecast' && (
             <CashFlowView
               user={currentUser}
               transactions={transactions}
@@ -681,7 +697,7 @@ export default function App() {
             />
           )}
 
-          {activeScreen === 'financial-health' && (
+          {resolvedScreen === 'financial-health' && (
             <FinancialHealthView
               metrics={healthMetrics}
               goals={goals}
@@ -692,11 +708,11 @@ export default function App() {
             />
           )}
 
-          {activeScreen === 'insights-alerts' && (
+          {resolvedScreen === 'insights-alerts' && (
             <InsightsAlertsView onNavigate={navigateTo} isBangla={isBangla} />
           )}
 
-          {activeScreen === 'settings-profile' && (
+          {resolvedScreen === 'settings-profile' && (
             <SettingsProfileView
               user={currentUser}
               transactions={transactions}
