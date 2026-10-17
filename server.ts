@@ -9,6 +9,7 @@ import userRoutes from './server/routes/userRoutes';
 import transactionRoutes from './server/routes/transactionRoutes';
 import goalRoutes from './server/routes/goalRoutes';
 import exchangeRateRoutes from './server/routes/exchangeRateRoutes';
+import categoryRoutes from './server/routes/categoryRoutes';
 import { requireAuth, optionalAuth, AuthenticatedRequest } from './server/middleware/authMiddleware';
 import {
   getAuthoritativeUserHealthScore,
@@ -36,6 +37,8 @@ async function startServer() {
   app.use('/api', transactionRoutes);
   app.use('/api', goalRoutes);
   app.use('/api', exchangeRateRoutes);
+  app.use('/api/users', categoryRoutes);
+  app.use('/api', categoryRoutes);
   
   // Authenticated Financial Health Score & Explanation endpoint
   app.post('/api/ai/health/explain', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
@@ -316,8 +319,9 @@ async function startServer() {
       return res.status(401).json({ error: 'Authentication required to query personal finance data' });
     }
 
-    // 1. If user is authenticated and no client financialContext override is provided (or explicit message is sent)
-    if (authUser && (!ctx || req.body.message)) {
+    // 1. Authenticated user path: ALWAYS build authoritative context from MongoDB.
+    // Client-supplied financialContext is strictly ignored for authenticated users.
+    if (authUser) {
       try {
         const userId = authUser.customId || authUser._id?.toString() || authUser.id;
         const coachContext = await buildCoachContext(userId);
@@ -343,11 +347,15 @@ async function startServer() {
           dataWindow: coachContext.metadata?.dataWindow,
         });
       } catch (err: any) {
-        console.warn('Error in executeCoachInquiry, falling back:', err?.message);
+        console.error('[AI Coach] Error processing authenticated inquiry:', err?.message || err);
+        return res.status(500).json({
+          error: 'An error occurred while analyzing your financial records. Please try again.',
+          technicalDetail: err?.message,
+        });
       }
     }
 
-    // 2. Client-provided context or unauthenticated fallback
+    // 2. Unauthenticated guest demo fallback (only reachable when not logged in and ctx is provided)
     const effectiveContext = ctx || {};
     const effectiveRawName = authUser?.name || effectiveContext.userName;
     const trimmedName = typeof effectiveRawName === 'string' ? effectiveRawName.trim() : '';

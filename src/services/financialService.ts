@@ -122,7 +122,14 @@ export function calculateCategorySpending(
     if (t.merchant) catMap[t.category].merchants.add(t.merchant);
   }
 
-  return STANDARD_CATEGORIES.map((category) => {
+  const allCategories = Array.from(
+    new Set([
+      ...STANDARD_CATEGORIES,
+      ...Object.keys(catMap),
+    ])
+  );
+
+  return allCategories.map((category) => {
     const entry = catMap[category] || { amount: 0, count: 0, merchants: new Set() };
     const amount = entry.amount;
     const percentage = totalSpending > 0 ? Number(((amount / totalSpending) * 100).toFixed(1)) : 0;
@@ -141,6 +148,10 @@ export function calculateCategorySpending(
       status = 'high_friction';
     } else if (category === 'Entertainment & Others') {
       status = 'efficient';
+    } else if (momChangePercentage > 20) {
+      status = 'surging';
+    } else if (momChangePercentage < -10) {
+      status = 'under_control';
     }
 
     return {

@@ -1,15 +1,31 @@
 // Domain Types for ArthoBachao AI
 export type TransactionType = 'expense' | 'income' | 'transfer';
 
-export type CategoryName =
+export type BuiltinExpenseCategory =
   | 'Food & Groceries'
   | 'Shopping & Gadgets'
   | 'Utility & Fixed Costs'
   | 'Transportation'
   | 'Cash-out & Bank Fees'
-  | 'Entertainment & Others'
+  | 'Entertainment & Others';
+
+export type BuiltinIncomeCategory =
   | 'Salary & Inflow'
   | 'Savings & Investment';
+
+export type BuiltinCategoryName = BuiltinExpenseCategory | BuiltinIncomeCategory;
+
+export type CategoryName = BuiltinCategoryName | (string & {});
+
+export interface CustomCategory {
+  id: string;
+  customId?: string;
+  userId: string;
+  name: string;
+  type: 'expense' | 'income';
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 export type TransactionClassification = 'essential' | 'discretionary' | 'anomalies';
 

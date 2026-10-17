@@ -1,4 +1,4 @@
-import { Transaction, SavingsGoal } from '../types/financial';
+import { Transaction, SavingsGoal, CustomCategory } from '../types/financial';
 import { INITIAL_TRANSACTIONS } from '../data/mockTransactions';
 import { INITIAL_SAVINGS_GOALS } from '../data/mockGoals';
 import { apiService } from './apiService';
@@ -11,6 +11,10 @@ function getTxKey(userId: string): string {
 
 function getGoalsKey(userId: string): string {
   return `${PREFIX}_${userId}_goals`;
+}
+
+function getCategoriesKey(userId: string): string {
+  return `${PREFIX}_${userId}_categories`;
 }
 
 
@@ -131,6 +135,52 @@ export const financialDataService = {
       }
     } catch (err) {
       console.warn('[financialDataService] Backend goals sync skipped:', err);
+    }
+    return null;
+  },
+
+  /**
+   * Retrieve user-scoped custom categories
+   */
+  getCategories(userId: string): CustomCategory[] {
+    if (!userId) return [];
+    try {
+      const key = getCategoriesKey(userId);
+      const raw = localStorage.getItem(key);
+      if (raw) return JSON.parse(raw);
+      return [];
+    } catch (err) {
+      console.error(`Failed reading categories for user ${userId}:`, err);
+      return [];
+    }
+  },
+
+  /**
+   * Save user-scoped custom categories
+   */
+  saveCategories(userId: string, categories: CustomCategory[]): void {
+    if (!userId) return;
+    try {
+      const key = getCategoriesKey(userId);
+      localStorage.setItem(key, JSON.stringify(categories));
+    } catch (err) {
+      console.error(`Failed saving categories for user ${userId}:`, err);
+    }
+  },
+
+  /**
+   * Fetch latest categories from MongoDB backend and sync to local cache
+   */
+  async syncCategoriesFromBackend(userId: string): Promise<CustomCategory[] | null> {
+    if (!userId) return null;
+    try {
+      const remote = await apiService.getCategories(userId);
+      if (remote && Array.isArray(remote)) {
+        this.saveCategories(userId, remote);
+        return remote;
+      }
+    } catch (err) {
+      console.warn('[financialDataService] Backend categories sync skipped:', err);
     }
     return null;
   },

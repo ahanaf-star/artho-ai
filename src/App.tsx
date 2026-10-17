@@ -21,8 +21,9 @@ import { userService } from './services/userService';
 import { apiService } from './services/apiService';
 import { financialDataService } from './services/financialDataService';
 import { calculateFinancialHealthScore, getLocalDateString } from './services/financialCalculations';
-import { Transaction, SavingsGoal, UserProfile } from './types/financial';
+import { Transaction, SavingsGoal, UserProfile, CustomCategory } from './types/financial';
 import { fetchExchangeRates, getLoadedRates, ExchangeRatesState } from './services/currencyService';
+
 const PRIVATE_SCREENS: NavScreen[] = [
   'dashboard',
   'spending-analysis',
@@ -146,6 +147,11 @@ export default function App() {
     return user ? financialDataService.getGoals(user.id) : [];
   });
 
+  const [customCategories, setCustomCategories] = useState<CustomCategory[]>(() => {
+    const user = authService.getCurrentUser();
+    return user ? financialDataService.getCategories(user.id) : [];
+  });
+
   // Modal States
   const [isAddTxOpen, setIsAddTxOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -241,9 +247,10 @@ export default function App() {
   // Helper to revalidate financial data directly from MongoDB backend
   const refreshFinancialData = async (userId: string) => {
     try {
-      const [backendTxs, backendGoals] = await Promise.all([
+      const [backendTxs, backendGoals, backendCats] = await Promise.all([
         apiService.getTransactions(userId),
         apiService.getGoals(userId),
+        apiService.getCategories(userId),
       ]);
       if (backendTxs && Array.isArray(backendTxs)) {
         setTransactions(backendTxs);
@@ -252,6 +259,10 @@ export default function App() {
       if (backendGoals && Array.isArray(backendGoals)) {
         setGoals(backendGoals);
         financialDataService.saveGoals(userId, backendGoals);
+      }
+      if (backendCats && Array.isArray(backendCats)) {
+        setCustomCategories(backendCats);
+        financialDataService.saveCategories(userId, backendCats);
       }
     } catch (e) {
       console.warn('[App] Failed fetching live data from backend:', e);
@@ -270,8 +281,10 @@ export default function App() {
     setCurrentUser(session.user);
     const userTxs = financialDataService.getTransactions(session.user.id);
     const userGoals = financialDataService.getGoals(session.user.id);
+    const userCats = financialDataService.getCategories(session.user.id);
     setTransactions(userTxs);
     setGoals(userGoals);
+    setCustomCategories(userCats);
     navigateTo('dashboard', session.user);
     await refreshFinancialData(session.user.id);
   };
@@ -282,6 +295,7 @@ export default function App() {
     setCurrentUser(null);
     setTransactions([]);
     setGoals([]);
+    setCustomCategories([]);
     navigateTo('landing', null);
   };
 
@@ -554,6 +568,39 @@ export default function App() {
     }
   };
 
+  // Custom Category Handlers
+  const handleCreateCategory = async (name: string): Promise<CustomCategory | null> => {
+    if (!currentUser) return null;
+    try {
+      const created = await apiService.createCategory(currentUser.id, { name, type: 'expense' });
+      setCustomCategories((prev) => {
+        const next = [...prev.filter((c) => c.id !== created.id), created];
+        financialDataService.saveCategories(currentUser.id, next);
+        return next;
+      });
+      return created;
+    } catch (err: any) {
+      console.error('Failed to create category:', err);
+      throw err;
+    }
+  };
+
+  const handleDeleteCategory = async (catId: string): Promise<boolean> => {
+    if (!currentUser) return false;
+    try {
+      await apiService.deleteCategory(currentUser.id, catId);
+      setCustomCategories((prev) => {
+        const next = prev.filter((c) => c.id !== catId && c.customId !== catId);
+        financialDataService.saveCategories(currentUser.id, next);
+        return next;
+      });
+      return true;
+    } catch (err: any) {
+      console.error('Failed to delete category:', err);
+      throw err;
+    }
+  };
+
   // Protected Route Check: Unauthenticated visitors can only view Landing, Login, or Signup
   if (!currentUser) {
     if (activeScreen === 'login' || activeScreen === 'signup') {
@@ -677,6 +724,9 @@ export default function App() {
                 navigateTo('ai-coach');
               }}
               onSelectTransactionForEdit={(tx) => setEditingTransaction(tx)}
+              customCategories={customCategories}
+              onCreateCategory={handleCreateCategory}
+              onDeleteCategory={handleDeleteCategory}
             />
           )}
 
@@ -753,6 +803,8 @@ export default function App() {
         isOpen={isAddTxOpen}
         onClose={() => setIsAddTxOpen(false)}
         onAddTransaction={handleAddTransaction}
+        customCategories={customCategories}
+        onCreateCategory={handleCreateCategory}
         isBangla={isBangla}
       />
       <EditTransactionModal
@@ -761,6 +813,7 @@ export default function App() {
         transaction={editingTransaction}
         onUpdateTransaction={handleUpdateTransaction}
         onDeleteTransaction={handleDeleteTransaction}
+        customCategories={customCategories}
         isBangla={isBangla}
       />
       <CreateGoalModal

@@ -1,4 +1,4 @@
-import { User, Transaction, SavingsGoal } from '../types/financial';
+import { User, Transaction, SavingsGoal, CustomCategory } from '../types/financial';
 
 const BASE_URL = typeof window !== 'undefined' ? '' : 'http://localhost:3000';
 
@@ -250,5 +250,58 @@ export const apiService = {
       console.warn(`[apiService] deleteGoal(${goalId}) failed, deleted locally:`, err);
       return false;
     }
+  },
+
+  /**
+   * GET /api/users/:userId/categories
+   */
+  async getCategories(userId: string): Promise<CustomCategory[] | null> {
+    try {
+      const res = await fetch(`${BASE_URL}/api/users/${encodeURIComponent(userId)}/categories`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (err) {
+      console.warn(`[apiService] getCategories(${userId}) failed, using local cache:`, err);
+      return null;
+    }
+  },
+
+  /**
+   * POST /api/users/:userId/categories
+   */
+  async createCategory(
+    userId: string,
+    category: { name: string; type?: 'expense' | 'income' }
+  ): Promise<CustomCategory> {
+    const res = await fetch(`${BASE_URL}/api/users/${encodeURIComponent(userId)}/categories`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(category),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Failed to create category (${res.status})`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * DELETE /api/users/:userId/categories/:catId
+   */
+  async deleteCategory(userId: string, categoryId: string): Promise<boolean> {
+    const res = await fetch(
+      `${BASE_URL}/api/users/${encodeURIComponent(userId)}/categories/${encodeURIComponent(categoryId)}`,
+      {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      }
+    );
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Failed to delete category (${res.status})`);
+    }
+    return true;
   },
 };

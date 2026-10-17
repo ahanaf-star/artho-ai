@@ -71,18 +71,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return sum;
   }, 0);
 
-  // Primary goal (Hero)
-  const heroGoal = goals[0];
-  const heroProgress = heroGoal && heroGoal.targetAmount > 0
-    ? Math.min(100, (heroGoal.currentAmount / heroGoal.targetAmount) * 100)
-    : 0;
-
-  // Secondary goal
-  const subGoal = goals[1];
-  const subProgress = subGoal && subGoal.targetAmount > 0
-    ? Math.min(100, (subGoal.currentAmount / subGoal.targetAmount) * 100)
-    : 0;
-
   const firstName = user?.name?.trim() ? user.name.trim().split(' ')[0] : '';
 
   return (
@@ -301,9 +289,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Financial Health Score (Centered & Compact) */}
-      <div className="w-full flex justify-center">
-        <div className="w-full max-w-md rounded-xl bg-surface-container-lowest p-space-md flex flex-col justify-between shadow-sm relative overflow-hidden border border-outline-variant/20">
+      {/* Side-by-side Grid: Financial Health Score & Spending by Category */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-space-md items-stretch">
+        {/* Financial Health Score */}
+        <div className="rounded-xl bg-surface-container-lowest p-space-md flex flex-col justify-between shadow-sm relative overflow-hidden border border-outline-variant/20">
           <div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -467,136 +456,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
           </button>
         </div>
-      </div>
 
-      {/* Bento Grid Row 2: Savings Goals Snapshot (6 cols) & Spending Breakdown (6 cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-md">
-        {/* Module 3: Savings Goals Snapshot (Span 6) */}
-        <div className="lg:col-span-6 rounded-xl bg-surface-container-lowest p-space-md shadow-sm flex flex-col justify-between border border-outline-variant/20">
-          <div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-secondary-container/40 text-on-secondary-container flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[20px]">flag</span>
-                </div>
-                <div>
-                  <h2 className="font-title-lg text-title-lg text-on-surface font-bold">
-                    Savings Goals Snapshot
-                  </h2>
-                  <p className="font-body-sm text-body-sm text-on-surface-variant">
-                    {goals.length} Active Targets in Progress
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={onOpenCreateGoal}
-                className="w-8 h-8 rounded-full bg-surface-container-low hover:bg-surface-container flex items-center justify-center text-on-surface transition-colors"
-                title="Create new goal"
-              >
-                <span className="material-symbols-outlined text-[18px]">add</span>
-              </button>
-            </div>
-
-            {/* Primary Highlight Goal */}
-            {heroGoal && (
-              <div className="mt-4 p-space-md rounded-xl bg-surface-container-low/50 border border-outline-variant/20">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-xl">
-                      {heroGoal.icon || '🎯'}
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="font-title-md text-title-md text-on-surface font-bold">
-                        {heroGoal.title}
-                      </span>
-                      <span className="font-body-sm text-body-sm text-on-surface-variant">
-                        Target: {formatMoney(heroGoal.targetAmount)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="font-title-md text-title-md text-secondary font-bold">
-                      {formatMoney(heroGoal.currentAmount)}
-                    </span>
-                    <span className="font-label-sm text-label-sm text-on-surface-variant block">
-                      {heroProgress.toFixed(1)}% completed
-                    </span>
-                  </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="w-full h-3 rounded-full bg-surface-container mt-3 overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-secondary-fixed-dim to-secondary rounded-full transition-all duration-700"
-                    style={{ width: `${heroProgress}%` }}
-                  ></div>
-                </div>
-
-                {/* Milestone Footnote */}
-                <div className="flex items-center justify-between mt-3 font-body-sm text-body-sm">
-                  <div className="flex items-center gap-1.5 text-on-surface-variant">
-                    <span className="material-symbols-outlined text-[16px] text-secondary">
-                      alarm_on
-                    </span>
-                    <span>
-                      Deadline: <strong>{heroGoal.deadline}</strong>
-                    </span>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-md bg-secondary-container/40 text-on-secondary-container font-label-sm text-label-sm font-semibold">
-                    {formatMoney(Math.max(0, heroGoal.targetAmount - heroGoal.currentAmount))}{' '}
-                    remaining
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Secondary Goal */}
-            {subGoal && (
-              <div className="mt-3 p-space-md rounded-xl bg-surface-container-low/30 border border-outline-variant/15">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center text-lg">
-                      {subGoal.icon || '🎯'}
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="font-title-md text-title-md text-on-surface font-semibold">
-                        {subGoal.title}
-                      </span>
-                      <span className="font-body-sm text-body-sm text-on-surface-variant">
-                        Target: {formatMoney(subGoal.targetAmount)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="font-title-md text-title-md text-on-surface font-semibold">
-                      {formatMoney(subGoal.currentAmount)}
-                    </span>
-                    <span className="font-label-sm text-label-sm text-on-surface-variant block">
-                      {subProgress.toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
-                <div className="w-full h-2 rounded-full bg-surface-container mt-2.5 overflow-hidden">
-                  <div
-                    className="h-full bg-primary-container rounded-full transition-all duration-700"
-                    style={{ width: `${subProgress}%` }}
-                  ></div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <button
-            onClick={() => onNavigate('savings-goals')}
-            className="mt-4 pt-3 flex items-center justify-between text-secondary hover:text-on-secondary-fixed-variant transition-colors font-title-md text-title-md border-t border-outline-variant/15 text-left"
-          >
-            <span>Manage All Goals</span>
-            <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-          </button>
-        </div>
-
-        {/* Module 4: Spending by Category Donut & Breakdown (Span 6) */}
-        <div className="lg:col-span-6 rounded-xl bg-surface-container-lowest p-space-md shadow-sm flex flex-col justify-between border border-outline-variant/20">
+        {/* Spending by Category */}
+        <div className="rounded-xl bg-surface-container-lowest p-space-md shadow-sm flex flex-col justify-between border border-outline-variant/20">
           <div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -630,6 +492,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <div className="md:col-span-5 flex items-center justify-center relative">
                 <div className="w-36 h-36 relative flex items-center justify-center">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <circle
+                      cx="50"
+                      cy="50"
+                      fill="transparent"
+                      r="40"
+                      stroke="#eff4ff"
+                      strokeWidth="12"
+                    />
                     {(() => {
                       const circumference = 251.2;
                       const colors = [
@@ -639,10 +509,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         '#4edea3',
                         '#d3e4fe',
                         '#c6c6cd',
+                        '#e06d53',
+                        '#9c4146',
                       ];
+                      const activeCategories =
+                        overview.totalExpenses > 0
+                          ? overview.categories.filter((c) => c.amount > 0).sort((a, b) => b.amount - a.amount)
+                          : [];
                       let currentOffset = 0;
-                      return overview.categories.map((c, i) => {
-                        const dash = Math.max(0.5, (c.percentage / 100) * circumference);
+                      return activeCategories.map((c, i) => {
+                        const dash = c.percentage > 0 ? (c.percentage / 100) * circumference : 0;
+                        if (dash <= 0) return null;
                         const offset = -currentOffset;
                         currentOffset += dash;
                         return (
@@ -675,7 +552,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
               {/* Category Legend Breakdown (7 cols) */}
               <div className="md:col-span-7 flex flex-col gap-2">
-                {overview.categories.map((c, i) => {
+                {(() => {
                   const colors = [
                     '#ba1a1a',
                     '#006c49',
@@ -683,8 +560,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     '#4edea3',
                     '#d3e4fe',
                     '#c6c6cd',
+                    '#e06d53',
+                    '#9c4146',
                   ];
-                  return (
+                  const displayCategories =
+                    overview.totalExpenses > 0
+                      ? overview.categories.filter((c) => c.amount > 0).sort((a, b) => b.amount - a.amount)
+                      : overview.categories;
+
+                  return displayCategories.map((c, i) => (
                     <div
                       key={c.category}
                       className="flex items-center justify-between text-body-sm font-body-sm"
@@ -703,8 +587,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <span className="text-outline text-[11px]">{c.percentage}%</span>
                       </div>
                     </div>
-                  );
-                })}
+                  ));
+                })()}
               </div>
             </div>
           </div>
