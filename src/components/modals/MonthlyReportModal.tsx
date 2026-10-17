@@ -3,11 +3,16 @@ import { Transaction, SavingsGoal, UserProfile } from '../../types/financial';
 import {
   calculateMonthlyOverview,
   calculateFinancialHealthScore,
-  formatBDT,
   getAvailableMonths,
   getLatestTransactionMonth,
   formatMonthName,
 } from '../../services/financialCalculations';
+import {
+  formatCurrency,
+  convertAmount,
+  normalizeCurrencyCode,
+  getCurrencyConfig,
+} from '../../services/currencyService';
 
 interface MonthlyReportModalProps {
   isOpen: boolean;
@@ -44,6 +49,13 @@ export const MonthlyReportModal: React.FC<MonthlyReportModalProps> = ({
     user.monthlyIncome,
     selectedMonth
   );
+
+  const userCurrency = normalizeCurrencyCode(user?.currency);
+  const currConfig = getCurrencyConfig(userCurrency);
+  const formatMoney = (amountInBDT: number) => {
+    const converted = convertAmount(amountInBDT, 'BDT', userCurrency);
+    return formatCurrency(converted, userCurrency);
+  };
 
   const handlePrint = () => {
     window.print();
@@ -96,6 +108,9 @@ export const MonthlyReportModal: React.FC<MonthlyReportModalProps> = ({
             <div>
               <span className="font-bold text-on-surface">{user.name}</span> • {user.city}
               <p className="text-xs text-on-surface-variant">Linked Accounts: bKash, City Bank, Nagad</p>
+              <p className="text-[11px] text-secondary font-semibold mt-0.5">
+                Reporting Currency: {currConfig.name} ({currConfig.code} • {currConfig.displaySymbol})
+              </p>
             </div>
             <div className="text-right">
               <span className="text-xs text-outline">ArthoBachao AI Health Score</span>
@@ -107,15 +122,15 @@ export const MonthlyReportModal: React.FC<MonthlyReportModalProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
             <div className="p-3 rounded-xl border border-outline-variant/20 bg-surface-container-lowest">
               <span className="text-xs text-outline font-semibold">Total Inflow</span>
-              <p className="font-bold text-lg text-on-surface mt-1">{formatBDT(overview.totalIncome)}</p>
+              <p className="font-bold text-lg text-on-surface mt-1">{formatMoney(overview.totalIncome)}</p>
             </div>
             <div className="p-3 rounded-xl border border-outline-variant/20 bg-surface-container-lowest">
               <span className="text-xs text-outline font-semibold">Total Outflow</span>
-              <p className="font-bold text-lg text-error mt-1">{formatBDT(overview.totalExpenses)}</p>
+              <p className="font-bold text-lg text-error mt-1">{formatMoney(overview.totalExpenses)}</p>
             </div>
             <div className="p-3 rounded-xl border border-outline-variant/20 bg-surface-container-lowest">
               <span className="text-xs text-outline font-semibold">Net Savings</span>
-              <p className="font-bold text-lg text-secondary mt-1">{formatBDT(overview.netSavings)}</p>
+              <p className="font-bold text-lg text-secondary mt-1">{formatMoney(overview.netSavings)}</p>
             </div>
             <div className="p-3 rounded-xl border border-outline-variant/20 bg-surface-container-lowest">
               <span className="text-xs text-outline font-semibold">Savings Velocity</span>
@@ -137,7 +152,7 @@ export const MonthlyReportModal: React.FC<MonthlyReportModalProps> = ({
               {overview.categories.map((c) => (
                 <div key={c.category} className="p-2.5 flex justify-between border-t border-outline-variant/15">
                   <span className="font-medium text-on-surface">{c.category}</span>
-                  <span className="font-bold">{formatBDT(c.amount)}</span>
+                  <span className="font-bold">{formatMoney(c.amount)}</span>
                   <span className="text-on-surface-variant">{c.percentage}%</span>
                 </div>
               ))}
@@ -154,18 +169,18 @@ export const MonthlyReportModal: React.FC<MonthlyReportModalProps> = ({
               <p>
                 • {overview.largestCategory.amount > 0 ? (
                   <>
-                    Largest outflow category: <span className="font-semibold text-on-surface">{overview.largestCategory.category}</span> at {formatBDT(overview.largestCategory.amount)} ({overview.largestCategory.percentage}% of monthly spending).
+                    Largest outflow category: <span className="font-semibold text-on-surface">{overview.largestCategory.category}</span> at {formatMoney(overview.largestCategory.amount)} ({overview.largestCategory.percentage}% of monthly spending).
                   </>
                 ) : (
                   'No expenditure recorded yet for this billing cycle.'
                 )}
               </p>
               <p>
-                • Discretionary outflow represents {overview.expenseSplit.discretionaryPercentage}% of expenditures ({formatBDT(overview.expenseSplit.discretionary)}). {overview.expenseSplit.discretionaryPercentage > 30 ? 'Target discretionary allocation under 30% to maximize savings velocity.' : 'Discretionary ratio meets disciplined financial limits.'}
+                • Discretionary outflow represents {overview.expenseSplit.discretionaryPercentage}% of expenditures ({formatMoney(overview.expenseSplit.discretionary)}). {overview.expenseSplit.discretionaryPercentage > 30 ? 'Target discretionary allocation under 30% to maximize savings velocity.' : 'Discretionary ratio meets disciplined financial limits.'}
               </p>
               {goals.length > 0 && (
                 <p>
-                  • Primary goal ({goals[0].title}) is currently {Math.min(100, Math.round((goals[0].currentAmount / Math.max(1, goals[0].targetAmount)) * 100))}% funded ({formatBDT(goals[0].currentAmount)} of {formatBDT(goals[0].targetAmount)}).
+                  • Primary goal ({goals[0].title}) is currently {Math.min(100, Math.round((goals[0].currentAmount / Math.max(1, goals[0].targetAmount)) * 100))}% funded ({formatMoney(goals[0].currentAmount)} of {formatMoney(goals[0].targetAmount)}).
                 </p>
               )}
             </div>

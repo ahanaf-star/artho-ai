@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserProfile, Transaction, SavingsGoal } from '../types/financial';
-import { formatBDT, validateFinancialData } from '../services/financialCalculations';
+import { validateFinancialData } from '../services/financialCalculations';
+import { SUPPORTED_CURRENCIES, normalizeCurrencyCode, formatCurrency, convertAmount } from '../services/currencyService';
 
 interface SettingsProfileViewProps {
   user: UserProfile;
@@ -27,7 +28,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
   const [email, setEmail] = useState(user.email);
   const [profileImage, setProfileImage] = useState(user.profileImage || '');
   const [preferredLanguage, setPreferredLanguage] = useState<'en' | 'bn'>(user.preferredLanguage || 'en');
-  const [currency, setCurrency] = useState(user.currency || '৳');
+  const [currency, setCurrency] = useState(normalizeCurrencyCode(user.currency));
   const [monthlyIncome, setMonthlyIncome] = useState(user.monthlyIncome ? user.monthlyIncome.toString() : '');
   const [riskTolerance, setRiskTolerance] = useState(user.riskTolerance);
   const [savedMsg, setSavedMsg] = useState(false);
@@ -43,6 +44,11 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
 
   // Compute live mathematical validation
   const validationReport = validateFinancialData(transactions, goals, '2024-10');
+
+  const formatMoney = (amountInBDT: number) => {
+    const converted = convertAmount(amountInBDT, 'BDT', currency);
+    return formatCurrency(converted, currency);
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -219,16 +225,18 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
           {/* Currency */}
           <div className="flex flex-col gap-1.5">
             <label className="font-label-md text-xs font-semibold text-outline uppercase tracking-wider">
-              {isBangla ? 'মুদ্রা (Currency)' : 'Base Currency'}
+              {isBangla ? 'মুদ্রা (Preferred Currency)' : 'Display & Base Currency'}
             </label>
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              className="p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-body-md text-sm"
+              className="p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-body-md text-sm cursor-pointer"
             >
-              <option value="৳">BDT (৳) - Bangladeshi Taka (Default)</option>
-              <option value="$">USD ($) - US Dollar</option>
-              <option value="€">EUR (€) - Euro</option>
+              {SUPPORTED_CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} ({c.displaySymbol}) — {isBangla ? c.nameBn : c.name} {c.code === 'BDT' ? '(Default)' : ''}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -310,8 +318,8 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
                 <span className="font-semibold text-on-surface">Income - Expenses = Net Savings</span>
               </div>
               <div className="text-xs text-on-surface-variant font-mono">
-                {formatBDT(validationReport.totalIncome)} - {formatBDT(validationReport.totalExpenses)} ={' '}
-                <strong className="text-secondary">{formatBDT(validationReport.netSavings)}</strong>
+                {formatMoney(validationReport.totalIncome)} - {formatMoney(validationReport.totalExpenses)} ={' '}
+                <strong className="text-secondary">{formatMoney(validationReport.netSavings)}</strong>
                 <span className="ml-2 px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-bold text-[10px]">
                   PASS
                 </span>
@@ -325,8 +333,8 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
                 <span className="font-semibold text-on-surface">Category Totals = Total Expenses</span>
               </div>
               <div className="text-xs text-on-surface-variant font-mono">
-                Categories Sum ({formatBDT(validationReport.categorySum)}) == Total (
-                {formatBDT(validationReport.totalExpenses)})
+                Categories Sum ({formatMoney(validationReport.categorySum)}) == Total (
+                {formatMoney(validationReport.totalExpenses)})
                 <span className="ml-2 px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-bold text-[10px]">
                   MATCH
                 </span>
@@ -340,7 +348,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
                 <span className="font-semibold text-on-surface">Savings Rate = Savings / Income * 100</span>
               </div>
               <div className="text-xs text-on-surface-variant font-mono">
-                {formatBDT(validationReport.netSavings)} / {formatBDT(validationReport.totalIncome)} ={' '}
+                {formatMoney(validationReport.netSavings)} / {formatMoney(validationReport.totalIncome)} ={' '}
                 <strong className="text-secondary">{validationReport.savingsRate}%</strong>
                 <span className="ml-2 px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-bold text-[10px]">
                   EXACT
@@ -366,8 +374,8 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
                   <div key={g.goalId} className="py-1.5 flex justify-between items-center font-mono">
                     <span>{g.title}</span>
                     <span>
-                      {formatBDT(g.currentAmount)} / {formatBDT(g.targetAmount)} (Remaining:{' '}
-                      {formatBDT(g.remainingAmount)} | Progress: {g.progressPercentage}%)
+                      {formatMoney(g.currentAmount)} / {formatMoney(g.targetAmount)} (Remaining:{' '}
+                      {formatMoney(g.remainingAmount)} | Progress: {g.progressPercentage}%)
                     </span>
                   </div>
                 ))}
@@ -403,7 +411,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
                 </div>
               </div>
               <span className="font-title-md text-on-surface font-bold">
-                {formatBDT(acc.balance)}
+                {formatMoney(acc.balance)}
               </span>
             </div>
           ))}

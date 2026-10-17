@@ -3,10 +3,14 @@ import { Transaction, SavingsGoal, UserProfile } from '../types/financial';
 import {
   calculateMonthlyOverview,
   calculateFinancialHealthScore,
-  formatBDT,
   getLatestTransactionMonth,
   formatMonthName,
 } from '../services/financialCalculations';
+import {
+  formatCurrency,
+  convertAmount,
+  normalizeCurrencyCode,
+} from '../services/currencyService';
 import { NavScreen } from './Sidebar';
 
 interface DashboardProps {
@@ -36,6 +40,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const activeMonth = getLatestTransactionMonth(transactions);
   const overview = calculateMonthlyOverview(transactions, activeMonth);
   const healthMetrics = calculateFinancialHealthScore(transactions, goals, user.monthlyIncome, activeMonth);
+
+  const userCurrency = normalizeCurrencyCode(user?.currency);
+  const formatMoney = (amountInBDT: number, opts?: { decimals?: number; roundWhole?: boolean }) => {
+    const converted = convertAmount(amountInBDT, 'BDT', userCurrency);
+    return formatCurrency(converted, userCurrency, opts);
+  };
 
   // User accounts & Total balance sum
   const accounts = user?.linkedAccounts || [];
@@ -137,7 +147,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </span>
               <div className="flex items-baseline gap-1 mt-1">
                 <span className="font-headline-lg text-headline-lg text-on-surface font-bold">
-                  {formatBDT(totalBalance)}
+                  {formatMoney(totalBalance)}
                 </span>
               </div>
             </div>
@@ -154,16 +164,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
               ) : net7Days > 0 ? (
                 <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-semibold">
                   <span className="material-symbols-outlined text-[14px]">trending_up</span>
-                  +{formatBDT(net7Days)} {isBangla ? 'এই সপ্তাহে' : 'this week'}
+                  +{formatMoney(net7Days)} {isBangla ? 'এই সপ্তাহে' : 'this week'}
                 </span>
               ) : net7Days < 0 ? (
                 <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-label-sm text-label-sm font-semibold">
                   <span className="material-symbols-outlined text-[14px]">trending_down</span>
-                  -{formatBDT(Math.abs(net7Days))} {isBangla ? 'এই সপ্তাহে' : 'this week'}
+                  -{formatMoney(Math.abs(net7Days))} {isBangla ? 'এই সপ্তাহে' : 'this week'}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold">
-                  ৳0 {isBangla ? 'এই সপ্তাহে' : 'this week'}
+                  {formatMoney(0)} {isBangla ? 'এই সপ্তাহে' : 'this week'}
                 </span>
               )}
             </div>
@@ -175,7 +185,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     key={acc.name}
                     className="px-2 py-0.5 rounded-md bg-surface-container-low text-on-surface-variant font-label-sm text-[10px] font-semibold"
                   >
-                    {acc.name} ({formatBDT(acc.balance || 0)})
+                    {acc.name} ({formatMoney(acc.balance || 0)})
                   </span>
                 ))
               ) : (
@@ -196,7 +206,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </span>
               <div className="flex items-baseline gap-1 mt-1">
                 <span className="font-headline-lg text-headline-lg text-on-surface font-bold">
-                  {formatBDT(overview.totalIncome)}
+                  {formatMoney(overview.totalIncome)}
                 </span>
               </div>
             </div>
@@ -236,7 +246,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </span>
               <div className="flex items-baseline gap-1 mt-1">
                 <span className="font-headline-lg text-headline-lg text-on-surface font-bold">
-                  {formatBDT(overview.totalExpenses)}
+                  {formatMoney(overview.totalExpenses)}
                 </span>
               </div>
             </div>
@@ -248,7 +258,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             {overview.totalExpenses > 0 ? (
               <div className="flex items-center gap-1.5">
                 <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface font-label-sm text-label-sm font-semibold">
-                  {formatBDT(overview.dailyAverageSpend)}/day
+                  {formatMoney(overview.dailyAverageSpend)}/day
                 </span>
                 <span className="font-body-sm text-body-sm text-on-surface-variant">
                   {isBangla ? 'দৈনিক গড় ব্যয়' : 'daily average'}
@@ -271,7 +281,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </span>
               <div className="flex items-baseline gap-1 mt-1">
                 <span className="font-headline-lg text-headline-lg text-secondary font-bold">
-                  {formatBDT(overview.netSavings)}
+                  {formatMoney(overview.netSavings)}
                 </span>
               </div>
             </div>
@@ -500,13 +510,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         {heroGoal.title}
                       </span>
                       <span className="font-body-sm text-body-sm text-on-surface-variant">
-                        Target: {formatBDT(heroGoal.targetAmount)}
+                        Target: {formatMoney(heroGoal.targetAmount)}
                       </span>
                     </div>
                   </div>
                   <div className="text-right">
                     <span className="font-title-md text-title-md text-secondary font-bold">
-                      {formatBDT(heroGoal.currentAmount)}
+                      {formatMoney(heroGoal.currentAmount)}
                     </span>
                     <span className="font-label-sm text-label-sm text-on-surface-variant block">
                       {heroProgress.toFixed(1)}% completed
@@ -533,7 +543,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </span>
                   </div>
                   <span className="px-2 py-0.5 rounded-md bg-secondary-container/40 text-on-secondary-container font-label-sm text-label-sm font-semibold">
-                    {formatBDT(Math.max(0, heroGoal.targetAmount - heroGoal.currentAmount))}{' '}
+                    {formatMoney(Math.max(0, heroGoal.targetAmount - heroGoal.currentAmount))}{' '}
                     remaining
                   </span>
                 </div>
@@ -553,13 +563,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         {subGoal.title}
                       </span>
                       <span className="font-body-sm text-body-sm text-on-surface-variant">
-                        Target: {formatBDT(subGoal.targetAmount)}
+                        Target: {formatMoney(subGoal.targetAmount)}
                       </span>
                     </div>
                   </div>
                   <div className="text-right">
                     <span className="font-title-md text-title-md text-on-surface font-semibold">
-                      {formatBDT(subGoal.currentAmount)}
+                      {formatMoney(subGoal.currentAmount)}
                     </span>
                     <span className="font-label-sm text-label-sm text-on-surface-variant block">
                       {subProgress.toFixed(1)}%
@@ -598,7 +608,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     Spending by Category
                   </h2>
                   <p className="font-body-sm text-body-sm text-on-surface-variant">
-                    Total: {formatBDT(overview.totalExpenses)} this billing cycle
+                    Total: {formatMoney(overview.totalExpenses)} this billing cycle
                   </p>
                 </div>
               </div>
@@ -657,7 +667,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       Total
                     </span>
                     <span className="font-title-md text-title-md text-on-surface font-bold leading-tight">
-                      ৳{(overview.totalExpenses / 1000).toFixed(1)}k
+                      {formatMoney(overview.totalExpenses, { roundWhole: true })}
                     </span>
                   </div>
                 </div>
@@ -689,7 +699,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-on-surface">{formatBDT(c.amount)}</span>
+                        <span className="font-semibold text-on-surface">{formatMoney(c.amount)}</span>
                         <span className="text-outline text-[11px]">{c.percentage}%</span>
                       </div>
                     </div>
@@ -701,7 +711,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           <div className="mt-4 pt-3 flex items-center justify-between border-t border-outline-variant/15">
             <span className="font-body-sm text-body-sm text-on-surface-variant">
-              Compared to last month (৳27,050)
+              Compared to last month ({formatMoney(27050)})
             </span>
             <button
               onClick={() => onNavigate('spending-analysis')}

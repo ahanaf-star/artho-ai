@@ -81,7 +81,7 @@ export async function signup(req: Request, res: Response) {
       email: cleanEmail,
       passwordHash,
       preferredLanguage: preferredLanguage === 'bn' ? 'bn' : 'en',
-      currency: '৳',
+      currency: 'BDT',
       monthlyIncome: parsedIncome,
       riskTolerance: undefined,
       tagline: 'Standard Member',

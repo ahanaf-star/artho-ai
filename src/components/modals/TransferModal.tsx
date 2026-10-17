@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserProfile } from '../../types/financial';
 import { formatBDT } from '../../services/financialCalculations';
+import { formatCurrency, convertAmount, normalizeCurrencyCode } from '../../services/currencyService';
 
 interface TransferModalProps {
   isOpen: boolean;
@@ -29,7 +30,12 @@ export const TransferModal: React.FC<TransferModalProps> = ({
     onClose();
   };
 
+  const userCurrency = normalizeCurrencyCode(user?.currency);
   const fromBal = user.linkedAccounts.find((a) => a.name === fromAccount)?.balance || 0;
+  const formattedFromBal =
+    userCurrency === 'BDT'
+      ? formatBDT(fromBal)
+      : `${formatCurrency(convertAmount(fromBal, 'BDT', userCurrency), userCurrency)} (${formatBDT(fromBal)})`;
 
   return (
     <div className="fixed inset-0 bg-primary/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
@@ -53,7 +59,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
           <div className="flex flex-col gap-1">
             <div className="flex justify-between items-center text-xs font-semibold text-outline uppercase tracking-wider">
               <span>Transfer From</span>
-              <span>Available: {formatBDT(fromBal)}</span>
+              <span>Available: {formattedFromBal}</span>
             </div>
             <select
               value={fromAccount}

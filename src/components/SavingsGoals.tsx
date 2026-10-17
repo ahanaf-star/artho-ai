@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
-import { SavingsGoal, ScenarioPlan } from '../types/financial';
+import { SavingsGoal, ScenarioPlan, UserProfile } from '../types/financial';
 import {
-  formatBDT,
   calculateScenarioPlans,
   calculateRemainingGoalAmount,
   calculateGoalProgressPercentage,
 } from '../services/financialCalculations';
+import {
+  formatCurrency,
+  convertAmount,
+  normalizeCurrencyCode,
+  getCurrencyConfig,
+} from '../services/currencyService';
 import { NavScreen } from './Sidebar';
 
 interface SavingsGoalsProps {
@@ -16,6 +21,7 @@ interface SavingsGoalsProps {
   onOpenCreateGoal: () => void;
   onNavigate: (screen: NavScreen) => void;
   isBangla: boolean;
+  user?: UserProfile | null;
 }
 
 export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
@@ -26,7 +32,14 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
   onOpenCreateGoal,
   onNavigate,
   isBangla,
+  user,
 }) => {
+  const userCurrency = normalizeCurrencyCode(user?.currency);
+  const currConfig = getCurrencyConfig(userCurrency);
+  const formatMoney = (amountInBDT: number, opts?: { decimals?: number; roundWhole?: boolean }) => {
+    const converted = convertAmount(amountInBDT, 'BDT', userCurrency);
+    return formatCurrency(converted, userCurrency, opts);
+  };
   const [selectedPlanId, setSelectedPlanId] = useState<'planA' | 'planB' | 'planC'>('planB');
   const [depositSuccessMsg, setDepositSuccessMsg] = useState<string | null>(null);
   const [adjustModalGoal, setAdjustModalGoal] = useState<SavingsGoal | null>(null);
@@ -68,7 +81,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
       };
       onUpdateGoal(updated);
     }
-    setDepositSuccessMsg('৳1,000 deposited into bKash Liquid Vault! Goal progress updated.');
+    setDepositSuccessMsg(`${formatMoney(1000)} deposited into bKash Liquid Vault! Goal progress updated.`);
     setTimeout(() => {
       setDepositSuccessMsg(null);
     }, 4500);
@@ -83,7 +96,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
         monthlyPace: plan.monthlyAmount,
       };
       onUpdateGoal(updated);
-      setDepositSuccessMsg(`Applied ${plan.name} (৳${plan.monthlyAmount.toLocaleString()}/month)! Target pace recalibrated.`);
+      setDepositSuccessMsg(`Applied ${plan.name} (${formatMoney(plan.monthlyAmount)}/month)! Target pace recalibrated.`);
       setTimeout(() => setDepositSuccessMsg(null), 4500);
     }
   };
@@ -213,7 +226,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                 Auto-save Rules
               </span>
               <span className="font-title-md text-title-md leading-none mt-0.5 font-bold">
-                Active: ৳100/day
+                Active: {formatMoney(100)}/day
               </span>
             </div>
           </button>
@@ -266,7 +279,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                   Velocity
                 </span>
                 <span className="px-2 py-1 rounded-lg bg-surface-container font-title-md text-title-md text-secondary font-bold">
-                  {formatBDT(heroGoal.monthlyPace)}/mo
+                  {formatMoney(heroGoal.monthlyPace)}/mo
                 </span>
               </div>
             </div>
@@ -278,7 +291,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                   Target Capital
                 </span>
                 <span className="font-title-lg text-title-lg text-on-surface font-bold mt-0.5">
-                  {formatBDT(heroGoal.targetAmount)}
+                  {formatMoney(heroGoal.targetAmount)}
                 </span>
               </div>
               <div className="flex flex-col">
@@ -286,7 +299,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                   Current Saved
                 </span>
                 <span className="font-headline-md text-headline-md text-secondary font-bold mt-0.5">
-                  {formatBDT(heroGoal.currentAmount)}
+                  {formatMoney(heroGoal.currentAmount)}
                 </span>
               </div>
               <div className="flex flex-col">
@@ -294,7 +307,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                   Remaining Gap
                 </span>
                 <span className="font-title-lg text-title-lg text-error font-bold mt-0.5">
-                  {formatBDT(remainingGap)}
+                  {formatMoney(remainingGap)}
                 </span>
               </div>
               <div className="flex flex-col">
@@ -320,7 +333,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                   {achievedPct}% achieved
                 </span>
                 <span className="text-on-surface-variant">
-                  Target Pace: ৳5,000/mo (92% cadence)
+                  Target Pace: {formatMoney(heroGoal.monthlyPace || 5000)}/mo (92% cadence)
                 </span>
               </div>
 
@@ -340,7 +353,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                   <div className="w-0.5 h-2 bg-secondary"></div>
                   <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label-sm text-[10px] font-bold">
                     <span className="material-symbols-outlined text-[10px]">check</span>
-                    ৳10k Hit
+                    {formatMoney(10000, { roundWhole: true })} Hit
                   </div>
                 </div>
 
@@ -349,7 +362,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                   <div className="w-0.5 h-2 bg-outline"></div>
                   <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface font-label-sm text-[10px] font-semibold">
                     <span className="material-symbols-outlined text-[10px]">flag</span>
-                    ৳20k Next
+                    {formatMoney(20000, { roundWhole: true })} Next
                   </div>
                 </div>
               </div>
@@ -364,7 +377,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                 <span className="material-symbols-outlined text-[18px] text-tertiary-container">
                   info
                 </span>
-                <span>Next scheduled sweep: ৳350 tomorrow at 10:00 AM via Dhaka Bank</span>
+                <span>Next scheduled sweep: {formatMoney(350)} tomorrow at 10:00 AM via Dhaka Bank</span>
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
@@ -388,7 +401,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                   className="px-space-md py-2 rounded-lg bg-secondary text-on-secondary font-title-md text-title-md hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5 shadow-sm w-full sm:w-auto active:scale-95"
                 >
                   <span className="material-symbols-outlined text-[18px]">bolt</span>
-                  + Deposit ৳1,000 Now
+                  + Deposit {formatMoney(1000)} Now
                 </button>
               </div>
             </div>
@@ -434,7 +447,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                       {g.title}
                     </h3>
                     <p className="font-body-sm text-body-sm text-on-surface-variant mt-0.5 flex flex-wrap items-center gap-2">
-                      <span>Target: {formatBDT(g.targetAmount)}</span>
+                      <span>Target: {formatMoney(g.targetAmount)}</span>
                       <span>•</span>
                       <span>Target Date: {g.deadline || '2025-06-30'}</span>
                     </p>
@@ -442,10 +455,10 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                     <div className="mt-space-md flex items-baseline justify-between">
                       <div>
                         <span className="font-numeric-hero text-numeric-hero text-on-surface font-bold">
-                          {formatBDT(g.currentAmount)}
+                          {formatMoney(g.currentAmount)}
                         </span>
                         <span className="font-body-sm text-body-sm text-on-surface-variant ml-1">
-                          / {formatBDT(g.targetAmount)}
+                          / {formatMoney(g.targetAmount)}
                         </span>
                       </div>
                       <span className="font-title-md text-title-md text-on-surface font-semibold">
@@ -462,9 +475,9 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                     </div>
 
                     <div className="flex justify-between items-center mt-3 text-body-sm font-body-sm text-on-surface-variant">
-                      <span>Remaining: {formatBDT(gGap)}</span>
+                      <span>Remaining: {formatMoney(gGap)}</span>
                       <span className="font-semibold text-on-surface">
-                        Required: {formatBDT(g.monthlyPace)}/mo
+                        Required: {formatMoney(g.monthlyPace)}/mo
                       </span>
                     </div>
                   </div>
@@ -484,12 +497,12 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                           };
                           onUpdateGoal(updated);
                         }
-                        setDepositSuccessMsg(`Boosted ${g.title} by +৳1,000!`);
+                        setDepositSuccessMsg(`Boosted ${g.title} by +${formatMoney(1000)}!`);
                         setTimeout(() => setDepositSuccessMsg(null), 4000);
                       }}
                       className="font-title-md text-title-md text-secondary hover:underline flex items-center gap-0.5 font-bold"
                     >
-                      Boost Goal (+৳1,000)
+                      Boost Goal (+{formatMoney(1000)})
                       <span className="material-symbols-outlined text-[16px]">chevron_right</span>
                     </button>
                   </div>
@@ -515,7 +528,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                 </div>
               </div>
               <span className="px-2.5 py-1 rounded-full bg-surface-container font-label-sm text-label-sm text-on-surface font-semibold self-start sm:self-auto">
-                Simulated Target: {formatBDT(remainingGap)}
+                Simulated Target: {formatMoney(remainingGap)}
               </span>
             </div>
 
@@ -554,7 +567,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
 
                         <div className="my-space-sm">
                           <span className="font-headline-lg text-headline-lg text-secondary-container font-bold">
-                            {formatBDT(plan.monthlyAmount)}
+                            {formatMoney(plan.monthlyAmount)}
                           </span>
                           <span className="font-body-sm text-body-sm text-on-primary-container">
                             / month
@@ -620,7 +633,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
 
                       <div className="my-space-sm">
                         <span className="font-headline-lg text-headline-lg text-on-surface font-bold">
-                          {formatBDT(plan.monthlyAmount)}
+                          {formatMoney(plan.monthlyAmount)}
                         </span>
                         <span className="font-body-sm text-body-sm text-on-surface-variant">
                           / month
@@ -710,7 +723,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                     </span>
                   </div>
                 </div>
-                <span className="font-title-lg text-title-lg text-secondary font-bold">৳1,420</span>
+                <span className="font-title-lg text-title-lg text-secondary font-bold">{formatMoney(1420)}</span>
               </div>
 
               <div className="p-space-sm rounded-lg bg-surface-container-low flex items-center justify-between border border-outline-variant/15">
@@ -729,7 +742,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                     </span>
                   </div>
                 </div>
-                <span className="font-title-lg text-title-lg text-on-surface font-bold">৳185.50</span>
+                <span className="font-title-lg text-title-lg text-on-surface font-bold">{formatMoney(185.50)}</span>
               </div>
             </div>
 
@@ -798,8 +811,8 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                     <h4 className="font-title-lg text-title-lg font-bold">{travelGoal.title}</h4>
                     <p className="font-body-sm text-body-sm text-primary-fixed-dim mt-0.5">
                       {isBangla
-                        ? `লক্ষ্য পূরণে ৳${remaining.toLocaleString()} বাকি`
-                        : `৳${remaining.toLocaleString()} needed to complete goal`}
+                        ? `লক্ষ্য পূরণে ${formatMoney(remaining)} বাকি`
+                        : `${formatMoney(remaining)} needed to complete goal`}
                     </p>
                   </div>
                 </div>
@@ -855,10 +868,10 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
             </p>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                Monthly Pace (৳ BDT)
+                Monthly Pace ({userCurrency})
               </label>
               <div className="relative flex items-center">
-                <span className="absolute left-3 font-bold text-secondary">৳</span>
+                <span className="absolute left-3 font-bold text-secondary">{currConfig.displaySymbol}</span>
                 <input
                   type="number"
                   value={newPaceInput}
@@ -921,12 +934,12 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                    Target Capital (৳ BDT)
+                    Target Capital ({userCurrency})
                   </label>
                   <input
                     type="number"
                     required
-                    min="1000"
+                    min="1"
                     value={editForm.targetAmount}
                     onChange={(e) =>
                       setEditForm({ ...editForm, targetAmount: parseInt(e.target.value, 10) || 0 })
@@ -937,7 +950,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
 
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                    Current Saved (৳ BDT)
+                    Current Saved ({userCurrency})
                   </label>
                   <input
                     type="number"
@@ -955,7 +968,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                    Monthly Pace (৳ BDT)
+                    Monthly Pace ({userCurrency})
                   </label>
                   <input
                     type="number"

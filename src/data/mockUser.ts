@@ -5,7 +5,7 @@ export const INITIAL_USER: User = {
   name: 'Ahmed Rahman',
   email: 'ahmed.rahman@arthobachao.ai',
   preferredLanguage: 'en',
-  currency: '৳',
+  currency: 'BDT',
   createdAt: '2024-08-01T00:00:00.000Z',
   tagline: 'Pro Member',
   memberStatus: 'Pro Member',

@@ -43,11 +43,26 @@ export interface MonthlyOverview {
   categories: CategorySummary[];
 }
 
+import {
+  formatCurrency,
+  convertAmount,
+  SUPPORTED_CURRENCIES,
+  getCurrencyConfig,
+  normalizeCurrencyCode,
+  formatBDT as formatBDTUtil,
+} from './currencyService';
+
+export {
+  formatCurrency,
+  convertAmount,
+  SUPPORTED_CURRENCIES,
+  getCurrencyConfig,
+  normalizeCurrencyCode,
+};
+
 // Format currency into Bangladeshi Taka format (e.g. ৳24,850)
 export function formatBDT(amount: number): string {
-  const rounded = Math.round(amount);
-  const formatted = new Intl.NumberFormat('en-IN').format(rounded);
-  return `৳${formatted}`;
+  return formatBDTUtil(amount);
 }
 
 // Local date helpers to avoid UTC timezone off-by-one shifts

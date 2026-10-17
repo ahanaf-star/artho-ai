@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
-import { getDetailedForecast, formatBDT } from '../services/financialCalculations';
+import { getDetailedForecast } from '../services/financialCalculations';
 import { Transaction, SavingsGoal, UserProfile, RecurringObligation } from '../types/financial';
 import { NavScreen } from './Sidebar';
+import {
+  formatCurrency,
+  convertAmount,
+  normalizeCurrencyCode,
+  getCurrencyConfig,
+} from '../services/currencyService';
 
 interface CashFlowViewProps {
   onNavigate: (screen: NavScreen) => void;
@@ -20,6 +26,17 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
   goals: _goals = [],
   onUpdateUser,
 }) => {
+  const userCurrency = normalizeCurrencyCode(user?.currency);
+  const currConfig = getCurrencyConfig(userCurrency);
+
+  const formatMoney = (bdtAmount: number, maxDec?: number) => {
+    const converted = convertAmount(bdtAmount, 'BDT', userCurrency);
+    return formatCurrency(converted, userCurrency, {
+      maximumFractionDigits:
+        maxDec !== undefined ? maxDec : userCurrency === 'BDT' || userCurrency === 'JPY' ? 0 : 2,
+    });
+  };
+
   const [horizon, setHorizon] = useState<7 | 14 | 30>(30);
   const [isSimulated, setIsSimulated] = useState(false);
   const [lockedBuffer, setLockedBuffer] = useState(false);
@@ -66,17 +83,21 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
   // Handle adding an obligation
   const handleAddObligation = (e: React.FormEvent) => {
     e.preventDefault();
-    const amount = parseFloat(newObligationAmount);
+    const rawAmount = parseFloat(newObligationAmount);
     const day = parseInt(newObligationDay, 10);
-    if (!newObligationName.trim() || isNaN(amount) || amount <= 0 || isNaN(day) || day < 1 || day > 31) {
+    if (!newObligationName.trim() || isNaN(rawAmount) || rawAmount <= 0 || isNaN(day) || day < 1 || day > 31) {
       return;
     }
+
+    // Convert from user display currency to base BDT if needed
+    const bdtAmount =
+      userCurrency === 'BDT' ? rawAmount : convertAmount(rawAmount, userCurrency, 'BDT');
 
     const newObligation: RecurringObligation = {
       id: `obl-${Date.now()}`,
       userId: user?.id,
       name: newObligationName.trim(),
-      amount,
+      amount: Math.round(bdtAmount),
       dueDay: day,
       recurrenceRule: 'monthly',
       isEnabled: true,
@@ -112,9 +133,9 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
       day: 1,
       date: isBangla ? '১ম দিন' : 'Day 1',
       event: isBangla ? 'বর্তমান শুরুর ব্যালেন্স' : 'Starting Account Balance',
-      impact: `+৳${startingBalance.toLocaleString()}`,
+      impact: `+${formatMoney(startingBalance)}`,
       type: 'neutral',
-      cushion: `৳${startingBalance.toLocaleString()}`,
+      cushion: formatMoney(startingBalance),
     });
 
     // Obligations due in horizon
@@ -128,9 +149,9 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           day: o.dueDay,
           date: isBangla ? `${o.dueDay} তারিখ` : `Day ${o.dueDay}`,
           event: o.name,
-          impact: `-৳${o.amount.toLocaleString()}`,
+          impact: `-${formatMoney(o.amount)}`,
           type: 'pressure',
-          cushion: `৳${cushionVal.toLocaleString()}`,
+          cushion: formatMoney(cushionVal),
         });
       });
 
@@ -146,9 +167,9 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             day: dueDay,
             date: isBangla ? `${dueDay} তারিখ` : `Day ${dueDay}`,
             event: t.description || (isBangla ? 'নিয়মিত আয়' : 'Recurring Income'),
-            impact: `+৳${t.amount.toLocaleString()}`,
+            impact: `+${formatMoney(t.amount)}`,
             type: 'inflow',
-            cushion: `৳${cushionVal.toLocaleString()}`,
+            cushion: formatMoney(cushionVal),
           });
         }
       });
@@ -158,9 +179,9 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
       day: horizon,
       date: isBangla ? `${horizon}ম দিন` : `Day ${horizon}`,
       event: isBangla ? 'প্রত্যাশিত সমাপনী ব্যালেন্স' : 'Projected Closing Balance',
-      impact: `${projectedEndBalance >= 0 ? '+' : ''}৳${projectedEndBalance.toLocaleString()}`,
+      impact: `${projectedEndBalance >= 0 ? '+' : ''}${formatMoney(projectedEndBalance)}`,
       type: projectedEndBalance >= recommendedBuffer ? 'safe' : 'pressure',
-      cushion: `৳${projectedEndBalance.toLocaleString()}`,
+      cushion: formatMoney(projectedEndBalance),
     });
 
     return events.sort((a, b) => a.day - b.day);
@@ -244,8 +265,8 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             <span>
               {isSimulated
                 ? isBangla
-                  ? `সিমুলেশন সক্রিয় (+৳${simulationSaving || 300}/দিন)`
-                  : `Simulation Active (+৳${simulationSaving || 300}/day)`
+                  ? `সিমুলেশন সক্রিয় (+${formatMoney(simulationSaving || 300)}/দিন)`
+                  : `Simulation Active (+${formatMoney(simulationSaving || 300)}/day)`
                 : isBangla
                 ? 'খরচ হ্রাস সিমুলেট করুন'
                 : 'Simulate Expense Cut'}
@@ -289,11 +310,11 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           >
             {lockedBuffer
               ? isBangla
-                ? `✓ ৳${recommendedBuffer.toLocaleString()} বাফার সংরক্ষিত`
-                : `✓ ৳${recommendedBuffer.toLocaleString()} Buffer Reserved`
+                ? `✓ ${formatMoney(recommendedBuffer)} বাফার সংরক্ষিত`
+                : `✓ ${formatMoney(recommendedBuffer)} Buffer Reserved`
               : isBangla
-              ? `এখনই ৳${recommendedBuffer.toLocaleString()} বাফার রাখুন`
-              : `Lock ৳${recommendedBuffer.toLocaleString()} Buffer Now`}
+              ? `এখনই ${formatMoney(recommendedBuffer)} বাফার রাখুন`
+              : `Lock ${formatMoney(recommendedBuffer)} Buffer Now`}
           </button>
         </div>
       ) : (
@@ -334,7 +355,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             {isBangla ? 'শুরুর মোট ব্যালেন্স' : 'Starting Balance'}
           </span>
           <span className="font-headline-lg text-headline-lg text-on-surface font-bold mt-1">
-            ৳{startingBalance.toLocaleString()}
+            {formatMoney(startingBalance)}
           </span>
           <span className="text-xs text-on-surface-variant mt-1">
             {user?.linkedAccounts?.length || 0} {isBangla ? 'অ্যাকাউন্ট সংযুক্ত' : 'Linked Accounts'}
@@ -346,13 +367,13 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             {isBangla ? `${horizon} দিন শেষের সম্ভাব্য ব্যালেন্স` : `Projected Day ${horizon} Balance`}
           </span>
           <span className="font-headline-lg text-headline-lg text-secondary font-bold mt-1">
-            {formatBDT(projectedEndBalance)}
+            {formatMoney(projectedEndBalance)}
           </span>
           <span className="text-xs text-secondary font-medium mt-1">
             {isSimulated
               ? isBangla
-                ? `সিমুলেশনে +৳${(simulationSaving * horizon).toLocaleString()} উদ্বৃত্ত`
-                : `Simulated surplus +৳${(simulationSaving * horizon).toLocaleString()}`
+                ? `সিমুলেশনে +${formatMoney(simulationSaving * horizon)} উদ্বৃত্ত`
+                : `Simulated surplus +${formatMoney(simulationSaving * horizon)}`
               : isBangla
               ? 'বাস্তব প্রজেকশন'
               : 'Authentic baseline'}
@@ -364,7 +385,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             {isBangla ? 'আসন্ন নির্ধারিত দায় ও বিল' : 'Upcoming Obligations'}
           </span>
           <span className="font-headline-lg text-headline-lg text-error font-bold mt-1">
-            ৳{upcomingBillsInHorizon.toLocaleString()}
+            {formatMoney(upcomingBillsInHorizon)}
           </span>
           <span className="text-xs text-on-surface-variant mt-1">
             {activeObligations.length > 0
@@ -380,7 +401,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             {isBangla ? 'প্রস্তাবিত জরুরি বাফার' : 'Recommended Buffer'}
           </span>
           <span className="font-headline-lg text-headline-lg text-on-surface font-bold mt-1">
-            ৳{recommendedBuffer.toLocaleString()}
+            {formatMoney(recommendedBuffer)}
           </span>
           <span className="text-xs text-secondary font-medium mt-1">
             {lockedBuffer
@@ -405,8 +426,8 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             <span className="flex items-center gap-1.5 text-outline">
               <span className="w-3 h-1 bg-outline-variant rounded-full"></span>{' '}
               {isBangla
-                ? `দৈনিক স্বাভাবিক ব্যয় (~৳${dailyBurn}/দিন)`
-                : `Daily Burn (~৳${dailyBurn}/day)`}
+                ? `দৈনিক স্বাভাবিক ব্যয় (~${formatMoney(dailyBurn)}/দিন)`
+                : `Daily Burn (~${formatMoney(dailyBurn)}/day)`}
             </span>
             {hasPressure && (
               <span className="flex items-center gap-1.5 text-error">
@@ -495,11 +516,11 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
               {dailyBurn > 0
                 ? isSimulated
                   ? isBangla
-                    ? `সিমুলেশন অনুযায়ী দৈনিক খরচ ৳${Math.max(0, dailyBurn - simulationSaving)} ধরা হয়েছে (৳${simulationSaving}/দিন সাশ্রয় অন্তর্ভুক্ত)।`
-                    : `Calibrated at ৳${Math.max(0, dailyBurn - simulationSaving)}/day with simulated ৳${simulationSaving}/day discretionary cap.`
+                    ? `সিমুলেশন অনুযায়ী দৈনিক খরচ ${formatMoney(Math.max(0, dailyBurn - simulationSaving))} ধরা হয়েছে (${formatMoney(simulationSaving)}/দিন সাশ্রয় অন্তর্ভুক্ত)।`
+                    : `Calibrated at ${formatMoney(Math.max(0, dailyBurn - simulationSaving))}/day with simulated ${formatMoney(simulationSaving)}/day discretionary cap.`
                   : isBangla
-                  ? `আপনার লেনদেনের ভিত্তিতে দৈনিক গড় খরচ ৳${dailyBurn} ধরা হয়েছে।`
-                  : `Calibrated at ৳${dailyBurn}/day based on past 30-day non-recurring spending.`
+                  ? `আপনার লেনদেনের ভিত্তিতে দৈনিক গড় খরচ ${formatMoney(dailyBurn)} ধরা হয়েছে।`
+                  : `Calibrated at ${formatMoney(dailyBurn)}/day based on past 30-day non-recurring spending.`
                 : isBangla
                 ? 'এখনও কোনো ব্যয়ের ইতিহাস নেই। লেনদেন যোগ করলে স্বয়ংক্রিয়ভাবে দৈনিক গড় হিসাব হবে।'
                 : 'No expense history recorded. Daily burn rate will calibrate as you log transactions.'}
@@ -514,8 +535,8 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             <p className="text-xs text-on-surface-variant leading-relaxed">
               {activeObligations.length > 0
                 ? isBangla
-                  ? `মোট ${activeObligations.length}টি নিয়মিত দায় (মোট ৳${upcomingBillsInHorizon.toLocaleString()}) নির্ধারিত রয়েছে।`
-                  : `Total ${activeObligations.length} obligation(s) totaling ৳${upcomingBillsInHorizon.toLocaleString()} scheduled this month.`
+                  ? `মোট ${activeObligations.length}টি নিয়মিত দায় (মোট ${formatMoney(upcomingBillsInHorizon)}) নির্ধারিত রয়েছে।`
+                  : `Total ${activeObligations.length} obligation(s) totaling ${formatMoney(upcomingBillsInHorizon)} scheduled this month.`
                 : isBangla
                 ? 'কোনো নিয়মিত বিল বা বাসাভাড়া নির্ধারিত নেই। যুক্ত করতে ওপরের বাটনে ক্লিক করুন।'
                 : 'No recurring obligations registered. Add your fixed rent or bills to enable automated detection.'}
@@ -530,8 +551,8 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             <p className="text-xs text-on-surface-variant leading-relaxed">
               {startingBalance > 0
                 ? isBangla
-                  ? `সংযুক্ত অ্যাকাউন্টসমূহ থেকে মোট ৳${startingBalance.toLocaleString()} উপলব্ধ রয়েছে।`
-                  : `Starting balance of ৳${startingBalance.toLocaleString()} across your linked accounts.`
+                  ? `সংযুক্ত অ্যাকাউন্টসমূহ থেকে মোট ${formatMoney(startingBalance)} উপলব্ধ রয়েছে।`
+                  : `Starting balance of ${formatMoney(startingBalance)} across your linked accounts.`
                 : isBangla
                 ? 'বর্তমানে অ্যাকাউন্টে কোনো ব্যালেন্স নেই। ড্যাশবোর্ড থেকে ব্যাংক বা বিকাশ ব্যালেন্স যুক্ত করুন।'
                 : 'No liquid balance registered. Update your linked account balances on the Dashboard.'}
@@ -623,7 +644,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
               </div>
               <div>
                 <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                  {isBangla ? 'পরিমাণ (৳)' : 'Amount (৳)'}
+                  {isBangla ? `পরিমাণ (${currConfig.displaySymbol})` : `Amount (${currConfig.displaySymbol})`}
                 </label>
                 <input
                   type="number"

@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Transaction, TransactionClassification } from '../types/financial';
+import { Transaction, TransactionClassification, UserProfile } from '../types/financial';
 import {
   calculateMonthlyOverview,
-  formatBDT,
   getLatestTransactionMonth,
   getPreviousMonth,
 } from '../services/financialCalculations';
+import {
+  formatCurrency,
+  convertAmount,
+  normalizeCurrencyCode,
+  getCurrencyConfig,
+} from '../services/currencyService';
 import { detectSpendingAnomalies } from '../services/spendingService';
 import { NavScreen } from './Sidebar';
 
@@ -14,6 +19,7 @@ interface SpendingAnalysisProps {
   onNavigate: (screen: NavScreen) => void;
   onOpenAddTransaction: () => void;
   isBangla: boolean;
+  user?: UserProfile | null;
   onCoachQuery?: (query: string) => void;
   onSelectTransactionForEdit?: (transaction: Transaction) => void;
 }
@@ -23,9 +29,16 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
   onNavigate,
   onOpenAddTransaction: _onOpenAddTransaction,
   isBangla,
+  user,
   onCoachQuery,
   onSelectTransactionForEdit,
 }) => {
+  const userCurrency = normalizeCurrencyCode(user?.currency);
+  const currConfig = getCurrencyConfig(userCurrency);
+  const formatMoney = (amountInBDT: number, opts?: { decimals?: number; roundWhole?: boolean }) => {
+    const converted = convertAmount(amountInBDT, 'BDT', userCurrency);
+    return formatCurrency(converted, userCurrency, opts);
+  };
   const [selectedMonth, setSelectedMonth] = useState<string>(() =>
     getLatestTransactionMonth(transactions)
   );
@@ -141,7 +154,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
 
   const handleDiscussWithCoach = () => {
     if (onCoachQuery) {
-      onCoachQuery('Why did my Food spending increase 14% this month and how can I cut ৳1,400?');
+      onCoachQuery(`Why did my Food spending increase 14% this month and how can I cut ${formatMoney(1400)}?`);
     }
     onNavigate('ai-coach');
   };
@@ -233,13 +246,13 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
           <div className="mt-space-md">
             <div className="flex items-baseline gap-1">
               <span className="font-headline-xl text-headline-xl text-on-surface font-bold">
-                {formatBDT(overview.totalExpenses)}
+                {formatMoney(overview.totalExpenses)}
               </span>
-              <span className="font-body-sm text-body-sm text-on-surface-variant">BDT</span>
+              <span className="font-body-sm text-body-sm text-on-surface-variant">{userCurrency}</span>
             </div>
             <p className="font-body-sm text-body-sm text-outline mt-1">
               {prevMonthExpenses > 0
-                ? `vs ${formatBDT(prevMonthExpenses)} last month`
+                ? `vs ${formatMoney(prevMonthExpenses)} last month`
                 : (isBangla ? 'পূর্ববর্তী মাসের রেকর্ড নেই' : 'No prior month record')}
             </p>
           </div>
@@ -271,13 +284,13 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
           <div className="mt-space-md">
             <div className="flex items-baseline gap-1">
               <span className="font-headline-xl text-headline-xl text-on-surface font-bold">
-                {formatBDT(overview.dailyAverageSpend)}
+                {formatMoney(overview.dailyAverageSpend)}
               </span>
               <span className="font-title-md text-title-md text-on-surface-variant">/day</span>
             </div>
             <p className="font-body-sm text-body-sm text-secondary font-medium mt-1">
               {overview.totalExpenses > 0
-                ? (isBangla ? 'চলতি মাসের দৈনিক গড়' : 'Target ceiling: ৳1,050/day')
+                ? (isBangla ? 'চলতি মাসের দৈনিক গড়' : `Target ceiling: ${formatMoney(1050)}/day`)
                 : (isBangla ? 'কোন ব্যয় রেকর্ড নেই' : 'No expenses recorded')}
             </p>
           </div>
@@ -316,7 +329,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                 </span>
                 <div className="flex items-center gap-space-xs mt-1.5 flex-wrap">
                   <span className="font-title-md text-title-md text-on-surface font-semibold">
-                    {formatBDT(overview.largestCategory.amount)}
+                    {formatMoney(overview.largestCategory.amount)}
                   </span>
                   {isLargestOutlier && (
                     <span className="font-body-sm text-xs px-1.5 py-0.5 rounded bg-error-container text-on-error-container font-medium">
@@ -368,7 +381,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                 Essential ({overview.expenseSplit.essentialPercentage}%)
               </span>
               <span className="font-title-md text-title-md text-on-surface font-semibold">
-                {formatBDT(overview.expenseSplit.essential)}
+                {formatMoney(overview.expenseSplit.essential)}
               </span>
             </div>
             <div className="flex justify-between items-baseline">
@@ -376,7 +389,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                 Discretionary ({overview.expenseSplit.discretionaryPercentage}%)
               </span>
               <span className="font-title-md text-title-md text-tertiary-container font-semibold">
-                {formatBDT(overview.expenseSplit.discretionary)}
+                {formatMoney(overview.expenseSplit.discretionary)}
               </span>
             </div>
             {/* Dual segmented progress bar */}
@@ -482,7 +495,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                 <div className="my-space-md">
                   <div className="flex items-baseline justify-between">
                     <span className="font-headline-lg text-headline-lg text-on-surface font-bold">
-                      {formatBDT(cat.amount)}
+                      {formatMoney(cat.amount)}
                     </span>
                     <span
                       className={`font-body-sm text-body-sm font-medium ${
@@ -560,7 +573,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-1 rounded-full bg-surface-container-lowest text-on-surface font-label-md text-label-md font-semibold shadow-sm border border-outline-variant/30">
-              Impact: -৳1,400 to Monthly Goal
+              Impact: -{formatMoney(1400)} to Monthly Goal
             </span>
             <span className="px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-semibold">
               98% Confidence
@@ -590,10 +603,10 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
               </span>
               <div className="flex items-baseline justify-between">
                 <span className="font-title-md text-title-md text-on-surface font-bold">
-                  {occasionExcluded ? '৳6,800 Recalibrated' : '৳8,200 Current'}
+                  {occasionExcluded ? `${formatMoney(6800)} Recalibrated` : `${formatMoney(8200)} Current`}
                 </span>
                 <span className="font-body-sm text-body-sm text-on-surface-variant">
-                  Baseline: ৳6,800
+                  Baseline: {formatMoney(6800)}
                 </span>
               </div>
               <div className="h-2 w-full bg-surface-container rounded-full mt-1 overflow-hidden">
@@ -619,8 +632,8 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                 </h4>
               </div>
               <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
-                Food spending reached <strong className="text-on-surface font-bold">৳8,200</strong>,
-                which is <strong className="text-error font-bold">৳1,400 higher</strong> than your 3-month
+                Food spending reached <strong className="text-on-surface font-bold">{formatMoney(8200)}</strong>,
+                which is <strong className="text-error font-bold">{formatMoney(1400)} higher</strong> than your 3-month
                 rolling baseline. Most of this increase occurred between Friday and Sunday evenings via
                 quick-commerce and delivery platforms, compounding incremental surcharge delivery fees.
               </p>
@@ -633,7 +646,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                   task_alt
                 </span>
                 <h4 className="font-title-md text-title-md text-on-surface uppercase tracking-wide font-bold">
-                  What You Can Do (Estimated Savings: ৳1,400)
+                  What You Can Do (Estimated Savings: {formatMoney(1400)})
                 </h4>
               </div>
               <ul className="flex flex-col gap-space-xs">
@@ -643,7 +656,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                   </span>
                   <p className="font-body-sm text-body-sm text-on-surface">
                     <strong>Cap weekend delivery orders</strong> to twice a week instead of 4 times
-                    (potential monthly saving: <span className="text-secondary font-semibold">৳900</span>).
+                    (potential monthly saving: <span className="text-secondary font-semibold">{formatMoney(900)}</span>).
                   </p>
                 </li>
                 <li className="p-space-sm rounded-xl bg-surface-container-lowest shadow-sm flex items-start gap-space-sm border border-outline-variant/20">
@@ -659,7 +672,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                     3
                   </span>
                   <p className="font-body-sm text-body-sm text-on-surface">
-                    Activate ArthoBachao AI's <strong>'Dining Out Budget Alert'</strong> capped at ৳1,500/week to receive pro-active nudges before checkout.
+                    Activate ArthoBachao AI's <strong>'Dining Out Budget Alert'</strong> capped at {formatMoney(1500)}/week to receive pro-active nudges before checkout.
                   </p>
                 </li>
               </ul>
@@ -679,7 +692,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                   {alertActive ? 'check_circle' : 'notifications_active'}
                 </span>
                 <span>
-                  {alertActive ? 'Budget Alert Activated (৳1,500/wk)' : 'Activate Budget Alert (৳1,500/wk)'}
+                  {alertActive ? `Budget Alert Activated (${formatMoney(1500)}/wk)` : `Activate Budget Alert (${formatMoney(1500)}/wk)`}
                 </span>
               </button>
               <button
@@ -819,8 +832,8 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
                       }`}
                     >
                       {tx.type === 'income' ? '+' : '-'}
-                      {formatBDT(tx.amount)}
-                      {tx.fee ? ` + ৳${tx.fee} fee` : ''}
+                      {formatMoney(tx.amount)}
+                      {tx.fee ? ` + ${formatMoney(tx.fee)} fee` : ''}
                     </span>
                     <span
                       className={`font-label-sm text-label-sm ${

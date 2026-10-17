@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { normalizeCurrency } from '../services/exchangeRateService';
 
 export interface IUser extends Document {
   customId?: string;
@@ -65,7 +66,7 @@ const UserSchema = new Schema<IUser>(
     },
     currency: {
       type: String,
-      default: '৳',
+      default: 'BDT',
       trim: true,
     },
     monthlyIncome: {
@@ -125,6 +126,7 @@ const UserSchema = new Schema<IUser>(
         ret.id = ret.customId || ret._id.toString();
         delete ret.__v;
         delete ret.passwordHash;
+        ret.currency = normalizeCurrency(ret.currency);
         return ret;
       },
     },

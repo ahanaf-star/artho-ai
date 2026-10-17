@@ -22,6 +22,7 @@ import { apiService } from './services/apiService';
 import { financialDataService } from './services/financialDataService';
 import { calculateFinancialHealthScore, getLocalDateString } from './services/financialCalculations';
 import { Transaction, SavingsGoal, UserProfile } from './types/financial';
+import { fetchExchangeRates, getLoadedRates, ExchangeRatesState } from './services/currencyService';
 const PRIVATE_SCREENS: NavScreen[] = [
   'dashboard',
   'spending-analysis',
@@ -122,6 +123,17 @@ export default function App() {
   const [coachPreQuery, setCoachPreQuery] = useState<string | undefined>(undefined);
 
   const [isBangla, setIsBangla] = useState<boolean>(false);
+  const [exchangeRates, setExchangeRates] = useState<ExchangeRatesState>(() => getLoadedRates());
+
+  useEffect(() => {
+    fetchExchangeRates()
+      .then((rates) => {
+        setExchangeRates(rates);
+      })
+      .catch((err) => {
+        console.warn('[App] Failed to load latest exchange rates:', err);
+      });
+  }, []);
 
   // User-scoped Financial State (empty when unauthenticated)
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
@@ -607,6 +619,13 @@ export default function App() {
           transactions={transactions}
           goals={goals}
           user={currentUser}
+          onCurrencyChange={(newCurrency) => {
+            handleUpdateUser({
+              ...currentUser,
+              currency: newCurrency,
+            });
+          }}
+          exchangeRateTimestamp={exchangeRates.lastUpdated}
           onLogout={handleLogout}
         />
 
@@ -648,6 +667,7 @@ export default function App() {
 
           {resolvedScreen === 'spending-analysis' && (
             <SpendingAnalysis
+              user={currentUser}
               transactions={transactions}
               onNavigate={navigateTo}
               onOpenAddTransaction={() => setIsAddTxOpen(true)}
@@ -662,6 +682,7 @@ export default function App() {
 
           {resolvedScreen === 'savings-goals' && (
             <SavingsGoals
+              user={currentUser}
               goals={goals}
               onUpdateGoal={handleUpdateGoal}
               onDeleteGoal={handleDeleteGoal}

@@ -131,7 +131,7 @@ export const authService = {
       name,
       email,
       preferredLanguage,
-      currency: '৳',
+      currency: 'BDT',
       createdAt: new Date().toISOString(),
       tagline: 'Standard Member',
       memberStatus: 'Standard Member',

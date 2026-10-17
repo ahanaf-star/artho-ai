@@ -8,6 +8,7 @@ import authRoutes from './server/routes/authRoutes';
 import userRoutes from './server/routes/userRoutes';
 import transactionRoutes from './server/routes/transactionRoutes';
 import goalRoutes from './server/routes/goalRoutes';
+import exchangeRateRoutes from './server/routes/exchangeRateRoutes';
 import { requireAuth, optionalAuth, AuthenticatedRequest } from './server/middleware/authMiddleware';
 import {
   getAuthoritativeUserHealthScore,
@@ -34,6 +35,7 @@ async function startServer() {
   app.use('/api/users', transactionRoutes);
   app.use('/api', transactionRoutes);
   app.use('/api', goalRoutes);
+  app.use('/api', exchangeRateRoutes);
   
   // Authenticated Financial Health Score & Explanation endpoint
   app.post('/api/ai/health/explain', requireAuth, async (req: AuthenticatedRequest, res: Response) => {

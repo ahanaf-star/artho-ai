@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { UserModel } from '../models/User';
 import { isDbConnected } from '../config/database';
 import { INITIAL_USER } from '../../src/data/mockUser';
+import { normalizeCurrency, isValidCurrency, SUPPORTED_CURRENCY_CODES } from '../services/exchangeRateService';
 
 /**
  * GET /api/users/:id
@@ -97,6 +98,15 @@ export async function updateUser(req: Request, res: Response) {
   // Prevent modifying sensitive or internal fields
   delete updates._id;
   delete updates.createdAt;
+
+  if (updates.currency !== undefined) {
+    if (typeof updates.currency !== 'string' || !isValidCurrency(updates.currency)) {
+      return res.status(400).json({
+        error: `Invalid currency code. Supported currencies: ${SUPPORTED_CURRENCY_CODES.join(', ')}`,
+      });
+    }
+    updates.currency = normalizeCurrency(updates.currency);
+  }
 
   const authUser = (req as any).user;
   if (authUser) {
@@ -197,7 +207,7 @@ export async function createUser(req: Request, res: Response) {
       email: email.trim().toLowerCase(),
       profileImage: profileImage || '',
       preferredLanguage: preferredLanguage || 'en',
-      currency: currency || '৳',
+      currency: normalizeCurrency(currency),
       monthlyIncome: monthlyIncome ? Number(monthlyIncome) : undefined,
       riskTolerance: riskTolerance || undefined,
       tagline: tagline || 'Standard Member',
@@ -221,7 +231,7 @@ export async function createUser(req: Request, res: Response) {
       passwordHash: passwordHash || '',
       profileImage: profileImage || '',
       preferredLanguage: preferredLanguage || 'en',
-      currency: currency || '৳',
+      currency: normalizeCurrency(currency),
       monthlyIncome: monthlyIncome ? Number(monthlyIncome) : undefined,
       riskTolerance: riskTolerance || undefined,
       tagline: tagline || 'Standard Member',
