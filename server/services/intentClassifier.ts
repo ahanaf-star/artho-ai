@@ -17,6 +17,8 @@ export type CoachIntent =
   | 'unusual_spending'
   | 'reduce_cash_outs'
   | 'financial_health'
+  | 'health_recommendations'
+  | 'financial_projection'
   | 'budget_help'
   | 'transaction_lookup'
   | 'general_education'
@@ -197,7 +199,8 @@ export function parseSavingsTarget(
   }
 
   // Pattern 4: Bengali monthly recurring savings target (e.g. "প্রতি মাসে ৬০০০ টাকা কীভাবে সঞ্চয় করব", "মাসে ৬০০০ টাকা সঞ্চয়")
-  const isMonthlyBn = /(?:প্রতি\s*মাসে|মাসে|মাসিক)/.test(normalizedDigits);
+  const hasSavingsWordBn = /(?:সঞ্চয়|সঞ্চয়|সেভ|জমা|বাঁচাব|বাঁচাবো)/.test(normalizedDigits);
+  const isMonthlyBn = hasSavingsWordBn && /(?:প্রতি\s*মাসে|মাসে|মাসিক)/.test(normalizedDigits);
   if (isMonthlyBn) {
     const m =
       normalizedDigits.match(/(?:প্রতি\s*মাসে|মাসে|মাসিক).*?([0-9,]+)\s*(?:টাকা)?/) ||
@@ -298,6 +301,46 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     }
   }
 
+  // 1b. Multi-Month Financial Projections & Long-Term Position
+  const projectionPatterns = [
+    'predict my financial position',
+    'predict my financial',
+    'predict my finances',
+    'predict my balance',
+    'financial position for the next',
+    'financial position next',
+    'position for the next six months',
+    'for the next six months',
+    'for the next 6 months',
+    'next six months',
+    'next 6 months',
+    'next 3 months',
+    'next 12 months',
+    'six months based on',
+    '6 months based on',
+    'six-month projection',
+    '6-month projection',
+    'six month projection',
+    '6 month projection',
+    'financial projection',
+    'future projection',
+    'forecast for next',
+    'forecast next 6',
+    'forecast next six',
+    'আর্থিক পূর্বাভাস',
+    'ভবিষ্যতের পূর্বাভাস',
+    'ভবিষ্যত আর্থিক অবস্থান',
+    'আগামী ৬ মাস',
+    'আগামী ছয় মাস',
+    'পরবর্তী ৬ মাস',
+    'পরবর্তী ছয় মাস',
+  ];
+  for (const p of projectionPatterns) {
+    if (norm.includes(p)) {
+      return { intent: 'financial_projection', confidence: 0.94, matchedKeywords: [p] };
+    }
+  }
+
   // 2. Month-End Balance & Cash Flow Forecast
   const monthEndPatterns = [
     'month end',
@@ -370,7 +413,52 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     }
   }
 
-  // 3c. Lowest Spending Category
+  // 3c. Largest Individual Expense Transaction
+  const largestExpensePatterns = [
+    'largest individual expense',
+    'largest transaction',
+    'largest single expense',
+    'biggest single expense',
+    'highest transaction',
+    'biggest transaction',
+    'biggest purchase',
+    'largest purchase',
+    'single largest',
+    'single biggest',
+    'maximum transaction',
+    'একক সর্বোচ্চ খরচ',
+    'সবচেয়ে বড় লেনদেন',
+    'সবচেয়ে বড় খরচ',
+    'সবচেয়ে দামি কেনাকাটা',
+    'এককালীন সর্বোচ্চ',
+  ];
+  for (const p of largestExpensePatterns) {
+    if (norm.includes(p)) {
+      return { intent: 'largest_expense', confidence: 0.92, matchedKeywords: [p] };
+    }
+  }
+
+  // 3d. Smallest Individual Expense Transaction
+  const smallestExpensePatterns = [
+    'smallest individual expense',
+    'smallest transaction',
+    'smallest single expense',
+    'lowest transaction',
+    'smallest purchase',
+    'minimum transaction',
+    'single smallest',
+    'একক সর্বনিম্ন খরচ',
+    'সবচেয়ে ছোট লেনদেন',
+    'সবচেয়ে ছোট খরচ',
+    'ক্ষুদ্রতম লেনদেন',
+  ];
+  for (const p of smallestExpensePatterns) {
+    if (norm.includes(p)) {
+      return { intent: 'smallest_expense', confidence: 0.92, matchedKeywords: [p] };
+    }
+  }
+
+  // 3e. Lowest Spending Category
   const lowestCatPatterns = [
     'lowest category',
     'lowest spending category',
@@ -405,7 +493,7 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     }
   }
 
-  // 3d. Top / Highest Spending Category
+  // 3f. Top / Highest Spending Category
   const topCatPatterns = [
     'top category',
     'top spending category',
@@ -433,51 +521,6 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
   for (const p of topCatPatterns) {
     if (norm.includes(p)) {
       return { intent: 'top_category', confidence: 0.93, matchedKeywords: [p] };
-    }
-  }
-
-  // 3e. Largest Individual Expense Transaction
-  const largestExpensePatterns = [
-    'largest individual expense',
-    'largest transaction',
-    'largest single expense',
-    'biggest single expense',
-    'highest transaction',
-    'biggest transaction',
-    'biggest purchase',
-    'largest purchase',
-    'single largest',
-    'single biggest',
-    'maximum transaction',
-    'একক সর্বোচ্চ খরচ',
-    'সবচেয়ে বড় লেনদেন',
-    'সবচেয়ে বড় খরচ',
-    'সবচেয়ে দামি কেনাকাটা',
-    'এককালীন সর্বোচ্চ',
-  ];
-  for (const p of largestExpensePatterns) {
-    if (norm.includes(p)) {
-      return { intent: 'largest_expense', confidence: 0.92, matchedKeywords: [p] };
-    }
-  }
-
-  // 3f. Smallest Individual Expense Transaction
-  const smallestExpensePatterns = [
-    'smallest individual expense',
-    'smallest transaction',
-    'smallest single expense',
-    'lowest transaction',
-    'smallest purchase',
-    'minimum transaction',
-    'single smallest',
-    'একক সর্বনিম্ন খরচ',
-    'সবচেয়ে ছোট লেনদেন',
-    'সবচেয়ে ছোট খরচ',
-    'ক্ষুদ্রতম লেনদেন',
-  ];
-  for (const p of smallestExpensePatterns) {
-    if (norm.includes(p)) {
-      return { intent: 'smallest_expense', confidence: 0.92, matchedKeywords: [p] };
     }
   }
 
@@ -604,6 +647,39 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
   for (const p of savingsPlanPatterns) {
     if (norm.includes(p)) {
       return { intent: 'savings_plan', confidence: 0.88, matchedKeywords: [p] };
+    }
+  }
+
+  // 6b. Actionable Financial Health Recommendations (3 actions)
+  const recommendationPatterns = [
+    'actions i should take',
+    'actions should i take',
+    'three most useful actions',
+    '3 most useful actions',
+    'useful actions',
+    'three actions',
+    '3 actions',
+    'actions to improve',
+    'steps to improve',
+    'recommendations to improve',
+    'recommendations for my financial health',
+    'recommendations to improve my financial health',
+    'how can i improve my financial health',
+    'how to improve my financial health',
+    'improve my financial health',
+    'ways to improve my financial health',
+    'কী পদক্ষেপ নেব',
+    'কী কী পদক্ষেপ',
+    'তিনটি পদক্ষেপ',
+    'তিনটি পরামর্শ',
+    '৩টি পদক্ষেপ',
+    'উন্নতি করার ৩টি',
+    'উন্নতি করার উপায়',
+    'আর্থিক স্বাস্থ্য উন্নতি',
+  ];
+  for (const p of recommendationPatterns) {
+    if (norm.includes(p)) {
+      return { intent: 'health_recommendations', confidence: 0.94, matchedKeywords: [p] };
     }
   }
 
@@ -933,12 +1009,61 @@ export function sliceContext(fullContext: CoachContext, intentResult: IntentResu
       includeSnapshot(true);
       addFact('health.score', fullContext.health.score);
       addFact('health.band', fullContext.health.band);
-      addFact('health.percentile', fullContext.health.percentile);
       addFact('health.savingConsistency', fullContext.health.savingConsistency);
       addFact('health.spendingControl', fullContext.health.spendingControl);
       addFact('health.cashFlowStability', fullContext.health.cashFlowStability);
       addFact('health.goalProgress', fullContext.health.goalProgress);
       break;
+
+    case 'health_recommendations':
+      includeSnapshot(true);
+      addFact('health.score', fullContext.health.score);
+      addFact('health.band', fullContext.health.band);
+      addFact('health.savingConsistency', fullContext.health.savingConsistency);
+      addFact('health.spendingControl', fullContext.health.spendingControl);
+      addFact('health.cashFlowStability', fullContext.health.cashFlowStability);
+      addFact('health.goalProgress', fullContext.health.goalProgress);
+      if (fullContext.spending.topCategory) {
+        addFact('spending.topCategory', fullContext.spending.topCategory.category);
+        addFact('spending.topCategoryAmount', fullContext.spending.topCategory.amount);
+        addFact('spending.topCategoryPercentage', fullContext.spending.topCategory.percentage);
+      }
+      if (fullContext.spending.essentialTotal !== undefined) {
+        addFact('spending.essentialTotal', fullContext.spending.essentialTotal);
+      }
+      if (fullContext.spending.discretionaryTotal !== undefined) {
+        addFact('spending.discretionaryTotal', fullContext.spending.discretionaryTotal);
+      }
+      if (fullContext.spending.discretionaryCategories) {
+        addFact('spending.discretionaryCategories', fullContext.spending.discretionaryCategories);
+      }
+      addFact('snapshot.netCashFlow', fullContext.snapshot.netCashFlow);
+      addFact('goals.totalGoals', fullContext.goals.totalGoals);
+      break;
+
+    case 'financial_projection': {
+      includeSnapshot(true);
+      addFact('dataWindow.currentMonth', fullContext.metadata.dataWindow.currentMonth);
+      addFact('dataWindow.hasData', fullContext.metadata.dataWindow.hasData);
+      addFact('dataWindow.totalTransactions', fullContext.metadata.dataWindow.totalTransactions);
+      const histCount = fullContext.metadata.dataWindow.historicalMonthsCount ?? 1;
+      addFact('dataWindow.historicalMonthsCount', histCount);
+      addFact('spending.totalSpending', fullContext.spending.totalSpending);
+      if (fullContext.spending.topCategory) {
+        addFact('spending.topCategory', fullContext.spending.topCategory.category);
+        addFact('spending.topCategoryAmount', fullContext.spending.topCategory.amount);
+      }
+      const pMonths = 6;
+      const inc = fullContext.snapshot.monthlyIncome || 0;
+      const exp = fullContext.snapshot.monthlySpending || 0;
+      const net = fullContext.snapshot.netSavings || (inc - exp);
+      addFact('projection.periodMonths', pMonths);
+      addFact('projection.sixMonthExpectedIncome', inc * pMonths);
+      addFact('projection.sixMonthExpectedExpenses', exp * pMonths);
+      addFact('projection.sixMonthProjectedCashFlow', net * pMonths);
+      addFact('projection.hasSufficientHistory', histCount >= 3);
+      break;
+    }
 
     case 'budget_help':
       includeSnapshot(true);
@@ -947,7 +1072,26 @@ export function sliceContext(fullContext: CoachContext, intentResult: IntentResu
         addFact('spending.topCategoryAmount', fullContext.spending.topCategory.amount);
         addFact('spending.topCategoryPercentage', fullContext.spending.topCategory.percentage);
       }
-      addFact('cashFlow.recommendedWeeklyReduction', fullContext.cashFlow.recommendedWeeklyReduction);
+      if (fullContext.spending.essentialTotal !== undefined) {
+        addFact('spending.essentialTotal', fullContext.spending.essentialTotal);
+      }
+      if (fullContext.spending.essentialPercentage !== undefined) {
+        addFact('spending.essentialPercentage', fullContext.spending.essentialPercentage);
+      }
+      if (fullContext.spending.discretionaryTotal !== undefined) {
+        addFact('spending.discretionaryTotal', fullContext.spending.discretionaryTotal);
+      }
+      if (fullContext.spending.discretionaryPercentage !== undefined) {
+        addFact('spending.discretionaryPercentage', fullContext.spending.discretionaryPercentage);
+      }
+      if (fullContext.spending.discretionaryCategories) {
+        addFact('spending.discretionaryCategories', fullContext.spending.discretionaryCategories);
+      }
+      if (fullContext.spending.essentialCategories) {
+        addFact('spending.essentialCategories', fullContext.spending.essentialCategories);
+      }
+      addFact('spending.categoryTotals', fullContext.spending.categoryTotals);
+      addFact('snapshot.netCashFlow', fullContext.snapshot.netCashFlow);
       break;
 
     case 'transaction_lookup':

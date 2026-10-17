@@ -37,6 +37,7 @@ export interface CoachContext {
       previousMonths: string[];
       hasData: boolean;
       totalTransactions: number;
+      historicalMonthsCount?: number;
     };
   };
   snapshot: {
@@ -57,11 +58,21 @@ export interface CoachContext {
   spending: {
     available: boolean;
     totalSpending: number;
+    essentialTotal?: number;
+    essentialPercentage?: number;
+    discretionaryTotal?: number;
+    discretionaryPercentage?: number;
+    essentialCategories?: Array<{
+      category: string;
+      amount: number;
+      percentage: number;
+    }>;
     topCategory: {
       category: string;
       amount: number;
       percentage: number;
       momChangePercentage: number;
+      hasMomComparison?: boolean;
       isTie?: boolean;
       tiedCategories?: string[];
     } | null;
@@ -70,6 +81,7 @@ export interface CoachContext {
       amount: number;
       percentage: number;
       momChangePercentage: number;
+      hasMomComparison?: boolean;
       isTie?: boolean;
       tiedCategories?: string[];
     } | null;
@@ -79,7 +91,6 @@ export interface CoachContext {
       amount: number;
       percentage: number;
     }>;
-    discretionaryTotal?: number;
     topCategories: Array<{
       category: string;
       amount: number;
@@ -420,27 +431,31 @@ export async function buildCoachContext(
   const topCategories = monthlyOverview.categories
     .filter((c) => c.amount > 0)
     .sort((a, b) => b.amount - a.amount);
+  const topCatSummary = monthlyOverview.categories.find(
+    (c) => c.category === factual.highestCategory?.category
+  );
   const topCategoryItem = factual.highestCategory
     ? {
         category: factual.highestCategory.category,
         amount: factual.highestCategory.amount,
         percentage: factual.highestCategory.percentage,
-        momChangePercentage:
-          monthlyOverview.categories.find((c) => c.category === factual.highestCategory?.category)
-            ?.momChangePercentage || 0,
+        momChangePercentage: topCatSummary?.momChangePercentage || 0,
+        hasMomComparison: Boolean(topCatSummary?.hasMomComparison),
         isTie: factual.highestCategory.isTie,
         tiedCategories: factual.highestCategory.tiedCategories,
       }
     : null;
 
+  const lowestCatSummary = monthlyOverview.categories.find(
+    (c) => c.category === factual.lowestCategory?.category
+  );
   const lowestCategoryItem = factual.lowestCategory
     ? {
         category: factual.lowestCategory.category,
         amount: factual.lowestCategory.amount,
         percentage: factual.lowestCategory.percentage,
-        momChangePercentage:
-          monthlyOverview.categories.find((c) => c.category === factual.lowestCategory?.category)
-            ?.momChangePercentage || 0,
+        momChangePercentage: lowestCatSummary?.momChangePercentage || 0,
+        hasMomComparison: Boolean(lowestCatSummary?.hasMomComparison),
         isTie: factual.lowestCategory.isTie,
         tiedCategories: factual.lowestCategory.tiedCategories,
       }
@@ -474,15 +489,30 @@ export async function buildCoachContext(
     );
   };
 
+  const essentialCatMap: Record<string, number> = {};
   const discretionaryCatMap: Record<string, number> = {};
   for (const t of eligibleTransactions) {
     if (t.date && t.date.startsWith(activeMonth) && t.type === 'expense') {
       const isEssential = t.classification === 'essential' || isEssentialCatName(t.category);
-      if (!isEssential) {
+      if (isEssential) {
+        essentialCatMap[t.category] = (essentialCatMap[t.category] || 0) + t.amount;
+      } else {
         discretionaryCatMap[t.category] = (discretionaryCatMap[t.category] || 0) + t.amount;
       }
     }
   }
+
+  const essentialCategories = Object.entries(essentialCatMap)
+    .filter(([_, amt]) => amt > 0)
+    .map(([cat, amt]) => ({
+      category: cat,
+      amount: amt,
+      percentage: monthlySpending > 0 ? Number(((amt / monthlySpending) * 100).toFixed(1)) : 0,
+    }))
+    .sort((a, b) => b.amount - a.amount);
+
+  const essentialTotal = essentialCategories.reduce((sum, c) => sum + c.amount, 0);
+  const essentialPercentage = monthlySpending > 0 ? Number(((essentialTotal / monthlySpending) * 100).toFixed(1)) : 0;
 
   const discretionaryCategories = Object.entries(discretionaryCatMap)
     .filter(([_, amt]) => amt > 0)
@@ -494,6 +524,7 @@ export async function buildCoachContext(
     .sort((a, b) => b.amount - a.amount);
 
   const discretionaryTotal = discretionaryCategories.reduce((sum, c) => sum + c.amount, 0);
+  const discretionaryPercentage = monthlySpending > 0 ? Number(((discretionaryTotal / monthlySpending) * 100).toFixed(1)) : 0;
 
   // Detect spending anomalies using shared function
   const anomaliesList = detectSpendingAnomalies(eligibleTransactions, activeMonth);
@@ -511,12 +542,33 @@ export async function buildCoachContext(
       labelEn: 'Total Monthly Spending',
       labelBn: 'মোট মাসিক ব্যয়',
     },
+    'spending.essentialTotal': {
+      key: 'spending.essentialTotal',
+      value: essentialTotal,
+      available: essentialTotal > 0,
+      labelEn: 'Total Essential Spending',
+      labelBn: 'মোট অত্যাবশ্যকীয় ব্যয়',
+    },
+    'spending.essentialPercentage': {
+      key: 'spending.essentialPercentage',
+      value: essentialPercentage,
+      available: essentialTotal > 0,
+      labelEn: 'Essential Spending Share (%)',
+      labelBn: 'অত্যাবশ্যকীয় ব্যয়ের অনুপাত (%)',
+    },
     'spending.discretionaryTotal': {
       key: 'spending.discretionaryTotal',
       value: discretionaryTotal,
-      available: discretionaryTotal > 0,
+      available: true,
       labelEn: 'Total Discretionary Spending',
       labelBn: 'মোট নমনীয় ব্যয়',
+    },
+    'spending.discretionaryPercentage': {
+      key: 'spending.discretionaryPercentage',
+      value: discretionaryPercentage,
+      available: true,
+      labelEn: 'Discretionary Spending Share (%)',
+      labelBn: 'নমনীয় ব্যয়ের অনুপাত (%)',
     },
     'spending.topCategory': {
       key: 'spending.topCategory',
@@ -879,6 +931,14 @@ export async function buildCoachContext(
     description: sanitizeDescription(t.description),
   }));
 
+  const distinctMonths = Array.from(
+    new Set(
+      transactions
+        .map((t) => (t.date ? t.date.slice(0, 7) : ''))
+        .filter((m) => /^\d{4}-\d{2}$/.test(m))
+    )
+  );
+
   return {
     metadata: {
       today,
@@ -887,6 +947,7 @@ export async function buildCoachContext(
         previousMonths,
         hasData: eligibleTransactions.length > 0,
         totalTransactions: eligibleTransactions.length,
+        historicalMonthsCount: distinctMonths.length,
       },
     },
     snapshot: {
@@ -907,12 +968,18 @@ export async function buildCoachContext(
     spending: {
       available: monthlySpending > 0,
       totalSpending: monthlySpending,
+      essentialTotal,
+      essentialPercentage,
+      discretionaryTotal,
+      discretionaryPercentage,
+      essentialCategories,
       topCategory: topCategoryItem
         ? {
             category: topCategoryItem.category,
             amount: topCategoryItem.amount,
             percentage: topCategoryItem.percentage,
             momChangePercentage: topCategoryItem.momChangePercentage,
+            hasMomComparison: topCategoryItem.hasMomComparison,
             isTie: topCategoryItem.isTie,
             tiedCategories: topCategoryItem.tiedCategories,
           }
@@ -923,13 +990,13 @@ export async function buildCoachContext(
             amount: lowestCategoryItem.amount,
             percentage: lowestCategoryItem.percentage,
             momChangePercentage: lowestCategoryItem.momChangePercentage,
+            hasMomComparison: lowestCategoryItem.hasMomComparison,
             isTie: lowestCategoryItem.isTie,
             tiedCategories: lowestCategoryItem.tiedCategories,
           }
         : null,
       zeroSpendingCategories: factual.zeroSpendingCategories,
       discretionaryCategories,
-      discretionaryTotal,
       topCategories: topCategories.map((c) => ({
         category: c.category,
         amount: c.amount,

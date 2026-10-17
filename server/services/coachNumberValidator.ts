@@ -97,6 +97,38 @@ export function extractAllowedNumbers(ctx: CoachContext, additionalAllowed: numb
   if (ctx.spending.discretionaryTotal !== undefined) {
     allowed.add(ctx.spending.discretionaryTotal);
   }
+  if (ctx.spending.discretionaryPercentage !== undefined) {
+    allowed.add(ctx.spending.discretionaryPercentage);
+    allowed.add(Math.round(ctx.spending.discretionaryPercentage));
+  }
+  if (ctx.spending.essentialTotal !== undefined) {
+    allowed.add(ctx.spending.essentialTotal);
+  }
+  if (ctx.spending.essentialPercentage !== undefined) {
+    allowed.add(ctx.spending.essentialPercentage);
+    allowed.add(Math.round(ctx.spending.essentialPercentage));
+  }
+  if (ctx.spending.essentialCategories) {
+    for (const e of ctx.spending.essentialCategories) {
+      allowed.add(e.amount);
+      allowed.add(e.percentage);
+      allowed.add(Math.round(e.percentage));
+    }
+  }
+
+  // Multi-month projection multipliers (3, 6, 12 months)
+  const inc = ctx.snapshot.monthlyIncome || 0;
+  const exp = ctx.snapshot.monthlySpending || 0;
+  const net = ctx.snapshot.netSavings || (inc - exp);
+  for (const m of [3, 6, 12]) {
+    allowed.add(m);
+    allowed.add(m * inc);
+    allowed.add(m * exp);
+    allowed.add(m * net);
+    allowed.add(Math.abs(m * (inc - exp)));
+  }
+  allowed.add(Math.round(net / 4)); // weekly surplus
+  allowed.add(Math.round(exp / 4)); // weekly outflow
   if (ctx.spending.merchants) {
     if (ctx.spending.merchants.highestMerchant) {
       allowed.add(ctx.spending.merchants.highestMerchant.amount);
@@ -128,46 +160,54 @@ export function extractAllowedNumbers(ctx: CoachContext, additionalAllowed: numb
     allowed.add(Math.abs(ctx.spending.comparison.percentageChange));
     allowed.add(Math.round(Math.abs(ctx.spending.comparison.percentageChange)));
   }
-  for (const anom of ctx.spending.anomalies) {
+  for (const anom of (ctx.spending?.anomalies || [])) {
     allowed.add(anom.amount);
   }
 
   // 3. Goals numbers
-  allowed.add(ctx.goals.totalGoals);
-  for (const g of ctx.goals.items) {
-    allowed.add(g.targetAmount);
-    allowed.add(g.currentAmount);
-    allowed.add(g.progressPercentage);
-    allowed.add(Math.round(g.progressPercentage));
-    allowed.add(g.remainingAmount);
-    allowed.add(g.requiredMonthlyContribution);
+  if (ctx.goals) {
+    allowed.add(ctx.goals.totalGoals);
+    for (const g of (ctx.goals.items || [])) {
+      allowed.add(g.targetAmount);
+      allowed.add(g.currentAmount);
+      allowed.add(g.progressPercentage);
+      allowed.add(Math.round(g.progressPercentage));
+      allowed.add(g.remainingAmount);
+      allowed.add(g.requiredMonthlyContribution);
+    }
   }
 
   // 4. Cash Flow numbers
-  allowed.add(ctx.cashFlow.startingBalance);
-  allowed.add(ctx.cashFlow.forecastMonthEndBalance);
-  allowed.add(ctx.cashFlow.shortfall);
-  allowed.add(ctx.cashFlow.recommendedWeeklyReduction);
-  allowed.add(ctx.cashFlow.recommendedBuffer);
+  if (ctx.cashFlow) {
+    allowed.add(ctx.cashFlow.startingBalance);
+    allowed.add(ctx.cashFlow.forecastMonthEndBalance);
+    allowed.add(ctx.cashFlow.shortfall);
+    allowed.add(ctx.cashFlow.recommendedWeeklyReduction);
+    allowed.add(ctx.cashFlow.recommendedBuffer);
+  }
 
   // 5. Health numbers
-  if (ctx.health.score !== null) allowed.add(ctx.health.score);
-  if (ctx.health.percentile !== null) allowed.add(ctx.health.percentile);
-  if (ctx.health.savingConsistency !== null) allowed.add(ctx.health.savingConsistency);
-  if (ctx.health.spendingControl !== null) allowed.add(ctx.health.spendingControl);
-  if (ctx.health.cashFlowStability !== null) allowed.add(ctx.health.cashFlowStability);
-  if (ctx.health.goalProgress !== null) allowed.add(ctx.health.goalProgress);
+  if (ctx.health) {
+    if (ctx.health.score !== null) allowed.add(ctx.health.score);
+    if (ctx.health.percentile !== null) allowed.add(ctx.health.percentile);
+    if (ctx.health.savingConsistency !== null) allowed.add(ctx.health.savingConsistency);
+    if (ctx.health.spendingControl !== null) allowed.add(ctx.health.spendingControl);
+    if (ctx.health.cashFlowStability !== null) allowed.add(ctx.health.cashFlowStability);
+    if (ctx.health.goalProgress !== null) allowed.add(ctx.health.goalProgress);
+  }
 
   // 6. Cash-Out numbers
-  allowed.add(ctx.cashOut.totalAmount);
-  allowed.add(ctx.cashOut.count);
-  allowed.add(ctx.cashOut.feeCost);
-  allowed.add(ctx.cashOut.shareOfSpending);
-  allowed.add(Math.round(ctx.cashOut.shareOfSpending));
-  allowed.add(1.85); // MFS fee tariff percentage
+  if (ctx.cashOut) {
+    allowed.add(ctx.cashOut.totalAmount);
+    allowed.add(ctx.cashOut.count);
+    allowed.add(ctx.cashOut.feeCost);
+    allowed.add(ctx.cashOut.shareOfSpending);
+    allowed.add(Math.round(ctx.cashOut.shareOfSpending));
+    allowed.add(1.85); // MFS fee tariff percentage
+  }
 
   // 7. Recent Transactions
-  for (const tx of ctx.recentTransactions) {
+  for (const tx of (ctx.recentTransactions || [])) {
     allowed.add(tx.amount);
   }
 

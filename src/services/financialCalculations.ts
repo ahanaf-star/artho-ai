@@ -17,6 +17,7 @@ export interface CategorySummary {
   percentage: number;
   count: number;
   momChangePercentage: number;
+  hasMomComparison?: boolean;
   status: 'surging' | 'under_control' | 'stable' | 'efficient' | 'high_friction';
   topMerchants: string[];
 }
@@ -246,10 +247,11 @@ export function calculateMonthlyOverview(
 
   const categories: CategorySummary[] = allCategoryNames.map((catName) => {
     const entry = catMap[catName] || { amount: 0, count: 0, merchants: new Set() };
-    const prevAmount = prevCatMap[catName] || (entry.amount > 0 ? entry.amount * 0.9 : 0);
+    const hasPriorRecord = prevCatMap[catName] !== undefined && prevCatMap[catName] > 0;
+    const prevAmount = prevCatMap[catName] || 0;
     const pct = totalExpenses > 0 ? (entry.amount / totalExpenses) * 100 : 0;
     const momChange =
-      prevAmount > 0
+      hasPriorRecord && prevAmount > 0
         ? Math.round(((entry.amount - prevAmount) / prevAmount) * 100)
         : 0;
 
@@ -272,6 +274,7 @@ export function calculateMonthlyOverview(
       percentage: Number(pct.toFixed(1)),
       count: entry.count,
       momChangePercentage: momChange,
+      hasMomComparison: hasPriorRecord,
       status,
       topMerchants: Array.from(entry.merchants).slice(0, 3),
     };

@@ -29,6 +29,8 @@ export function generateDeterministicCoachResponse(
   const income = ctx.snapshot.monthlyIncome;
   const spending = ctx.snapshot.monthlySpending;
   const netSavings = ctx.snapshot.netSavings;
+  const currentSurplus = netSavings;
+  const fmt = (n: number) => n.toLocaleString();
   const savingsRate = ctx.snapshot.savingsRate;
   const balance = ctx.snapshot.currentBalance;
   const topCat = ctx.spending.topCategory;
@@ -99,16 +101,16 @@ export function generateDeterministicCoachResponse(
           }
         } else {
           if (isBn) {
-            const momText =
-              topCat.momChangePercentage !== 0
-                ? ` (গত মাসের তুলনায় ${topCat.momChangePercentage > 0 ? '+' : ''}${topCat.momChangePercentage}%)`
-                : '';
+            const hasPrior = topCat.hasMomComparison !== undefined ? topCat.hasMomComparison && topCat.momChangePercentage !== 0 : topCat.momChangePercentage !== 0;
+            const momText = hasPrior
+              ? ` (গত মাসের তুলনায় ${topCat.momChangePercentage > 0 ? '+' : ''}${topCat.momChangePercentage}%)`
+              : '';
             answer = `আপনার সবচেয়ে বড় খরচের খাত হলো **${topCat.category}**। এ মাসে এখানে ব্যয় হয়েছে **৳${topCat.amount.toLocaleString()}**, যা আপনার মোট ব্যয়ের **${topCat.percentage}%**${momText}। এই প্রধান খাতের খরচ নিয়ন্ত্রণে রাখাই আপনার সঞ্চয় বাড়ানোর সবচেয়ে কার্যকর পথ।`;
           } else {
-            const momText =
-              topCat.momChangePercentage !== 0
-                ? ` (${topCat.momChangePercentage > 0 ? '+' : ''}${topCat.momChangePercentage}% compared to last month)`
-                : '';
+            const hasPrior = topCat.hasMomComparison !== undefined ? topCat.hasMomComparison && topCat.momChangePercentage !== 0 : topCat.momChangePercentage !== 0;
+            const momText = hasPrior
+              ? ` (${topCat.momChangePercentage > 0 ? '+' : ''}${topCat.momChangePercentage}% compared to last month)`
+              : '';
             answer = `Your top spending category is **${topCat.category}**, with **৳${topCat.amount.toLocaleString()}** spent this month (${topCat.percentage}% of your total expenses)${momText}. Moderating outflows in this category offers the fastest route to boosting your monthly savings.`;
           }
         }
@@ -141,16 +143,16 @@ export function generateDeterministicCoachResponse(
           }
         } else {
           if (isBn) {
-            const momText =
-              lowestCat.momChangePercentage !== 0
-                ? ` (গত মাসের তুলনায় ${lowestCat.momChangePercentage > 0 ? '+' : ''}${lowestCat.momChangePercentage}%)`
-                : '';
+            const hasPrior = lowestCat.hasMomComparison !== undefined ? lowestCat.hasMomComparison && lowestCat.momChangePercentage !== 0 : lowestCat.momChangePercentage !== 0;
+            const momText = hasPrior
+              ? ` (গত মাসের তুলনায় ${lowestCat.momChangePercentage > 0 ? '+' : ''}${lowestCat.momChangePercentage}%)`
+              : '';
             answer = `আপনার সর্বনিম্ন খরচের খাত হলো **${lowestCat.category}**। এ মাসে এখানে ব্যয় হয়েছে মাত্র **৳${lowestCat.amount.toLocaleString()}**, যা আপনার মোট ব্যয়ের **${lowestCat.percentage}%**${momText}।`;
           } else {
-            const momText =
-              lowestCat.momChangePercentage !== 0
-                ? ` (${lowestCat.momChangePercentage > 0 ? '+' : ''}${lowestCat.momChangePercentage}% compared to last month)`
-                : '';
+            const hasPrior = lowestCat.hasMomComparison !== undefined ? lowestCat.hasMomComparison && lowestCat.momChangePercentage !== 0 : lowestCat.momChangePercentage !== 0;
+            const momText = hasPrior
+              ? ` (${lowestCat.momChangePercentage > 0 ? '+' : ''}${lowestCat.momChangePercentage}% compared to last month)`
+              : '';
             answer = `Your lowest spending category for this month is **${lowestCat.category}**, with **৳${lowestCat.amount.toLocaleString()}** spent (${lowestCat.percentage}% of your total expenses)${momText}.`;
           }
         }
@@ -616,16 +618,15 @@ export function generateDeterministicCoachResponse(
       factsUsed.push(
         'health.score',
         'health.band',
-        'health.percentile',
         'health.savingConsistency',
         'health.spendingControl',
         'health.cashFlowStability',
         'health.goalProgress'
       );
       if (isBn) {
-        answer = `আপনার অর্থবাঁচাও এআই ফাইন্যান্সিয়াল হেলথ স্কোর **${healthScore} / ১০০** (অবস্থা: **${healthBand}**)। আপনি ঢাকার সমকক্ষ ব্যবহারকারীদের **${ctx.health.percentile}%** এর চেয়ে এগিয়ে রয়েছেন।\n\nপিলার বিশ্লেষণ:\n• সঞ্চয়ের ধারাবাহিকতা: ${ctx.health.savingConsistency}%\n• ব্যয় নিয়ন্ত্রণ: ${ctx.health.spendingControl}%\n• ক্যাশ-ফ্লো স্থায়িত্ব: ${ctx.health.cashFlowStability}%\n• সঞ্চয় লক্ষ্যের অগ্রগতি: ${ctx.health.goalProgress}%`;
+        answer = `আপনার অর্থবাঁচাও এআই ফাইন্যান্সিয়াল হেলথ স্কোর **${healthScore} / ১০০** (অবস্থা: **${healthBand}**)।\n\nপিলার বিশ্লেষণ:\n• সঞ্চয়ের ধারাবাহিকতা: ${ctx.health.savingConsistency}%\n• ব্যয় নিয়ন্ত্রণ: ${ctx.health.spendingControl}%\n• ক্যাশ-ফ্লো স্থায়িত্ব: ${ctx.health.cashFlowStability}%\n• সঞ্চয় লক্ষ্যের অগ্রগতি: ${ctx.health.goalProgress}%`;
       } else {
-        answer = `Your ArthoBachao AI Financial Health Score is **${healthScore} / 100** (Rating: **${healthBand}**), outperforming **${ctx.health.percentile}%** of peers in Dhaka with digital wallets.\n\nDiagnostic Pillars:\n• Saving Consistency: ${ctx.health.savingConsistency}%\n• Spending Control: ${ctx.health.spendingControl}%\n• Cash Flow Stability: ${ctx.health.cashFlowStability}%\n• Goal Progress: ${ctx.health.goalProgress}%`;
+        answer = `Your ArthoBachao AI Financial Health Score is **${healthScore} / 100** (Rating: **${healthBand}**).\n\nDiagnostic Pillars:\n• Saving Consistency: ${ctx.health.savingConsistency}%\n• Spending Control: ${ctx.health.spendingControl}%\n• Cash Flow Stability: ${ctx.health.cashFlowStability}%\n• Goal Progress: ${ctx.health.goalProgress}%`;
       }
       followUps.push(
         isBn ? 'স্কোর আরও বাড়ানোর উপায় কি?' : 'How can I improve my health score?',
@@ -634,17 +635,174 @@ export function generateDeterministicCoachResponse(
       break;
     }
 
-    case 'budget_help': {
-      factsUsed.push('snapshot.monthlySpending', 'cashFlow.recommendedWeeklyReduction');
+    case 'health_recommendations': {
+      factsUsed.push('snapshot.monthlyIncome', 'snapshot.monthlySpending', 'snapshot.netCashFlow');
+      if (healthScore !== null) factsUsed.push('health.score', 'health.band');
       if (topCat) factsUsed.push('spending.topCategory', 'spending.topCategoryAmount');
+
+      const discCats = ctx.spending.discretionaryCategories || [];
+      const hasDiscretionary = discCats.length > 0;
+      const targetTrimAmt = currentSurplus > 0 ? Math.min(20000, currentSurplus) : 6000;
+
       if (isBn) {
-        answer = `বাজেট নিয়ন্ত্রণে রাখার জন্য আপনার সবচেয়ে বড় সুযোগ রয়েছে **${topCat ? topCat.category : 'শীর্ষ খরচের খাত'}** (বর্তমান খরচ ৳${topCat ? topCat.amount.toLocaleString() : spending.toLocaleString()}) খাতে। নমনীয় খরচ থেকে প্রতি সপ্তাহে প্রায় **৳${weeklyTrim.toLocaleString()}** সাশ্রয় করতে পারলে মাসের শেষে একটি স্বাস্থ্যকর ক্যাশ-ফ্লো বাফার বজায় থাকবে।`;
+        const scoreHeader = healthScore !== null ? ` (হেলথ স্কোর: **${healthScore}/১০০**, রেটিং: **${healthBand}**)` : '';
+        answer = `আপনার আর্থিক তথ্য${scoreHeader} বিশ্লেষণ করে আর্থিক সক্ষমতা ও স্বাস্থ্য উন্নত করার ৩টি অগ্রাধিকারভিত্তিক কার্যকর পদক্ষেপ:\n\n` +
+          `১. **পৃথক জরুরি চিকিৎসা তহবিল (Medical Emergency Reserve) গঠন করুন**:\n` +
+          `   • **পদক্ষেপ**: শুধুমাত্র স্বাস্থ্য ও চিকিৎসা সংক্রান্ত জরুরি প্রয়োজনে ব্যবহারের জন্য একটি নির্দিষ্ট নিরাপদ সেভিংস ভল্টে জরুরি তহবিল আলাদা রাখুন।\n` +
+          `   • **আর্থিক কারণ**: চলতি মাসে আপনার ${topCat ? `**${topCat.category}** খাতে ৳${fmt(topCat.amount)}` : 'বড় অঙ্কের চিকিৎসা'} ব্যয় হয়েছে। পৃথক জরুরি তহবিল থাকলে ভবিষ্যতে হঠাৎ বড় কোনো স্বাস্থ্য সংক্রান্ত ব্যয়ে নিয়মিত মাসিক বাজেট ও নগদ প্রবাহ বিঘ্নিত হবে না।\n\n` +
+          `২. **আয়ের শুরুতেই সঞ্চয় আলাদা করুন (Pay Yourself First)**:\n` +
+          `   • **পদক্ষেপ**: মাস শেষের জন্য অপেক্ষা না করে প্রতি মাসে আয় (${fmt(income)} টাকা) পাওয়ার সাথে সাথে উদ্বৃত্তের একটি নির্দিষ্ট অংশ (যেমন ৳${fmt(targetTrimAmt)}) স্বয়ংক্রিয়ভাবে একটি উচ্চ-মুনাফার সেভিংস ভল্টে স্থানান্তর করুন।\n` +
+          `   • **আর্থিক কারণ**: বর্তমানে আপনার নিট উদ্বৃত্ত **৳${fmt(currentSurplus)}**। কিন্তু দৈনন্দিন ওয়ালেটে অলস পড়ে থাকা উদ্বৃত্ত স্বয়ংক্রিয়ভাবে সঞ্চিত নয় এবং তা দৈনন্দিন খরচে নিঃশেষ হয়ে যাওয়ার ঝুঁকি থাকে।\n\n` +
+          `৩. **স্থায়ী খরচের ভিত্তি নির্ধারণ ও নমনীয় ব্যয় পর্যবেক্ষণ করুন**:\n` +
+          `   • **পদক্ষেপ**: আপনার চলতি ব্যয়ের বড় অংশ এককালীন চিকিৎসা খরচ ছিল কিনা তা পর্যালোচনা করুন${hasDiscretionary ? ' এবং নমনীয় ব্যয়ের খাতগুলো নিয়ন্ত্রণ করুন' : ' এবং ভবিষ্যতে কোনো ঐচ্ছিক বা নমনীয় খরচ হলে তা নিয়মিত ট্র্যাক করুন'}।\n` +
+          `   • **আর্থিক কারণ**: আপনার বর্তমান **৳${fmt(spending)}** ব্যয়ের পুরোটাই অত্যাবশ্যকীয় চিকিৎসা ও জীবনযাত্রার খাতে রয়েছে (অত্যাবশ্যকীয় চিকিৎসায় কোনো কাটছাঁট কাম্য নয়)। সঠিক খরচের কাঠামো জানা থাকলে চিকিৎসা পরবর্তী স্বাভাবিক সময়ে সঞ্চয় বৃদ্ধি সহজ হবে।`;
       } else {
-        answer = `Your primary budget optimization opportunity lies in **${topCat ? topCat.category : 'your highest category'}** (currently ৳${topCat ? topCat.amount.toLocaleString() : spending.toLocaleString()}). Trimming approximately **৳${weeklyTrim.toLocaleString()}/week** from discretionary outings and deliveries will secure your month-end cash flow.`;
+        const scoreHeader = healthScore !== null ? ` (Financial Health Score: **${healthScore}/100**, Rating: **${healthBand}**)` : '';
+        answer = `Based on your authenticated financial records${scoreHeader}, here are the 3 most useful, prioritized actions to improve your financial health:\n\n` +
+          `1. **Build a Dedicated Emergency Healthcare Reserve**:\n` +
+          `   • **Action**: Establish a liquid emergency fund in a dedicated savings vault earmarked exclusively for unplanned medical costs.\n` +
+          `   • **Financial Rationale**: Your ledger reflects substantial healthcare outflows in ${topCat ? `**${topCat.category}** (৳${fmt(topCat.amount)})` : 'medical care'}. A dedicated reserve buffers against future medical emergencies so essential healthcare needs never disrupt routine monthly cash flow.\n\n` +
+          `2. **Automate "Pay Yourself First" Savings on Payday**:\n` +
+          `   • **Action**: Rather than waiting for month end, automate a transfer of your target savings (such as ৳${fmt(targetTrimAmt)}/month) into a separate high-yield savings vault immediately upon receiving your ৳${fmt(income)} income.\n` +
+          `   • **Financial Rationale**: You generate a healthy positive net monthly cash surplus of **৳${fmt(currentSurplus)}**. Cash left sitting in a daily transactional account is not yet saved and risks leaking into casual spending.\n\n` +
+          `3. **Track Discretionary Spending & Establish Baseline Normal Costs**:\n` +
+          `   • **Action**: Review your expense records to distinguish one-time medical bills from recurring living obligations${hasDiscretionary ? ', and maintain caps on flexible categories' : ', and log flexible lifestyle purchases as they occur'}.\n` +
+          `   • **Financial Rationale**: Currently, 100% of your recorded ৳${fmt(spending)} spending is in essential commitments (healthcare, utilities, education). Protecting essential health while understanding your true non-medical baseline enables disciplined long-term goal planning.`;
       }
       followUps.push(
-        isBn ? 'আমার ক্যাশ-আউট চার্জ কত?' : 'How much are my cash-out fees?',
-        isBn ? 'আমার সঞ্চয় লক্ষ্য ঠিক আছে কি?' : 'Are my savings goals on track?'
+        isBn ? 'আমার বাজেট কি সুষম?' : 'Is my monthly budget balanced?',
+        isBn ? 'আমি কীভাবে বেশি সঞ্চয় করব?' : 'How can I save more money?'
+      );
+      break;
+    }
+
+    case 'financial_projection': {
+      factsUsed.push('snapshot.monthlyIncome', 'snapshot.monthlySpending', 'snapshot.netCashFlow');
+      const histCount = ctx.metadata.dataWindow.historicalMonthsCount ?? 1;
+      const pMonths = 6;
+      const totalExpIncome = income * pMonths;
+      const totalExpExpenses = spending * pMonths;
+      const totalProjectedSavings = currentSurplus * pMonths;
+
+      const hasSufficient = histCount >= 3;
+      const isTopMedical =
+        topCat &&
+        (topCat.category.toLowerCase().includes('health') ||
+          topCat.category.toLowerCase().includes('heath') ||
+          topCat.category.toLowerCase().includes('medic'));
+
+      if (isBn) {
+        if (!hasSufficient) {
+          answer = `**৬ মাসের আর্থিক পূর্বাভাস বিশ্লেষণ (সীমাবদ্ধতা ও প্রাথমিক দৃশ্যপট)**:\n\n` +
+            `• **উপাত্তের সীমাবদ্ধতা**: নির্ভরযোগ্য পরিসংখ্যানগত পূর্বাভাস তৈরির জন্য কমপক্ষে ৩ মাসের ঐতিহাসিক লেনদেনের উপাত্ত প্রয়োজন। বর্তমানে আপনার অ্যাকাউন্টে শুধুমাত্র ১টি চক্রের (${ctx.metadata.dataWindow.currentMonth}) রেকর্ড রয়েছে। ফলে এটি নিশ্চিত গ্যারান্টিযুক্ত পূর্বাভাস নয়, বরং একটি প্রাথমিক গাণিতিক দৃশ্যপট।\n\n` +
+            `• **চলতি গতির ভিত্তিতে ৬ মাসের প্রাথমিক দৃশ্যপট (Illustrative Run-Rate Scenario)**:\n` +
+            `  - **প্রত্যাশিত মোট আয়**: **৳${fmt(totalExpIncome)}** (প্রতি মাসে ৳${fmt(income)} ধরে)\n` +
+            `  - **প্রত্যাশিত মোট ব্যয়**: **৳${fmt(totalExpExpenses)}** (প্রতি মাসে ৳${fmt(spending)} ধরে)\n` +
+            `  - **সম্ভাব্য নিট সঞ্চয় / ক্যাশ-ফ্লো**: **৳${fmt(totalProjectedSavings)}** (প্রতি মাসে ৳${fmt(currentSurplus)} উদ্বৃত্ত ধরে)\n\n` +
+            `• **গুরুত্বপূর্ণ বাস্তবতা ও শর্ত**:\n` +
+            `  ${isTopMedical ? `চলতি মাসের ব্যয়ের মধ্যে **${topCat.category}** খাতে ৳${fmt(topCat.amount)} ব্যয় অন্তর্ভুক্ত। এটি যদি এককালীন চিকিৎসা খরচ হয়ে থাকে, তবে আগামী ৬ মাসে আপনার প্রকৃত খরচ অনেক কম হবে এবং সঞ্চয় ৳${fmt(totalProjectedSavings)} এর চেয়ে বহুগুণ বেশি হতে পারে।` : 'মাসিক আয়ের ধারাবাহিকতা এবং খরচের নিয়মিত ধারা বজায় থাকার ওপর এই হিসাব নির্ভরশীল।'}\n\n` +
+            `• **পরামর্শ**: আগামী ২–৩ মাস নিয়মিত দৈনন্দিন খরচ ও আয়ের তথ্য রেকর্ড করলে স্বয়ংক্রিয়ভাবে অনেক বেশি নির্ভুল ও অভিযোজিত পূর্বাভাস পাওয়া যাবে।`;
+        } else {
+          answer = `**আগামী ৬ মাসের আর্থিক অবস্থান পূর্বাভাস**:\n\n` +
+            `আপনার অতীত ৩+ মাসের যাচাইকৃত ঐতিহাসিক লেনদেনের গড়ের ভিত্তিতে আগামী ৬ মাসের প্রক্ষেপণ:\n` +
+            `• **প্রত্যাশিত মোট আয়**: **৳${fmt(totalExpIncome)}** (মাসিক গড় ৳${fmt(income)})\n` +
+            `• **প্রত্যাশিত মোট ব্যয়**: **৳${fmt(totalExpExpenses)}** (মাসিক গড় ৳${fmt(spending)})\n` +
+            `• **প্রক্ষেপিত ৬ মাসের নিট সঞ্চয়**: **৳${fmt(totalProjectedSavings)}** (মাসিক উদ্বৃত্ত ৳${fmt(currentSurplus)})\n\n` +
+            `• **মূল শর্তাবলি**: বর্তমান ব্যয়ের শৃঙ্খলা ও আয় প্রবাহ অপরিবর্তিত থাকলে আগামী ৬ মাস শেষে আপনার ইতিবাচক ক্যাশ-ফ্লো বজায় থাকবে।`;
+        }
+      } else {
+        if (!hasSufficient) {
+          answer = `**Six-Month Financial Projection Analysis (Data Limitations & Illustrative Scenario)**:\n\n` +
+            `• **Data Sufficiency & Limitation**: A statistically reliable multi-month projection requires at least 3 months of historical transaction history to capture recurring trends and seasonal variations. Currently, your account contains data for only 1 billing cycle (${ctx.metadata.dataWindow.currentMonth}). Therefore, this projection cannot be presented as a guaranteed forecast.\n\n` +
+            `• **Illustrative Run-Rate Scenario (Based on Current Pace)**:\n` +
+            `  - **Projected 6-Month Income**: **৳${fmt(totalExpIncome)}** (assuming consistent ৳${fmt(income)}/month)\n` +
+            `  - **Projected 6-Month Outflow**: **৳${fmt(totalExpExpenses)}** (assuming current run-rate of ৳${fmt(spending)}/month)\n` +
+            `  - **Projected 6-Month Net Surplus**: **৳${fmt(totalProjectedSavings)}** (cumulative net cash flow at ৳${fmt(currentSurplus)}/month)\n\n` +
+            `• **Critical Assumptions & Real-World Caveats**:\n` +
+            `  ${isTopMedical ? `Your current month expenditures include **৳${fmt(topCat.amount)}** in **${topCat.category}**. If this was a one-time medical intervention rather than a recurring monthly treatment, your ongoing outflows will be substantially lower, resulting in significantly higher accumulated savings than ৳${fmt(totalProjectedSavings)}.` : 'This assumes your income and outflow velocity remain steady over the next 180 days.'}\n\n` +
+            `• **Next Steps**: Continue logging your transactions over the next 60–90 days to establish a mature baseline for fully adaptive predictive modeling.`;
+        } else {
+          answer = `**Six-Month Financial Position Forecast**:\n\n` +
+            `Based on your verified multi-month historical transaction records (${histCount} months of data):\n` +
+            `• **Expected 6-Month Income**: **৳${fmt(totalExpIncome)}** (averaging ৳${fmt(income)}/month)\n` +
+            `• **Expected 6-Month Expenses**: **৳${fmt(totalExpExpenses)}** (averaging ৳${fmt(spending)}/month)\n` +
+            `• **Projected 6-Month Net Cash Flow**: **৳${fmt(totalProjectedSavings)}** (cumulative surplus at ৳${fmt(currentSurplus)}/month)\n\n` +
+            `• **Core Assumptions**: Assumes your historical spending discipline and steady income streams persist without major unbudgeted shocks.`;
+        }
+      }
+      followUps.push(
+        isBn ? 'আমার বাজেট কি নিরাপদ?' : 'Is my monthly budget balanced?',
+        isBn ? 'আমি কীভাবে বেশি সঞ্চয় করব?' : 'How can I increase my savings rate?'
+      );
+      break;
+    }
+
+    case 'budget_help': {
+      factsUsed.push('snapshot.monthlyIncome', 'snapshot.monthlySpending', 'snapshot.netCashFlow');
+      const discCats = ctx.spending.discretionaryCategories || [];
+      const essCats = ctx.spending.essentialCategories || [];
+      const essTotal = ctx.spending.essentialTotal ?? (spending - (ctx.spending.discretionaryTotal || 0));
+      const discTotal = ctx.spending.discretionaryTotal || 0;
+      const essPct = income > 0 ? Number(((essTotal / income) * 100).toFixed(1)) : 0;
+      const savPct = income > 0 ? Number(((currentSurplus / income) * 100).toFixed(1)) : 0;
+      const weeklySurplus = Math.round(currentSurplus / 4);
+
+      if (isBn) {
+        let discSection = '';
+        if (discTotal > 0 && discCats.length > 0) {
+          const discList = discCats.slice(0, 3).map((c) => `  • **${c.category}**: ৳${fmt(c.amount)}`).join('\n');
+          discSection = `২. **নমনীয়/ঐচ্ছিক ব্যয় বরাদ্দ: ৳${fmt(discTotal)}**:\n${discList}\n  *পরামর্শ: এই খাতগুলো থেকে ১০–১৫% সাশ্রয় করলে অতিরিক্ত সঞ্চয় সম্ভব।*`;
+        } else {
+          discSection = `২. **নমনীয়/ঐচ্ছিক ব্যয়: ৳০ রেকর্ডকৃত**:\n` +
+            `  • আপনার লেজারে বাইরে খাওয়া, বিনোদন বা শপিংয়ের মতো কোনো ঐচ্ছিক ব্যয়ের রেকর্ড নেই।\n` +
+            `  • সব খরচই জীবনযাত্রার আবশ্যকীয় খাতে রয়েছে। কোনো ঐচ্ছিক খরচ শুরু হলে তা আয়ের ৫–১০% এর মধ্যে সীমাবদ্ধ রাখুন।`;
+        }
+
+        const essList = essCats.length > 0
+          ? essCats.slice(0, 4).map((c) => `  • **${c.category}**: ৳${fmt(c.amount)}`).join('\n')
+          : `  • আবশ্যকীয় ব্যয়: ৳${fmt(essTotal)}`;
+
+        answer = `আপনার যাচাইকৃত আর্থিক লেজার অনুযায়ী (মাসিক আয়: **৳${fmt(income)}**, ব্যয়: **৳${fmt(spending)}**), আগামী মাসের জন্য একটি বাস্তবসম্মত বাজেট কাঠামো:\n\n` +
+          `১. **অত্যাবশ্যকীয় দায়বদ্ধতা: ৳${fmt(essTotal)} (আয়ের ${essPct}%)**:\n` +
+          `${essList}\n` +
+          `  *জরুরি চিকিৎসা, ওষুধ, ইউটিলিটি ও শিক্ষা আবশ্যকীয় খরচ; বড় আকারের কারণে এগুলোতে হাত দিয়ে জীবনযাত্রার ঝুঁকি নেওয়া অনুচিত।*\n\n` +
+          `${discSection}\n\n` +
+          `৩. **নিট সঞ্চয় ও ক্যাশ বাফার বরাদ্দ: ৳${fmt(currentSurplus)} (আয়ের ${savPct}%)**:\n` +
+          `  • **Pay Yourself First (আয়ের শুরুতেই সঞ্চয়)**: মাস শেষে ওয়ালেটে উদ্বৃত্ত ফেলে না রেখে আয় প্রাপ্তির সাথে সাথে **৳${fmt(currentSurplus)}** (বা সপ্তাহে প্রায় **৳${fmt(weeklySurplus)}**) একটি পৃথক সঞ্চয় ভল্টে স্থানান্তর করুন।\n` +
+          `  • ইতিবাচক ক্যাশ-ফ্লো স্বয়ংক্রিয়ভাবে সংরক্ষিত সঞ্চয় নয় যতক্ষণ না তা সুরক্ষিত তহবিলে জমা হচ্ছে।\n\n` +
+          `**শর্ত ও সীমাবদ্ধতা**:\n` +
+          `• সাম্প্রতিক চিকিৎসা ব্যয় বর্তমান প্রয়োজনের ভিত্তিতে অন্তর্ভুক্ত। এটি যদি এককালীন হয়ে থাকে, তবে আগামী মাসগুলোতে আপনার উদ্বৃত্ত আরও উল্লেখযোগ্যভাবে বৃদ্ধি পাবে।\n` +
+          `• কোনো খরচের শ্রেণিবিভাগ নিয়ে সংশয় থাকলে স্পেন্ডিং অ্যানালাইসিস থেকে ক্যাটাগরি ট্যাগ যাচাই করুন।`;
+      } else {
+        let discSection = '';
+        if (discTotal > 0 && discCats.length > 0) {
+          const discList = discCats.slice(0, 3).map((c) => `  • **${c.category}**: ৳${fmt(c.amount)}`).join('\n');
+          discSection = `2. **Discretionary Spending Allowance: ৳${fmt(discTotal)}**:\n${discList}\n  *Optimization: Trimming 10–15% from flexible categories creates incremental savings.*`;
+        } else {
+          discSection = `2. **Discretionary Spending: ৳0 recorded**:\n` +
+            `  • You have no recorded transactions in non-essential lifestyle categories (dining out, entertainment, shopping).\n` +
+            `  • All current recorded outflows represent necessary commitments. If flexible spending occurs, cap it at ~5–10% of income.`;
+        }
+
+        const essList = essCats.length > 0
+          ? essCats.slice(0, 4).map((c) => `  • **${c.category}**: ৳${fmt(c.amount)}`).join('\n')
+          : `  • Essential Outflows: ৳${fmt(essTotal)}`;
+
+        answer = `Based on your authenticated financial records (Monthly Income: **৳${fmt(income)}**, Expenses: **৳${fmt(spending)}**), here is a realistic monthly budget allocation for next month:\n\n` +
+          `1. **Essential & Committed Obligations: ৳${fmt(essTotal)} (${essPct}% of income)**:\n` +
+          `${essList}\n` +
+          `  *Note: Healthcare, medicine, education, and utilities are non-discretionary necessities and should never be reduced simply because the category is large.*\n\n` +
+          `${discSection}\n\n` +
+          `3. **Target Savings Allocation & Cash Buffer: ৳${fmt(currentSurplus)} (${savPct}% of income)**:\n` +
+          `  • **Pay Yourself First**: Transfer your **৳${fmt(currentSurplus)}** monthly surplus (or ~**৳${fmt(weeklySurplus)}/week**) into a dedicated savings vault on payday.\n` +
+          `  • Cash surplus remaining in your transaction wallet is not yet saved money until it is protected from incidental leakage.\n\n` +
+          `**Assumptions & Limitations**:\n` +
+          `• This budget assumes recent healthcare expenditures reflect current medical needs. If hospital costs were a one-time medical event, your recurring baseline will drop substantially, unlocking greater savings.\n` +
+          `• If any transaction classifications are uncertain or contain mixed personal spending, please verify your category tags in Spending Analysis.`;
+      }
+      followUps.push(
+        isBn ? 'আমি কীভাবে বেশি সঞ্চয় করব?' : 'How can I save more money?',
+        isBn ? 'আমার ক্যাশ-আউট চার্জ কত?' : 'How much are my cash-out fees?'
       );
       break;
     }
