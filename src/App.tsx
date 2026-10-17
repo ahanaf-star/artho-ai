@@ -650,7 +650,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <div className="lg:pl-72 flex flex-col min-h-screen">
+      <div className={`lg:pl-72 flex flex-col min-h-screen ${isMonthlyReportOpen ? 'print:hidden print-hide-background' : ''}`}>
         {/* Top Header */}
         <Header
           onNavigate={(screen) => navigateTo(screen)}

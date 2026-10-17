@@ -109,7 +109,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="fixed top-0 left-0 lg:left-72 right-0 h-20 bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 px-3 sm:px-4 lg:px-space-lg flex items-center justify-between gap-space-sm sm:gap-space-md border-b border-outline-variant/20">
+    <header className="fixed top-0 left-0 lg:left-72 right-0 h-20 bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 px-3 sm:px-4 lg:px-space-lg flex items-center justify-between gap-space-sm sm:gap-space-md border-b border-outline-variant/20 print:hidden">
       {/* Left: Mobile hamburger & Search bar */}
       <div className="flex items-center gap-2 sm:gap-3 flex-1 max-w-xl">
         <button

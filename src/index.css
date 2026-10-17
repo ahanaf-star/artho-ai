@@ -167,3 +167,114 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ==========================================================================
+   Print & PDF Export Styling for ArthoBachao AI
+   ========================================================================== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 15mm 15mm 15mm;
+  }
+
+  /* Force background colors and exact graphics rendering */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #0b1c30 !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Hide scrollbars everywhere in print */
+  * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  /* Hide interactive application chrome */
+  aside,
+  header,
+  nav,
+  .print\:hidden,
+  .no-print,
+  .print-hidden,
+  [role="navigation"] {
+    display: none !important;
+  }
+
+  /* When the monthly report modal is printing, hide the rest of the application */
+  body:has(#monthly-report-modal) > #root > div > *:not(#monthly-report-modal),
+  body:has(#monthly-report-modal) aside,
+  body:has(#monthly-report-modal) header,
+  body:has(#monthly-report-modal) main,
+  body:has(#monthly-report-modal) nav,
+  body:has(#monthly-report-modal) .print-hide-background {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* Neutralize modal container constraints so it behaves as a normal print document */
+  #monthly-report-modal {
+    position: static !important;
+    inset: auto !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    z-index: auto !important;
+  }
+
+  #monthly-report-printable {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    color: #0b1c30 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    animation: none !important;
+    transform: none !important;
+  }
+
+  /* Prevent page breaks inside cards, tables, and audit sections */
+  .print-avoid-break,
+  .print\:break-inside-avoid,
+  table,
+  tr,
+  th,
+  td {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
