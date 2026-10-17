@@ -368,11 +368,9 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
       {renderIntroBox()}
 
       {/* Main Workspace Layout */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-space-lg items-start">
-        {/* Primary Core: Goals & Projections (8 Columns) */}
-        <div className="xl:col-span-8 flex flex-col gap-space-lg">
-          {/* Hero Goal Card: Emergency Fund */}
-          <div className="relative bg-surface-container-lowest rounded-xl p-space-lg shadow-sm overflow-hidden group border border-outline-variant/20">
+      <div className="flex flex-col gap-space-lg w-full">
+        {/* Hero Goal Card: Emergency Fund */}
+        <div className="relative bg-surface-container-lowest rounded-xl p-space-lg shadow-sm overflow-hidden group border border-outline-variant/20">
             <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full bg-secondary-container/20 blur-3xl pointer-events-none"></div>
 
             {/* Header and Badge */}
@@ -531,7 +529,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
           </div>
 
           {/* Secondary Goals Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-space-lg">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-lg">
             {secondaryGoals.map((g) => {
               const gGap = calculateRemainingGoalAmount(g);
               const gPct = calculateGoalProgressPercentage(g);
@@ -793,182 +791,6 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
             </div>
           </div>
         </div>
-
-        {/* Right Column: Habits & Milestones Sidebar (4 Columns) */}
-        <div className="xl:col-span-4 flex flex-col gap-space-lg">
-          {/* Habits & Micro-Milestones Card */}
-          <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md border border-outline-variant/20">
-            <div className="flex items-center justify-between pb-2 border-b border-outline-variant/15">
-              <h3 className="font-headline-md text-headline-md text-on-surface font-bold">
-                Habits &amp; Milestones
-              </h3>
-              <span className="material-symbols-outlined text-outline text-[20px]">
-                military_tech
-              </span>
-            </div>
-
-            {/* Streak Badge Widget */}
-            <div className="p-space-md rounded-xl bg-gradient-to-br from-surface-container-low to-surface-container flex items-center justify-between border border-outline-variant/20">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-surface-container-lowest flex items-center justify-center text-2xl shadow-sm">
-                  🔥
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-headline-md text-headline-md text-on-surface font-bold leading-tight">
-                    34-Day Streak
-                  </span>
-                  <span className="font-body-sm text-body-sm text-secondary font-medium">
-                    Never missed an automated sweep
-                  </span>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="font-label-sm text-label-sm text-outline">Tier</span>
-                <p className="font-title-md text-title-md text-on-surface font-bold">Gold</p>
-              </div>
-            </div>
-
-            {/* Micro Statistics List */}
-            <div className="flex flex-col gap-space-sm pt-space-xs">
-              <div className="p-space-sm rounded-lg bg-surface-container-low flex items-center justify-between border border-outline-variant/15">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-secondary-container/50 flex items-center justify-center text-on-secondary-container">
-                    <span className="material-symbols-outlined text-[18px]">
-                      currency_exchange
-                    </span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-title-md text-title-md text-on-surface font-semibold">
-                      Round-Up Savings
-                    </span>
-                    <span className="font-body-sm text-body-sm text-on-surface-variant">
-                      Collected this month
-                    </span>
-                  </div>
-                </div>
-                <span className="font-title-lg text-title-lg text-secondary font-bold">{formatMoney(1420)}</span>
-              </div>
-
-              <div className="p-space-sm rounded-lg bg-surface-container-low flex items-center justify-between border border-outline-variant/15">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-surface-container-highest flex items-center justify-center text-on-surface">
-                    <span className="material-symbols-outlined text-[18px]">
-                      account_balance
-                    </span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-title-md text-title-md text-on-surface font-semibold">
-                      High-Yield Yields
-                    </span>
-                    <span className="font-body-sm text-body-sm text-on-surface-variant">
-                      MFS interest earned
-                    </span>
-                  </div>
-                </div>
-                <span className="font-title-lg text-title-lg text-on-surface font-bold">{formatMoney(185.50)}</span>
-              </div>
-            </div>
-
-            {/* Bangla Contextual Advice Box */}
-            <div className="p-space-md rounded-xl bg-surface-container-high/60 flex flex-col gap-2 border border-outline-variant/20">
-              <div className="flex items-center gap-2 text-secondary">
-                <span className="material-symbols-outlined text-[20px]">lightbulb</span>
-                <span className="font-label-md text-label-md font-bold uppercase tracking-wider">
-                  সহজ পরামর্শ
-                </span>
-              </div>
-              <p className="font-body-md text-body-md text-on-surface font-medium leading-relaxed">
-                প্রতিদিন bKash থেকে মাত্র ৫০ বা ১০০ টাকা অটো-সেভ ভল্টে পাঠালে মাস শেষে ৩,০০০ টাকা পর্যন্ত স্বয়ংক্রিয়ভাবে সঞ্চয় হবে।
-              </p>
-            </div>
-
-            {/* Interactive Micro-Simulation Visual */}
-            <div className="pt-space-xs flex flex-col gap-2">
-              <span className="font-label-sm text-label-sm text-outline uppercase tracking-wider font-semibold">
-                30-Day Velocity Curve
-              </span>
-              <div className="h-28 w-full bg-surface-container-low rounded-lg p-2 flex items-end justify-between gap-1.5 border border-outline-variant/15">
-                <div className="w-full bg-surface-container-highest hover:bg-secondary transition-all rounded-t-sm" style={{ height: '35%' }}></div>
-                <div className="w-full bg-surface-container-highest hover:bg-secondary transition-all rounded-t-sm" style={{ height: '42%' }}></div>
-                <div className="w-full bg-surface-container-highest hover:bg-secondary transition-all rounded-t-sm" style={{ height: '40%' }}></div>
-                <div className="w-full bg-surface-container-highest hover:bg-secondary transition-all rounded-t-sm" style={{ height: '58%' }}></div>
-                <div className="w-full bg-surface-container-highest hover:bg-secondary transition-all rounded-t-sm" style={{ height: '52%' }}></div>
-                <div className="w-full bg-surface-container-highest hover:bg-secondary transition-all rounded-t-sm" style={{ height: '65%' }}></div>
-                <div className="w-full bg-surface-container-highest hover:bg-secondary transition-all rounded-t-sm" style={{ height: '60%' }}></div>
-                <div className="w-full bg-surface-container-highest hover:bg-secondary transition-all rounded-t-sm" style={{ height: '78%' }}></div>
-                <div className="w-full bg-surface-container-highest hover:bg-secondary transition-all rounded-t-sm" style={{ height: '72%' }}></div>
-                <div className="w-full bg-secondary transition-all rounded-t-sm" style={{ height: '94%' }}></div>
-              </div>
-              <div className="flex justify-between text-body-sm font-body-sm text-outline">
-                <span>Nov 1</span>
-                <span className="text-secondary font-semibold">Pace: +18.4%</span>
-                <span>Today</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Visual Travel Vault Inspiration */}
-          {(() => {
-            const travelGoal = goals.find((g) =>
-              g.category?.toLowerCase().includes('travel') ||
-              g.title?.toLowerCase().includes('travel') ||
-              g.title?.toLowerCase().includes('trip') ||
-              g.title?.toLowerCase().includes('vacation')
-            );
-
-            if (travelGoal) {
-              const remaining = Math.max(0, travelGoal.targetAmount - travelGoal.currentAmount);
-              return (
-                <div className="relative bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm group border border-outline-variant/20">
-                  <div
-                    className="bg-cover bg-center w-full h-44 transition-transform duration-500 group-hover:scale-105"
-                    style={{
-                      backgroundImage:
-                        "url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80')",
-                    }}
-                  ></div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-primary/95 via-primary/40 to-transparent flex flex-col justify-end p-space-md text-on-primary">
-                    <span className="font-label-sm text-label-sm text-secondary-container uppercase tracking-wider font-bold">
-                      {isBangla ? 'ভ্রমণ লক্ষ্য' : 'Travel Goal'}
-                    </span>
-                    <h4 className="font-title-lg text-title-lg font-bold">{travelGoal.title}</h4>
-                    <p className="font-body-sm text-body-sm text-primary-fixed-dim mt-0.5">
-                      {isBangla
-                        ? `লক্ষ্য পূরণে ${formatMoney(remaining)} বাকি`
-                        : `${formatMoney(remaining)} needed to complete goal`}
-                    </p>
-                  </div>
-                </div>
-              );
-            }
-
-            return (
-              <div className="relative bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm group border border-outline-variant/20">
-                <div
-                  className="bg-cover bg-center w-full h-44 transition-transform duration-500 group-hover:scale-105"
-                  style={{
-                    backgroundImage:
-                      "url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=600&q=80')",
-                  }}
-                ></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-primary/95 via-primary/40 to-transparent flex flex-col justify-end p-space-md text-on-primary">
-                  <span className="font-label-sm text-label-sm text-secondary-container uppercase tracking-wider font-bold">
-                    {isBangla ? 'সঞ্চয়ের অনুপ্রেরণা' : 'Savings Inspiration'}
-                  </span>
-                  <h4 className="font-title-lg text-title-lg font-bold">
-                    {isBangla ? 'আপনার ভবিষ্যৎ গড়ুন' : 'Build Your Future Wealth'}
-                  </h4>
-                  <p className="font-body-sm text-body-sm text-primary-fixed-dim mt-0.5">
-                    {isBangla
-                      ? 'নতুন লক্ষ্য যোগ করে ধারাবাহিক সঞ্চয় শুরু করুন'
-                      : 'Create a new goal to start your automated savings journey'}
-                  </p>
-                </div>
-              </div>
-            );
-          })()}
-        </div>
-      </div>
 
       {/* Adjust Pace Modal */}
       {adjustModalGoal && (
