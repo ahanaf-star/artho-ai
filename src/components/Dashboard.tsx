@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Transaction, SavingsGoal, UserProfile } from '../types/financial';
 import {
   calculateMonthlyOverview,
@@ -8,7 +8,6 @@ import {
   formatMonthName,
 } from '../services/financialCalculations';
 import { NavScreen } from './Sidebar';
-import { AICoachModal } from './modals/AICoachModal';
 
 interface DashboardProps {
   transactions: Transaction[];
@@ -33,8 +32,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenCreateGoal,
   isBangla,
 }) => {
-  const [isCoachModalOpen, setIsCoachModalOpen] = useState(false);
-
   // Dynamic calculations based on live synthetic state
   const activeMonth = getLatestTransactionMonth(transactions);
   const overview = calculateMonthlyOverview(transactions, activeMonth);
@@ -294,10 +291,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Bento Grid Row 1: Health Score (4 cols) & AI Spotlight (8 cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-md">
-        {/* Module 1: Financial Health Score (Span 4) */}
-        <div className="lg:col-span-4 rounded-xl bg-surface-container-lowest p-space-md flex flex-col justify-between shadow-sm relative overflow-hidden border border-outline-variant/20">
+      {/* Financial Health Score (Centered & Compact) */}
+      <div className="w-full flex justify-center">
+        <div className="w-full max-w-md rounded-xl bg-surface-container-lowest p-space-md flex flex-col justify-between shadow-sm relative overflow-hidden border border-outline-variant/20">
           <div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -459,29 +455,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           >
             <span>View Health Breakdown</span>
             <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-          </button>
-        </div>
-
-        {/* Compact AI Coach Action (Span 8) */}
-        <div className="lg:col-span-8 rounded-xl bg-surface-container-lowest p-space-md shadow-sm border border-outline-variant/20 flex flex-col justify-center items-center text-center py-8">
-          <div className="w-12 h-12 rounded-2xl bg-secondary-container/40 text-on-secondary-container flex items-center justify-center mb-3">
-            <span className="material-symbols-outlined text-[26px] text-secondary">smart_toy</span>
-          </div>
-          <h3 className="font-title-lg text-title-lg text-on-surface font-bold">
-            {isBangla ? 'অর্থবাঁচাও এআই কোচ' : 'ArthoBachao AI Coach'}
-          </h3>
-          <p className="font-body-sm text-body-sm text-on-surface-variant max-w-sm mt-1 mb-4">
-            {isBangla
-              ? 'আপনার এআই কোচের কাছ থেকে ব্যক্তিগত আর্থিক দিকনির্দেশনা নিন।'
-              : 'Get personalized financial guidance from your AI Coach.'}
-          </p>
-          <button
-            type="button"
-            onClick={() => setIsCoachModalOpen(true)}
-            className="flex items-center gap-2 px-space-md py-2.5 rounded-xl bg-primary text-on-primary font-title-md text-title-md shadow-sm hover:opacity-95 active:scale-95 transition-all"
-          >
-            <span className="material-symbols-outlined text-[18px] text-secondary-container">chat</span>
-            <span>{isBangla ? 'এআই কোচকে জিজ্ঞাসা করুন' : 'Ask AI Coach'}</span>
           </button>
         </div>
       </div>
@@ -740,13 +713,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* AI Coach Popup Modal */}
-      <AICoachModal
-        isOpen={isCoachModalOpen}
-        onClose={() => setIsCoachModalOpen(false)}
-        onOpenCoach={() => onNavigate('ai-coach')}
-        isBangla={isBangla}
-      />
     </div>
   );
 };
