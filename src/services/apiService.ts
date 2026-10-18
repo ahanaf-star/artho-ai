@@ -52,7 +52,11 @@ export const apiService = {
     });
     const data = await res.json();
     if (!res.ok) {
-      throw new Error(data.error || 'Registration failed');
+      const error: any = new Error(data.error || 'Registration failed');
+      error.requiresVerification = data.requiresVerification;
+      error.email = data.email || email;
+      error.status = res.status;
+      throw error;
     }
     return data;
   },
@@ -68,7 +72,49 @@ export const apiService = {
     });
     const data = await res.json();
     if (!res.ok) {
-      throw new Error(data.error || 'Authentication failed');
+      const error: any = new Error(data.error || 'Authentication failed');
+      error.requiresVerification = data.requiresVerification;
+      error.email = data.email || email;
+      error.status = res.status;
+      throw error;
+    }
+    return data;
+  },
+
+  /**
+   * POST /api/auth/verify-email
+   */
+  async verifyEmail(email: string, code: string, token?: string) {
+    const res = await fetch(`${BASE_URL}/api/auth/verify-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code, token }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      const error: any = new Error(data.error || 'Verification failed');
+      error.requiresNewCode = data.requiresNewCode;
+      error.status = res.status;
+      throw error;
+    }
+    return data;
+  },
+
+  /**
+   * POST /api/auth/resend-verification
+   */
+  async resendVerification(email: string) {
+    const res = await fetch(`${BASE_URL}/api/auth/resend-verification`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      const error: any = new Error(data.error || 'Failed to resend verification code');
+      error.remainingSeconds = data.remainingSeconds;
+      error.status = res.status;
+      throw error;
     }
     return data;
   },

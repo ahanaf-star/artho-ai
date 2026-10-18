@@ -49,6 +49,12 @@ export interface IUser extends Document {
     isEnabled: boolean;
   }>;
   passwordHash?: string;
+  isEmailVerified?: boolean;
+  emailVerificationToken?: string;
+  emailVerificationOtp?: string;
+  emailVerificationExpires?: Date;
+  emailVerificationSentAt?: Date;
+  emailVerificationAttempts?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -135,6 +141,30 @@ const UserSchema = new Schema<IUser>(
     passwordHash: {
       type: String,
       required: false,
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationToken: {
+      type: String,
+      required: false,
+    },
+    emailVerificationOtp: {
+      type: String,
+      required: false,
+    },
+    emailVerificationExpires: {
+      type: Date,
+      required: false,
+    },
+    emailVerificationSentAt: {
+      type: Date,
+      required: false,
+    },
+    emailVerificationAttempts: {
+      type: Number,
+      default: 0,
     },
     linkedAccounts: [
       {

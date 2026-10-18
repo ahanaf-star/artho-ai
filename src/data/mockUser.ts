@@ -37,4 +37,5 @@ export const INITIAL_USER: User = {
       type: 'MFS',
     },
   ],
+  isEmailVerified: true,
 };

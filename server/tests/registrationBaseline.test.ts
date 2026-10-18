@@ -188,6 +188,8 @@ describe('Registration Flow Monthly Inflow Baseline Tests', () => {
         date: '2026-10-05',
         account: 'bKash',
         merchant: 'Office',
+        description: 'Monthly Salary',
+        paymentMethod: 'Bank Transfer',
         classification: 'essential',
       },
     ];
@@ -221,6 +223,8 @@ describe('Registration Flow Monthly Inflow Baseline Tests', () => {
         date: '2026-10-05',
         account: 'bKash',
         merchant: 'School',
+        description: 'School Fee',
+        paymentMethod: 'bKash',
         classification: 'essential',
       },
     ];

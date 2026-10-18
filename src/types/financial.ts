@@ -89,6 +89,7 @@ export interface User {
   }>;
   walletAccounts?: WalletAccount[];
   recurringObligations?: RecurringObligation[];
+  isEmailVerified?: boolean;
 }
 
 export interface WalletAccount {

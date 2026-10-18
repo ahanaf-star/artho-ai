@@ -58,6 +58,13 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
       return res.status(401).json({ error: 'Invalid authentication session. User not found.' });
     }
 
+    if (user.isEmailVerified === false) {
+      return res.status(403).json({
+        error: 'Access denied. Please verify your email before accessing this feature.',
+        requiresVerification: true,
+      });
+    }
+
     req.user = user;
     req.userId = user.customId || user._id.toString();
     next();

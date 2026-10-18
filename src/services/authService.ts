@@ -1,6 +1,7 @@
 import { User } from '../types/financial';
 import { INITIAL_USER } from '../data/mockUser';
 import { apiService } from './apiService';
+import { validateLoginEmail, validateSignupEmail } from '../utils/emailValidation';
 
 export interface AuthSession {
   user: User;
@@ -50,7 +51,11 @@ export const authService = {
    * Authenticate user with email and password via backend API
    */
   async login(emailInput: string, passwordInput: string): Promise<AuthSession> {
-    const email = emailInput.trim().toLowerCase();
+    const emailValidation = validateLoginEmail(emailInput);
+    if (!emailValidation.isValid) {
+      throw new Error(emailValidation.error || 'Please enter a valid email address.');
+    }
+    const email = emailValidation.normalizedEmail;
 
     try {
       const data = await apiService.login(email, passwordInput);
@@ -64,8 +69,11 @@ export const authService = {
         return session;
       }
     } catch (apiErr: any) {
-      // Re-throw validation or credential errors
-      if (apiErr?.message && !apiErr.message.includes('fetch') && !apiErr.message.includes('Failed to fetch')) {
+      // Re-throw validation or verification errors directly
+      if (
+        apiErr?.requiresVerification ||
+        (apiErr?.message && !apiErr.message.includes('fetch') && !apiErr.message.includes('Failed to fetch'))
+      ) {
         throw apiErr;
       }
       console.warn('[authService] Backend login call failed, trying local fallback:', apiErr);
@@ -86,7 +94,7 @@ export const authService = {
   },
 
   /**
-   * Register a new user via backend API
+   * Register a new user via backend API (requires subsequent email verification)
    */
   async signup(
     nameInput: string,
@@ -95,16 +103,18 @@ export const authService = {
     preferredLanguage: 'en' | 'bn' = 'en',
     monthlyIncome?: number,
     monthlyIncomeCurrency: string = 'BDT'
-  ): Promise<AuthSession> {
+  ): Promise<AuthSession & { requiresVerification: boolean; email: string; message: string }> {
     const name = nameInput.trim();
-    const email = emailInput.trim().toLowerCase();
-
     if (!name) {
       throw new Error('Name is required.');
     }
-    if (!email || !email.includes('@') || !email.includes('.')) {
-      throw new Error('Please enter a valid email address.');
+
+    const emailValidation = validateSignupEmail(emailInput);
+    if (!emailValidation.isValid) {
+      throw new Error(emailValidation.error || 'Please enter a valid email address.');
     }
+    const email = emailValidation.normalizedEmail;
+
     if (!passwordInput || passwordInput.length < 6) {
       throw new Error('Password must be at least 6 characters long.');
     }
@@ -118,15 +128,25 @@ export const authService = {
         monthlyIncome,
         monthlyIncomeCurrency
       );
-      if (data?.token && data?.user) {
-        const session: AuthSession = {
-          user: data.user,
-          token: data.token,
-          expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7,
-        };
-        localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(session));
-        return session;
-      }
+      const user: User = data.user || {
+        id: `usr-${Date.now()}`,
+        name,
+        email,
+        preferredLanguage,
+        currency: 'BDT',
+        monthlyIncome,
+        monthlyIncomeCurrency,
+        createdAt: new Date().toISOString(),
+        isEmailVerified: false,
+      };
+      return {
+        user,
+        token: '',
+        expiresAt: 0,
+        requiresVerification: true,
+        email,
+        message: data.message || 'Please check your email for your verification code.',
+      };
     } catch (apiErr: any) {
       if (apiErr?.message && !apiErr.message.includes('fetch') && !apiErr.message.includes('Failed to fetch')) {
         throw apiErr;
@@ -145,13 +165,12 @@ export const authService = {
       tagline: 'Standard Member',
       memberStatus: 'Standard Member',
       city: 'Dhaka',
-      monthlyIncome: monthlyIncome !== undefined ? monthlyIncome : 0,
+      monthlyIncome: monthlyIncome || 0,
       monthlyIncomeCurrency: monthlyIncomeCurrency || 'BDT',
-      monthlyInflowBaseline: monthlyIncome !== undefined ? monthlyIncome : 0,
-      baselineCurrency: monthlyIncomeCurrency || 'BDT',
       riskTolerance: 'Moderate',
       primaryGoalId: 'goal-emergency-fund',
       privacyStatus: 'E2E Encrypted',
+      isEmailVerified: false,
       linkedAccounts: [
         { name: 'bKash', balance: 0, accountNumber: '', type: 'MFS' },
         { name: 'City Bank', balance: 0, accountNumber: '', type: 'Bank Account' },
@@ -159,14 +178,56 @@ export const authService = {
       ],
     };
 
-    const session: AuthSession = {
+    const session: AuthSession & { requiresVerification: boolean; email: string; message: string } = {
       user: newUser,
       token: `fmt_offline_${Date.now()}`,
       expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7,
+      requiresVerification: true,
+      email,
+      message: 'Registration successful. Please verify your email.',
     };
 
+    return session;
+  },
+
+  /**
+   * Verify email with 6-digit OTP code and create authenticated session
+   */
+  async verifyEmail(emailInput: string, code: string): Promise<AuthSession> {
+    const email = emailInput.trim().toLowerCase();
+    const cleanCode = code.trim();
+    if (!email) {
+      throw new Error('Email address is required.');
+    }
+    if (!cleanCode) {
+      throw new Error('Please enter the 6-digit verification code.');
+    }
+
+    const data = await apiService.verifyEmail(email, cleanCode);
+    if (!data?.token || !data?.user) {
+      throw new Error('Verification failed. Please try again.');
+    }
+
+    const session: AuthSession = {
+      user: data.user,
+      token: data.token,
+      expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7,
+    };
     localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(session));
     return session;
+  },
+
+  /**
+   * Resend verification code with rate-limit cooldown
+   */
+  async resendVerification(emailInput: string): Promise<{ message: string; cooldownSeconds?: number }> {
+    const emailValidation = validateLoginEmail(emailInput);
+    if (!emailValidation.isValid) {
+      throw new Error(emailValidation.error || 'Please enter a valid email address.');
+    }
+    const email = emailValidation.normalizedEmail;
+
+    return await apiService.resendVerification(email);
   },
 
   /**
