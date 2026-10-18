@@ -610,6 +610,49 @@ export function validateCoachNumbers(
     }
   }
 
+  // Monthly Inflow Baseline integrity:
+  // Reject double-counting expected baseline with recorded transaction income as realized income
+  if (
+    ctx.snapshot.monthlyIncome > 0 &&
+    ctx.snapshot.profileMonthlyIncome !== undefined &&
+    ctx.snapshot.profileMonthlyIncome > 0
+  ) {
+    const sumIncome = ctx.snapshot.monthlyIncome + ctx.snapshot.profileMonthlyIncome;
+    const formattedSum = sumIncome.toLocaleString('en-US');
+    const regexSum = new RegExp(
+      `(?:total\\s*income|realized\\s*income|actual\\s*income|সর্বমোট\\s*আয়|প্রকৃত\\s*আয়)[^.\\n]*?(?:${sumIncome}|${formattedSum})`,
+      'i'
+    );
+    if (regexSum.test(answer)) {
+      return {
+        valid: false,
+        reason:
+          'Semantic contradiction: Answer double-counts expected monthly inflow baseline with recorded transaction income as realized income.',
+      };
+    }
+  }
+
+  // Reject adding expected monthly inflow baseline directly into liquid/available balance
+  if (
+    ctx.snapshot.profileMonthlyIncome !== undefined &&
+    ctx.snapshot.profileMonthlyIncome > 0 &&
+    (ctx.snapshot.currentBalance || 0) > 0
+  ) {
+    const sumBalBaseline = (ctx.snapshot.currentBalance || 0) + ctx.snapshot.profileMonthlyIncome;
+    const formattedBalBaseline = sumBalBaseline.toLocaleString('en-US');
+    const regexBalBaseline = new RegExp(
+      `(?:liquid\\s*balance|available\\s*balance|current\\s*balance|উদ্বৃত্ত\\s*ব্যালেন্স|বর্তমান\\s*ব্যালেন্স)[^.\\n]*?(?:${sumBalBaseline}|${formattedBalBaseline})`,
+      'i'
+    );
+    if (regexBalBaseline.test(answer)) {
+      return {
+        valid: false,
+        reason:
+          'Semantic contradiction: Answer adds expected monthly inflow baseline directly into liquid/available balance.',
+      };
+    }
+  }
+
   // Extract all numbers from the generated response
   const numbersInAnswer = extractNumbersFromText(answer);
   const allowedSet = extractAllowedNumbers(ctx, additionalPrecomputed, intent, query);

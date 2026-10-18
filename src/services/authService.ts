@@ -92,7 +92,9 @@ export const authService = {
     nameInput: string,
     emailInput: string,
     passwordInput: string,
-    preferredLanguage: 'en' | 'bn' = 'en'
+    preferredLanguage: 'en' | 'bn' = 'en',
+    monthlyIncome?: number,
+    monthlyIncomeCurrency: string = 'BDT'
   ): Promise<AuthSession> {
     const name = nameInput.trim();
     const email = emailInput.trim().toLowerCase();
@@ -108,7 +110,14 @@ export const authService = {
     }
 
     try {
-      const data = await apiService.signup(name, email, passwordInput, preferredLanguage);
+      const data = await apiService.signup(
+        name,
+        email,
+        passwordInput,
+        preferredLanguage,
+        monthlyIncome,
+        monthlyIncomeCurrency
+      );
       if (data?.token && data?.user) {
         const session: AuthSession = {
           user: data.user,
@@ -136,7 +145,10 @@ export const authService = {
       tagline: 'Standard Member',
       memberStatus: 'Standard Member',
       city: 'Dhaka',
-      monthlyIncome: 0,
+      monthlyIncome: monthlyIncome !== undefined ? monthlyIncome : 0,
+      monthlyIncomeCurrency: monthlyIncomeCurrency || 'BDT',
+      monthlyInflowBaseline: monthlyIncome !== undefined ? monthlyIncome : 0,
+      baselineCurrency: monthlyIncomeCurrency || 'BDT',
       riskTolerance: 'Moderate',
       primaryGoalId: 'goal-emergency-fund',
       privacyStatus: 'E2E Encrypted',

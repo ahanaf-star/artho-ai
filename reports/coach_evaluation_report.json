@@ -50,7 +50,7 @@
   "unsupportedClaimFailures": 0,
   "dataSufficiencyFailures": 0,
   "safetyFailures": 0,
-  "durationMs": 168,
+  "durationMs": 164,
   "results": [
     {
       "id": "TC-001",

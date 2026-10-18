@@ -1191,6 +1191,12 @@ export function sliceContext(fullContext: CoachContext, intentResult: IntentResu
       addFact('snapshot.monthlySpending', fullContext.snapshot.monthlySpending);
       addFact('snapshot.netSavings', fullContext.snapshot.netSavings);
       addFact('snapshot.savingsRate', fullContext.snapshot.savingsRate);
+      if (fullContext.snapshot.profileMonthlyIncome !== undefined) {
+        addFact('snapshot.profileMonthlyIncome', fullContext.snapshot.profileMonthlyIncome);
+        if (fullContext.snapshot.profileMonthlyIncomeCurrency) {
+          addFact('snapshot.profileMonthlyIncomeCurrency', fullContext.snapshot.profileMonthlyIncomeCurrency);
+        }
+      }
     }
   };
 
@@ -1377,6 +1383,9 @@ export function sliceContext(fullContext: CoachContext, intentResult: IntentResu
       }
       if (fullContext.snapshot.profileMonthlyIncome !== undefined) {
         addFact('snapshot.profileMonthlyIncome', fullContext.snapshot.profileMonthlyIncome);
+        if (fullContext.snapshot.profileMonthlyIncomeCurrency) {
+          addFact('snapshot.profileMonthlyIncomeCurrency', fullContext.snapshot.profileMonthlyIncomeCurrency);
+        }
       }
       addFact('cashFlow.recommendedWeeklyReduction', fullContext.cashFlow.recommendedWeeklyReduction);
       break;

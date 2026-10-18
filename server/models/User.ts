@@ -13,6 +13,8 @@ export interface IUser extends Document {
   lastFinancialUpdate?: string;
   monthlyIncome?: number;
   monthlyIncomeCurrency?: string;
+  monthlyInflowBaseline?: number;
+  baselineCurrency?: string;
   riskTolerance?: 'Low' | 'Moderate' | 'Aggressive';
   tagline?: string;
   city?: string;
@@ -178,6 +180,9 @@ const UserSchema = new Schema<IUser>(
         delete ret.__v;
         delete ret.passwordHash;
         ret.currency = normalizeCurrency(ret.currency);
+        ret.monthlyIncomeCurrency = normalizeCurrency(ret.monthlyIncomeCurrency || 'BDT');
+        ret.monthlyInflowBaseline = ret.monthlyIncome;
+        ret.baselineCurrency = ret.monthlyIncomeCurrency;
         if (ret.updatedAt instanceof Date) {
           ret.updatedAt = ret.updatedAt.toISOString();
         }
@@ -189,5 +194,21 @@ const UserSchema = new Schema<IUser>(
     },
   }
 );
+
+UserSchema.virtual('monthlyInflowBaseline')
+  .get(function (this: any) {
+    return this.monthlyIncome;
+  })
+  .set(function (this: any, val: number) {
+    this.monthlyIncome = val;
+  });
+
+UserSchema.virtual('baselineCurrency')
+  .get(function (this: any) {
+    return this.monthlyIncomeCurrency;
+  })
+  .set(function (this: any, val: string) {
+    this.monthlyIncomeCurrency = val;
+  });
 
 export const UserModel = mongoose.models.User || mongoose.model<IUser>('User', UserSchema);

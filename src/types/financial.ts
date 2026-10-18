@@ -76,6 +76,8 @@ export interface User {
   city?: string;
   monthlyIncome?: number;
   monthlyIncomeCurrency?: string;
+  monthlyInflowBaseline?: number;
+  baselineCurrency?: string;
   riskTolerance?: 'Low' | 'Moderate' | 'Aggressive';
   primaryGoalId?: string;
   privacyStatus?: string;
@@ -220,6 +222,8 @@ export interface FinancialHealthInput {
   goals: SavingsGoal[];
   monthlyIncome?: number;
   monthlyIncomeCurrency?: string;
+  monthlyInflowBaseline?: number;
+  baselineCurrency?: string;
   startingBalance?: number;
   asOfDate?: string;
   config?: any;

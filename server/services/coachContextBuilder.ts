@@ -52,6 +52,7 @@ export interface CoachContext {
     currentBalance: number;
     isBalanceEstimated?: boolean;
     profileMonthlyIncome?: number;
+    profileMonthlyIncomeCurrency?: string;
     hasRecordedIncome?: boolean;
     hasRecordedExpenses?: boolean;
     hasProfileIncome?: boolean;
@@ -390,7 +391,10 @@ export function buildCoachContextFromData(
   const netCashFlow = monthlyIncome - monthlySpending;
   const savingsRate = monthlyIncome > 0 ? Number(monthlyOverview.savingsRate.toFixed(1)) : 0;
   const expenseRatio = monthlyIncome > 0 ? Number(((monthlySpending / monthlyIncome) * 100).toFixed(1)) : 0;
-  const profileMonthlyIncome = user?.monthlyIncome ? Number(user.monthlyIncome) : undefined;
+  const profileMonthlyIncome = (user?.monthlyIncome !== undefined && user?.monthlyIncome !== null)
+    ? Number(user.monthlyIncome)
+    : (user?.monthlyInflowBaseline !== undefined && user?.monthlyInflowBaseline !== null ? Number(user.monthlyInflowBaseline) : undefined);
+  const profileMonthlyIncomeCurrency = (user?.monthlyIncomeCurrency || user?.baselineCurrency || 'BDT').toUpperCase();
   const hasRecordedIncome = monthlyIncome > 0;
   const hasRecordedExpenses = monthlySpending > 0;
   const hasProfileIncome = profileMonthlyIncome !== undefined && profileMonthlyIncome > 0;
@@ -462,6 +466,13 @@ export function buildCoachContextFromData(
       available: true,
       labelEn: 'Profile Benchmark Income',
       labelBn: 'প্রোফাইল নির্দেশিত মাসিক আয়',
+    };
+    snapshotFacts['snapshot.profileMonthlyIncomeCurrency'] = {
+      key: 'snapshot.profileMonthlyIncomeCurrency',
+      value: profileMonthlyIncomeCurrency,
+      available: true,
+      labelEn: 'Profile Benchmark Currency',
+      labelBn: 'প্রোফাইল নির্দেশিত মাসিক আয়ের মুদ্রা',
     };
   }
 
@@ -936,8 +947,9 @@ export function buildCoachContextFromData(
   const healthMetrics = calculateFinancialHealthScore(
     eligibleTransactions,
     goals,
-    monthlyIncome || user?.monthlyIncome || 0,
-    activeMonth
+    monthlyIncome || profileMonthlyIncome || 0,
+    activeMonth,
+    monthlyIncome ? 'BDT' : profileMonthlyIncomeCurrency
   );
 
   const healthFacts: Record<string, FactItem> = {
@@ -1080,6 +1092,7 @@ export function buildCoachContextFromData(
       currentBalance,
       isBalanceEstimated,
       profileMonthlyIncome,
+      profileMonthlyIncomeCurrency,
       hasRecordedIncome,
       hasRecordedExpenses,
       hasProfileIncome,

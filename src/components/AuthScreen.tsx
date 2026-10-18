@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
 import { authService, AuthSession } from '../services/authService';
+import {
+  SUPPORTED_CURRENCIES,
+  normalizeCurrencyCode,
+  getCurrencyConfig,
+} from '../services/currencyService';
 
 interface AuthScreenProps {
   onAuthenticated: (session: AuthSession) => void;
@@ -24,6 +29,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [monthlyIncome, setMonthlyIncome] = useState('');
+  const [monthlyIncomeCurrency, setMonthlyIncomeCurrency] = useState('BDT');
+  const [monthlyIncomeError, setMonthlyIncomeError] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -36,6 +44,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    setMonthlyIncomeError(null);
     setIsLoading(true);
 
     try {
@@ -49,7 +58,27 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         if (password.length < 6) {
           throw new Error('Password must be at least 6 characters long.');
         }
-        const session = await authService.signup(name, email, password, 'en');
+
+        let parsedIncome: number | undefined = undefined;
+        const trimmedIncome = monthlyIncome.trim();
+        if (trimmedIncome !== '') {
+          const num = Number(trimmedIncome);
+          if (isNaN(num) || !isFinite(num) || num < 0) {
+            setMonthlyIncomeError('Value must be zero or a positive number.');
+            setIsLoading(false);
+            return;
+          }
+          parsedIncome = Math.round(num * 100) / 100;
+        }
+
+        const session = await authService.signup(
+          name,
+          email,
+          password,
+          'en',
+          parsedIncome,
+          monthlyIncomeCurrency
+        );
         onAuthenticated(session);
       } else {
         const session = await authService.login(email, password);
@@ -121,6 +150,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               onClick={() => {
                 setMode('login');
                 setErrorMsg(null);
+                setMonthlyIncomeError(null);
                 onModeChange?.('login');
               }}
               className={`py-2 rounded-lg font-title-md text-sm font-semibold transition-all ${mode === 'login'
@@ -135,6 +165,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               onClick={() => {
                 setMode('signup');
                 setErrorMsg(null);
+                setMonthlyIncomeError(null);
                 onModeChange?.('signup');
               }}
               className={`py-2 rounded-lg font-title-md text-sm font-semibold transition-all ${mode === 'signup'
@@ -253,24 +284,99 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             </div>
 
             {mode === 'signup' && (
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                  Confirm Password
-                </label>
-                <div className="relative flex items-center">
-                  <span className="material-symbols-outlined absolute left-3 text-outline text-[18px]">
-                    lock_reset
-                  </span>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface font-body-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-container"
-                  />
+              <>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-outline uppercase tracking-wider">
+                    Confirm Password
+                  </label>
+                  <div className="relative flex items-center">
+                    <span className="material-symbols-outlined absolute left-3 text-outline text-[18px]">
+                      lock_reset
+                    </span>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface font-body-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-container"
+                    />
+                  </div>
                 </div>
-              </div>
+
+                {/* Monthly Inflow Baseline */}
+                <div className="flex flex-col gap-1.5 pt-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-outline uppercase tracking-wider">
+                      MONTHLY INFLOW BASELINE
+                    </label>
+                    <span className="text-[11px] text-outline font-normal">
+                      (Optional)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {/* Currency Selector */}
+                    <select
+                      id="registrationMonthlyIncomeCurrency"
+                      aria-label="Monthly inflow baseline currency"
+                      value={monthlyIncomeCurrency}
+                      onChange={(e) => {
+                        setMonthlyIncomeCurrency(normalizeCurrencyCode(e.target.value));
+                      }}
+                      className="w-40 sm:w-48 p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container font-body-md text-sm cursor-pointer shrink-0 font-medium"
+                      title="Select baseline currency"
+                    >
+                      {SUPPORTED_CURRENCIES.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.name} ({c.displaySymbol})
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* Numeric Input */}
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-secondary text-sm pointer-events-none select-none">
+                        {getCurrencyConfig(monthlyIncomeCurrency).displaySymbol}
+                      </span>
+                      <input
+                        id="registrationMonthlyIncome"
+                        aria-label="Monthly inflow baseline amount"
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={monthlyIncome}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setMonthlyIncome(val);
+                          if (monthlyIncomeError) setMonthlyIncomeError(null);
+                          if (val.trim() !== '') {
+                            const num = Number(val);
+                            if (isNaN(num) || !isFinite(num) || num < 0) {
+                              setMonthlyIncomeError('Value must be zero or a positive number.');
+                            }
+                          }
+                        }}
+                        placeholder="e.g. 50000"
+                        className={`w-full pl-8 pr-3 py-2.5 rounded-xl border bg-surface-container-low text-on-surface font-body-md text-sm focus:outline-none focus:ring-2 transition-all ${
+                          monthlyIncomeError
+                            ? 'border-error focus:ring-error text-error'
+                            : 'border-outline-variant/30 focus:ring-primary-container'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                  {monthlyIncomeError ? (
+                    <span className="text-xs text-error font-medium flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px]">error</span>
+                      {monthlyIncomeError}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-outline leading-tight">
+                      Your expected total monthly income from all sources. Used for liquidity buffer and cash flow projections.
+                    </span>
+                  )}
+                </div>
+              </>
             )}
 
             <button

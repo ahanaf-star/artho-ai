@@ -28,11 +28,27 @@ export const apiService = {
   /**
    * POST /api/auth/signup
    */
-  async signup(name: string, email: string, password: string, preferredLanguage: 'en' | 'bn' = 'en') {
+  async signup(
+    name: string,
+    email: string,
+    password: string,
+    preferredLanguage: 'en' | 'bn' = 'en',
+    monthlyIncome?: number,
+    monthlyIncomeCurrency: string = 'BDT'
+  ) {
     const res = await fetch(`${BASE_URL}/api/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, preferredLanguage }),
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+        preferredLanguage,
+        monthlyIncome,
+        monthlyIncomeCurrency,
+        monthlyInflowBaseline: monthlyIncome,
+        baselineCurrency: monthlyIncomeCurrency,
+      }),
     });
     const data = await res.json();
     if (!res.ok) {

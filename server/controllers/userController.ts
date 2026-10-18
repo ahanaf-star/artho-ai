@@ -102,6 +102,14 @@ export async function updateUser(req: Request, res: Response) {
   delete updates._id;
   delete updates.createdAt;
 
+  // Accept aliases monthlyInflowBaseline and baselineCurrency
+  if (updates.monthlyInflowBaseline !== undefined && updates.monthlyIncome === undefined) {
+    updates.monthlyIncome = updates.monthlyInflowBaseline;
+  }
+  if (updates.baselineCurrency !== undefined && updates.monthlyIncomeCurrency === undefined) {
+    updates.monthlyIncomeCurrency = updates.baselineCurrency;
+  }
+
   if (updates.currency !== undefined) {
     if (typeof updates.currency !== 'string' || !isValidCurrency(updates.currency)) {
       return res.status(400).json({
