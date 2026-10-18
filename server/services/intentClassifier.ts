@@ -1319,6 +1319,15 @@ export function sliceContext(fullContext: CoachContext, intentResult: IntentResu
       addFact('cashFlow.recommendedBuffer', fullContext.cashFlow.recommendedBuffer);
       addFact('cashFlow.shortfall', fullContext.cashFlow.shortfall);
       addFact('cashFlow.recommendedWeeklyReduction', fullContext.cashFlow.recommendedWeeklyReduction);
+      if (fullContext.cashFlow.upcomingBills !== undefined) {
+        addFact('cashFlow.upcomingBills', fullContext.cashFlow.upcomingBills);
+      }
+      if (fullContext.cashFlow.safeSpendingLimitWeekly !== undefined) {
+        addFact('cashFlow.safeSpendingLimitWeekly', fullContext.cashFlow.safeSpendingLimitWeekly);
+      }
+      if (fullContext.cashFlow.uncommittedDiscretionaryPool !== undefined) {
+        addFact('cashFlow.uncommittedDiscretionaryPool', fullContext.cashFlow.uncommittedDiscretionaryPool);
+      }
       break;
 
     case 'savings_goal_progress':

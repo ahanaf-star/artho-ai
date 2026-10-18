@@ -53,6 +53,13 @@ export function generateDeterministicCoachResponse(
   const monthEndBalance = ctx.cashFlow.forecastMonthEndBalance;
   const recommendedBuffer = ctx.cashFlow.recommendedBuffer;
   const weeklyTrim = ctx.cashFlow.recommendedWeeklyReduction;
+  const isBalanceEstimated = ctx.cashFlow.isBalanceEstimated ?? false;
+  const isForecastSufficient = ctx.cashFlow.isForecastSufficient ?? true;
+  const upcomingBills = ctx.cashFlow.upcomingBills ?? 0;
+  const committedFunds = ctx.cashFlow.committedFunds ?? 0;
+  const uncommittedPool = ctx.cashFlow.uncommittedDiscretionaryPool ?? Math.max(0, balance - (upcomingBills + recommendedBuffer));
+  const safeSpendingWeekly = ctx.cashFlow.safeSpendingLimitWeekly ?? (uncommittedPool > 0 ? Math.round(uncommittedPool / 4) : 0);
+  const remainingDays = ctx.cashFlow.remainingDaysInMonth ?? 14;
   const primaryGoal = ctx.goals.items[0] || null;
   const healthScore = ctx.health.score;
   const healthBand = ctx.health.band;
@@ -364,6 +371,12 @@ export function generateDeterministicCoachResponse(
         'snapshot.monthlySpending',
         'snapshot.netSavings'
       );
+      if (ctx.cashFlow.upcomingBills !== undefined) {
+        factsUsed.push('cashFlow.upcomingBills');
+      }
+      if (ctx.cashFlow.safeSpendingLimitWeekly !== undefined) {
+        factsUsed.push('cashFlow.safeSpendingLimitWeekly');
+      }
       if (topCat) {
         factsUsed.push('spending.topCategory');
       }
@@ -372,23 +385,75 @@ export function generateDeterministicCoachResponse(
       const absShortfall = Math.abs(netCashFlow);
 
       if (isBn) {
-        const safeSpendingLine = `• **নিরাপদ খরচের সীমা**: চলতি মাসের বাকি দিনগুলোতে খরচের নিরাপদ সীমা ব্যালেন্স **৳${balance.toLocaleString()}** এর ওপর নির্ভরশীল (সাপ্তাহিক খরচের সীমা: প্রায় **৳${Math.round(balance / 4).toLocaleString()}**)।`;
-        answer = `আপনার বর্তমান উপলব্ধ ব্যালেন্স **৳${balance.toLocaleString()}** এর ভিত্তিতে আগামী মাস শেষে সম্ভাব্য ব্যালেন্স দাঁড়াবে প্রায় **৳${monthEndBalance.toLocaleString()}** (AI-assisted forecast)।\n\n` +
-          `• **আয়-ব্যয়ের অবস্থান**: চলতি মাসে আপনার রেকর্ডকৃত আয় **৳${income.toLocaleString()}** এবং মোট ব্যয় **৳${spending.toLocaleString()}** (${isDeficit ? `মাসিক নিট ঘাটতি **৳${absShortfall.toLocaleString()}** (ঘাটতি ও নগদ সংকটের ঝুঁকি)` : `মাসিক নিট উদ্বৃত্ত **৳${currentSurplus.toLocaleString()}**`}${topCat ? `, যার প্রধান খাত **${topCat.category}** (৳${topCat.amount.toLocaleString()})` : ''})।\n` +
-          `• **নিরাপত্তা বাফার**: আপনার অ্যাকাউন্টের জন্য প্রস্তাবিত নিরাপত্তা বাফার হলো **৳${recommendedBuffer.toLocaleString()}**।${
+        let safeSpendingLine = '';
+        if (uncommittedPool === 0 && balance > 0 && committedFunds >= balance) {
+          safeSpendingLine = `• **নিরাপদ সীমা**: আপনার ব্যালেন্স **৳${balance.toLocaleString()}** এর সম্পূর্ণ অংশই আসন্ন নির্ধারিত বিল, সঞ্চয় লক্ষ্য বা নিরাপত্তা বাফারে বরাদ্দ রয়েছে। তাই অতিরিক্ত ব্যয়ের নিরাপদ সীমা **৳০/সপ্তাহ**।`;
+        } else {
+          safeSpendingLine = `• **নিরাপদ সীমা**: ব্যালেন্স **৳${balance.toLocaleString()}** এর ভিত্তিতে, নির্ধারিত প্রতিশ্রুতিসমূহ আলাদা রাখার পর বাকি ${remainingDays} দিনের জন্য মোট নিরাপদ তহবিল **৳${uncommittedPool.toLocaleString()}** (সাপ্তাহিক খরচের নিরাপদ সীমা: প্রায় **৳${safeSpendingWeekly.toLocaleString()}**)।`;
+        }
+
+        const balanceDesc = isBalanceEstimated
+          ? `আপনার **আনুমানিক নিট উদ্বৃত্ত ৳${balance.toLocaleString()}** (রেকর্ডকৃত লেনদেন থেকে প্রাপ্ত; কোনো ব্যাংক বা ওয়ালেট অ্যাকাউন্ট সংযুক্ত নেই)`
+          : `আপনার বর্তমান উপলব্ধ ব্যালেন্স **৳${balance.toLocaleString()}**`;
+
+        const forecastDesc = isForecastSufficient
+          ? `আগামী মাস শেষে সম্ভাব্য ব্যালেন্স দাঁড়াবে প্রায় **৳${monthEndBalance.toLocaleString()}** (AI-assisted forecast)`
+          : `আগামী মাস শেষে সম্ভাব্য ব্যালেন্স দাঁড়াবে প্রায় **৳${monthEndBalance.toLocaleString()}** (প্রাথমিক পূর্বাভাস — নিয়মিত খরচের হারের জন্য পর্যাপ্ত ডেটা নেই; নির্ধারিত বিল ৳${upcomingBills.toLocaleString()} সমন্বিত, কোনো অতিরিক্ত অনুমানমূলক খরচ ধরা হয়নি)`;
+
+        let bufferDesc = '';
+        if (recommendedBuffer > 0) {
+          bufferDesc = `• **নিরাপত্তা বাফার**: আপনার অ্যাকাউন্টের জন্য প্রস্তাবিত নিরাপত্তা বাফার হলো **৳${recommendedBuffer.toLocaleString()}**।${
             monthEndBalance < recommendedBuffer
               ? ` ক্যাশ-ফ্লো স্থিতিশীল রাখতে ও ঘাটতির ঝুঁকি এড়াতে সপ্তাহে প্রায় **৳${weeklyTrim.toLocaleString()}** সাশ্রয় করার পরামর্শ দেওয়া হচ্ছে।`
               : ' আপনার পূর্বাভাসিত ব্যালেন্স প্রস্তাবিত বাফারের মধ্যে নিরাপদ রয়েছে।'
-          }\n${safeSpendingLine}`;
+          }`;
+        } else {
+          bufferDesc = `• **নিরাপত্তা বাফার**: নিরাপত্তা বাফার নির্ধারণের জন্য বর্তমানে কোনো নিয়মিত বিল বা পর্যাপ্ত ব্যয়ের ইতিহাস নেই। নিয়মিত বিল যোগ করলে স্বয়ংক্রিয় বাফার সক্রিয় হবে।`;
+        }
+
+        const dataNote = isBalanceEstimated
+          ? `\n⚠️ *সতর্কতা: কোনো ব্যাংক বা ওয়ালেট অ্যাকাউন্ট সংযুক্ত না থাকায় এবং মৌলিক জীবনযাত্রার খরচ (বাসা ভাড়া, খাবার, ইউটিলিটি) নথিবদ্ধ না থাকায় এটি একটি প্রাথমিক প্রাক্কলন।*`
+          : '';
+
+        answer = `${balanceDesc} এর ভিত্তিতে ${forecastDesc}।\n\n` +
+          `• **আয়-ব্যয়ের অবস্থান**: চলতি মাসে আপনার রেকর্ডকৃত আয় **৳${income.toLocaleString()}** এবং মোট ব্যয় **৳${spending.toLocaleString()}** (${isDeficit ? `মাসিক নিট ঘাটতি **৳${absShortfall.toLocaleString()}** (ঘাটতি ও নগদ সংকটের ঝুঁকি)` : `মাসিক নিট উদ্বৃত্ত **৳${currentSurplus.toLocaleString()}**`}${topCat ? `, যার প্রধান খাত **${topCat.category}** (৳${topCat.amount.toLocaleString()})` : ''})।\n` +
+          `${bufferDesc}\n` +
+          `${safeSpendingLine}${dataNote}`;
       } else {
-        const safeSpendingLine = `• **Safe Spending Limit**: Your safe personal spending limit for the rest of this month is backed by your liquid balance of **৳${balance.toLocaleString()}** (weekly spending limit: approximately **৳${Math.round(balance / 4).toLocaleString()}**).`;
-        answer = `Based on your liquid balance of **৳${balance.toLocaleString()}**, your projected month-end balance is approximately **৳${monthEndBalance.toLocaleString()}** (AI-assisted forecast).\n\n` +
-          `• **Cash Flow Position**: Your recorded monthly income is **৳${income.toLocaleString()}** against total expenses of **৳${spending.toLocaleString()}** (${isDeficit ? `net monthly deficit of **৳${absShortfall.toLocaleString()}** (risk of running short)` : `net monthly surplus of **৳${currentSurplus.toLocaleString()}**`}${topCat ? `, with largest outflow in **${topCat.category}** (৳${topCat.amount.toLocaleString()})` : ''}).\n` +
-          `• **Safety Buffer**: The recommended liquidity safety buffer is **৳${recommendedBuffer.toLocaleString()}**.${
+        let safeSpendingLine = '';
+        if (uncommittedPool === 0 && balance > 0 && committedFunds >= balance) {
+          safeSpendingLine = `• **Safe Spending Limit**: Your liquid balance of **৳${balance.toLocaleString()}** is fully committed to upcoming scheduled bills, active savings goals, or safety reserves. Your safe personal spending limit is **৳0/week**.`;
+        } else {
+          safeSpendingLine = `• **Safe Spending Limit**: Backed by your liquid balance of **৳${balance.toLocaleString()}**, after reserving funds for commitments and safety buffer, your safe personal spending limit for the remaining ${remainingDays} days is **৳${uncommittedPool.toLocaleString()}** (weekly spending limit: approximately **৳${safeSpendingWeekly.toLocaleString()}**).`;
+        }
+
+        const balanceDesc = isBalanceEstimated
+          ? `Based on your **estimated net cash of ৳${balance.toLocaleString()}** (derived from recorded income minus expenses; no bank or MFS accounts are currently linked)`
+          : `Based on your verified liquid balance of **৳${balance.toLocaleString()}**`;
+
+        const forecastDesc = isForecastSufficient
+          ? `your projected month-end balance is approximately **৳${monthEndBalance.toLocaleString()}** (AI-assisted forecast)`
+          : `your projected month-end balance is approximately **৳${monthEndBalance.toLocaleString()}** (Preliminary forecast — insufficient historical spending data to establish a daily burn rate; reflects scheduled bills of ৳${upcomingBills.toLocaleString()} with zero unrecorded daily expenses assumed)`;
+
+        let bufferDesc = '';
+        if (recommendedBuffer > 0) {
+          bufferDesc = `• **Safety Buffer**: The recommended liquidity safety buffer is **৳${recommendedBuffer.toLocaleString()}**.${
             monthEndBalance < recommendedBuffer
               ? ` To restore healthy cash flow and manage liquidity risk, trimming ~**৳${weeklyTrim.toLocaleString()}/week** in flexible spending is recommended.`
               : ' Your projected margin remains comfortably above the recommended safety buffer.'
-          }\n${safeSpendingLine}`;
+          }`;
+        } else {
+          bufferDesc = `• **Safety Buffer**: No recurring obligations are recorded and insufficient expense history exists to calculate a tailored safety buffer. Adding recurring bills will establish an automated liquidity buffer.`;
+        }
+
+        const dataNote = isBalanceEstimated
+          ? `\n⚠️ *Data Limitation: No bank or wallet accounts are connected, and essential monthly living costs (such as rent, groceries, and utilities) appear unrecorded. Treat this safe personal spending limit as a preliminary ceiling.*`
+          : '';
+
+        answer = `${balanceDesc}, ${forecastDesc}.\n\n` +
+          `• **Cash Flow Position**: Your recorded monthly income is **৳${income.toLocaleString()}** against total expenses of **৳${spending.toLocaleString()}** (${isDeficit ? `net monthly deficit of **৳${absShortfall.toLocaleString()}** (risk of running short)` : `net monthly surplus of **৳${currentSurplus.toLocaleString()}**`}${topCat ? `, with largest outflow in **${topCat.category}** (৳${topCat.amount.toLocaleString()})` : ''}).\n` +
+          `${bufferDesc}\n` +
+          `${safeSpendingLine}${dataNote}`;
       }
       followUps.push(
         isBn ? 'আমি কীভাবে বেশি সঞ্চয় করতে পারি?' : 'How can I save more money?',
@@ -961,11 +1026,11 @@ export function generateDeterministicCoachResponse(
         simBlockEn = `\n• **Scenario Comparison**:\n  - **Optimistic (+10% Income)**: ৳${fmt(Math.round(income * 1.1))}/mo income, net surplus: ৳${fmt(optSurplus)}\n  - **Expected (Run-Rate)**: ৳${fmt(income)}/mo income, net surplus: ৳${fmt(currentSurplus)}\n  - **Pessimistic (-10% Income)**: ৳${fmt(Math.round(income * 0.9))}/mo income, net surplus: ৳${fmt(pessSurplus)}\n`;
         simBlockBn = `\n• **দৃশ্যপট তুলনা**:\n  - **আশাবাদী (+১০% আয়)**: আয় ৳${fmt(Math.round(income * 1.1))}, নিট উদ্বৃত্ত ৳${fmt(optSurplus)}\n  - **প্রত্যাশিত (বর্তমান ধারা)**: আয় ৳${fmt(income)}, নিট উদ্বৃত্ত ৳${fmt(currentSurplus)}\n  - **রক্ষণশীল (-১০% আয়)**: আয় ৳${fmt(Math.round(income * 0.9))}, নিট উদ্বৃত্ত ৳${fmt(pessSurplus)}\n`;
       } else if (asciiNorm.includes('resilience') || asciiNorm.includes('loss')) {
-        simBlockEn = `\n• **Income-Loss Resilience**: Your verified liquid balance is **৳${fmt(balance)}**. At your baseline monthly spending of ৳${fmt(spending)}, this liquidity buffer provides runway without new income.\n`;
-        simBlockBn = `\n• **আয়-হ্রাস সহনশীলতা**: আপনার যাচাইকৃত তরল ব্যালেন্স **৳${fmt(balance)}**। মাসিক ৳${fmt(spending)} ব্যয়ের গতিতে এই বাফার আয়হীন অবস্থায় সুরক্ষা প্রদান করে।\n`;
+        simBlockEn = `\n• **Income-Loss Resilience**: ${isBalanceEstimated ? 'Your estimated net balance is' : 'Your verified liquid balance is'} **৳${fmt(balance)}**. At your baseline monthly spending of ৳${fmt(spending)}, this liquidity buffer provides runway without new income.\n`;
+        simBlockBn = `\n• **আয়-হ্রাস সহনশীলতা**: ${isBalanceEstimated ? 'আপনার আনুমানিক নিট ব্যালেন্স' : 'আপনার যাচাইকৃত তরল ব্যালেন্স'} **৳${fmt(balance)}**। মাসিক ৳${fmt(spending)} ব্যয়ের গতিতে এই বাফার আয়হীন অবস্থায় সুরক্ষা প্রদান করে।\n`;
       } else if (norm.includes('resilience') || norm.includes('loss')) {
-        simBlockEn = `\n• **Income-Loss Resilience**: Your verified liquid balance is **৳${fmt(balance)}**. At your baseline monthly spending of ৳${fmt(spending)}, this liquidity buffer provides runway without new income.\n`;
-        simBlockBn = `\n• **আয়-হ্রাস সহনশীলতা**: আপনার যাচাইকৃত তরল ব্যালেন্স **৳${fmt(balance)}**। মাসিক ৳${fmt(spending)} ব্যয়ের গতিতে এই বাফার আয়হীন অবস্থায় সুরক্ষা প্রদান করে।\n`;
+        simBlockEn = `\n• **Income-Loss Resilience**: ${isBalanceEstimated ? 'Your estimated net balance is' : 'Your verified liquid balance is'} **৳${fmt(balance)}**. At your baseline monthly spending of ৳${fmt(spending)}, this liquidity buffer provides runway without new income.\n`;
+        simBlockBn = `\n• **আয়-হ্রাস সহনশীলতা**: ${isBalanceEstimated ? 'আপনার আনুমানিক নিট ব্যালেন্স' : 'আপনার যাচাইকৃত তরল ব্যালেন্স'} **৳${fmt(balance)}**। মাসিক ৳${fmt(spending)} ব্যয়ের গতিতে এই বাফার আয়হীন অবস্থায় সুরক্ষা প্রদান করে।\n`;
       }
 
       if (isBn) {
@@ -976,7 +1041,7 @@ export function generateDeterministicCoachResponse(
             `  - **প্রত্যাশিত মোট আয়**: **৳${fmt(totalExpIncome)}** (প্রতি মাসে ৳${fmt(income)} ধরে)\n` +
             `  - **প্রত্যাশিত মোট ব্যয়**: **৳${fmt(totalExpExpenses)}** (প্রতি মাসে ৳${fmt(spending)} ধরে)\n` +
             `  - **সম্ভাব্য নিট সঞ্চয় / ক্যাশ-ফ্লো**: **৳${fmt(totalProjectedSavings)}** (প্রতি মাসে ৳${fmt(currentSurplus)} উদ্বৃত্ত ধরে)\n` +
-            `  - **উপলব্ধ ব্যালেন্স**: **৳${fmt(balance)}**\n` +
+            `  - **${isBalanceEstimated ? 'আনুমানিক নিট ব্যালেন্স (অসংযুক্ত লেজার)' : 'উপলব্ধ ব্যালেন্স'}**: **৳${fmt(balance)}**\n` +
             `${simBlockBn}\n` +
             `• **গুরুত্বপূর্ণ বাস্তবতা ও শর্ত**:\n` +
             `  ${isTopMedical ? `চলতি মাসের ব্যয়ের মধ্যে **${topCat.category}** খাতে ৳${fmt(topCat.amount)} ব্যয় অন্তর্ভুক্ত। এটি যদি এককালীন চিকিৎসা খরচ হয়ে থাকে, তবে আগামী ৬ মাসে আপনার প্রকৃত খরচ অনেক কম হবে এবং সঞ্চয় ৳${fmt(totalProjectedSavings)} এর চেয়ে বহুগুণ বেশি হতে পারে।` : 'মাসিক আয়ের ধারাবাহিকতা এবং খরচের নিয়মিত ধারা বজায় থাকার ওপর এই হিসাব নির্ভরশীল।'}\n\n` +
@@ -987,7 +1052,7 @@ export function generateDeterministicCoachResponse(
             `• **প্রত্যাশিত মোট আয়**: **৳${fmt(totalExpIncome)}** (মাসিক গড় ৳${fmt(income)})\n` +
             `• **প্রত্যাশিত মোট ব্যয়**: **৳${fmt(totalExpExpenses)}** (মাসিক গড় ৳${fmt(spending)})\n` +
             `• **প্রক্ষেপিত ৬ মাসের নিট সঞ্চয়**: **৳${fmt(totalProjectedSavings)}** (মাসিক উদ্বৃত্ত ৳${fmt(currentSurplus)})\n` +
-            `• **উপলব্ধ ব্যালেন্স**: **৳${fmt(balance)}**\n` +
+            `• **${isBalanceEstimated ? 'আনুমানিক নিট ব্যালেন্স (অসংযুক্ত লেজার)' : 'উপলব্ধ ব্যালেন্স'}**: **৳${fmt(balance)}**\n` +
             `${simBlockBn}\n` +
             `• **মূল শর্তাবলি**: বর্তমান ব্যয়ের শৃঙ্খলা ও আয় প্রবাহ অপরিবর্তিত থাকলে আগামী ৬ মাস শেষে আপনার ইতিবাচক ক্যাশ-ফ্লো বজায় থাকবে।`;
         }
@@ -999,7 +1064,7 @@ export function generateDeterministicCoachResponse(
             `  - **Projected 6-Month Income**: **৳${fmt(totalExpIncome)}** (assuming consistent ৳${fmt(income)}/month over six months)\n` +
             `  - **Projected 6-Month Outflow**: **৳${fmt(totalExpExpenses)}** (assuming current run-rate of ৳${fmt(spending)}/month)\n` +
             `  - **Projected 6-Month Net Surplus**: **৳${fmt(totalProjectedSavings)}** (cumulative net cash flow at ৳${fmt(currentSurplus)}/month over 6 months to accumulate savings)\n` +
-            `  - **Available Liquid Balance**: **৳${fmt(balance)}**\n` +
+            `  - **${isBalanceEstimated ? 'Estimated Net Balance (Unlinked Ledger)' : 'Available Liquid Balance'}**: **৳${fmt(balance)}**\n` +
             `${simBlockEn}\n` +
             `• **Critical Assumptions & Real-World Caveats**:\n` +
             `  ${isTopMedical ? `Your current month expenditures include **৳${fmt(topCat.amount)}** in **${topCat.category}**. If this was a one-time medical intervention rather than a recurring monthly treatment, your ongoing outflows will be substantially lower, resulting in significantly higher accumulated savings (accumulate surplus) than ৳${fmt(totalProjectedSavings)}.` : 'This assumes your income and outflow velocity remain steady over the next 180 days.'}\n\n` +
@@ -1010,7 +1075,7 @@ export function generateDeterministicCoachResponse(
             `• **Expected 6-Month Income**: **৳${fmt(totalExpIncome)}** (averaging ৳${fmt(income)}/month over six months)\n` +
             `• **Expected 6-Month Expenses**: **৳${fmt(totalExpExpenses)}** (averaging ৳${fmt(spending)}/month)\n` +
             `• **Projected 6-Month Net Cash Flow**: **৳${fmt(totalProjectedSavings)}** (cumulative surplus at ৳${fmt(currentSurplus)}/month to accumulate savings over 6 months)\n` +
-            `• **Available Liquid Balance**: **৳${fmt(balance)}**\n` +
+            `• **${isBalanceEstimated ? 'Estimated Net Balance (Unlinked Ledger)' : 'Available Liquid Balance'}**: **৳${fmt(balance)}**\n` +
             `${simBlockEn}\n` +
             `• **Core Assumptions**: Assumes your historical spending discipline and steady income streams persist without major unbudgeted shocks.`;
         }

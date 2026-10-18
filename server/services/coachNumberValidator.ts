@@ -356,6 +356,29 @@ export function extractAllowedNumbers(
     allowed.add(Math.abs(ctx.cashFlow.recommendedWeeklyReduction));
     allowed.add(ctx.cashFlow.recommendedBuffer);
     allowed.add(Math.abs(ctx.cashFlow.recommendedBuffer));
+    if (ctx.cashFlow.upcomingBills !== undefined) {
+      allowed.add(ctx.cashFlow.upcomingBills);
+      allowed.add(Math.abs(ctx.cashFlow.upcomingBills));
+    }
+    if (ctx.cashFlow.safeSpendingLimitWeekly !== undefined) {
+      allowed.add(ctx.cashFlow.safeSpendingLimitWeekly);
+      allowed.add(Math.abs(ctx.cashFlow.safeSpendingLimitWeekly));
+    }
+    if (ctx.cashFlow.safeSpendingLimitRemaining !== undefined) {
+      allowed.add(ctx.cashFlow.safeSpendingLimitRemaining);
+      allowed.add(Math.abs(ctx.cashFlow.safeSpendingLimitRemaining));
+    }
+    if (ctx.cashFlow.uncommittedDiscretionaryPool !== undefined) {
+      allowed.add(ctx.cashFlow.uncommittedDiscretionaryPool);
+      allowed.add(Math.abs(ctx.cashFlow.uncommittedDiscretionaryPool));
+    }
+    if (ctx.cashFlow.committedFunds !== undefined) {
+      allowed.add(ctx.cashFlow.committedFunds);
+      allowed.add(Math.abs(ctx.cashFlow.committedFunds));
+    }
+    if (ctx.cashFlow.remainingDaysInMonth !== undefined) {
+      allowed.add(ctx.cashFlow.remainingDaysInMonth);
+    }
   }
 
   // 5. Health numbers
@@ -537,6 +560,52 @@ export function validateCoachNumbers(
         valid: false,
         reason:
           'Semantic contradiction: Answer asserts unconditional 100% Spending Control without preliminary status when data confidence is low.',
+      };
+    }
+  }
+
+  // If uncommitted discretionary pool is 0 because funds are committed, AI must not recommend positive weekly spending
+  if (
+    ctx.cashFlow &&
+    ctx.cashFlow.uncommittedDiscretionaryPool === 0 &&
+    (ctx.snapshot.currentBalance || 0) > 0 &&
+    (ctx.cashFlow.committedFunds || 0) >= (ctx.snapshot.currentBalance || 0)
+  ) {
+    const claimsPositiveWeeklyLimit =
+      /(?:weekly\s*(?:spending\s*)?limit|safe\s*(?:personal\s*)?spending|সাপ্তাহিক\s*খরচের\s*সীমা|নিরাপদ\s*(?:ব্যক্তিগত\s*)?খরচ)[^.\n]*?(?:[1-9](?:,?\d){2,}|[১-৯](?:,?[০-৯]){2,})/i.test(answer) &&
+      !/(?:0\/week|০\/সপ্তাহ|৳0|৳০|0\s*per\s*week|০\s*প্রতি\s*সপ্তাহ)/i.test(answer);
+    if (claimsPositiveWeeklyLimit) {
+      return {
+        valid: false,
+        reason:
+          'Semantic contradiction: Answer recommends positive weekly spending when available balance is fully committed to obligations/buffer.',
+      };
+    }
+  }
+
+  // If balance is estimated from unlinked ledger, AI must not claim verified bank/wallet balance
+  if (ctx.cashFlow && ctx.cashFlow.isBalanceEstimated) {
+    const claimsVerifiedBankBalance =
+      /(?:verified\s*(?:liquid|bank|wallet)\s*balance|যাচাইকৃত\s*(?:তরল|ব্যাংক|ওয়ালেট)\s*ব্যালেন্স)/i.test(answer) &&
+      !/(?:estimate|estimated|আনুমানিক|unlinked|অসংযুক্ত)/i.test(answer);
+    if (claimsVerifiedBankBalance) {
+      return {
+        valid: false,
+        reason:
+          'Semantic contradiction: Answer claims a verified bank balance when no accounts are linked and balance is derived from transactions.',
+      };
+    }
+  }
+
+  // If authoritative buffer is 0, reject claims asserting arbitrary 15% or 7,200 buffer
+  if (ctx.cashFlow && ctx.cashFlow.recommendedBuffer === 0) {
+    const claimsArbitraryBuffer =
+      /(?:safety\s*buffer|নিরাপত্তা\s*বাফার)[^.\n]*?(?:7,200|7200|৭,২০০|৭২০০|15%|১৫%)/i.test(answer);
+    if (claimsArbitraryBuffer) {
+      return {
+        valid: false,
+        reason:
+          'Semantic contradiction: Answer asserts an arbitrary 15% safety buffer when authoritative buffer rule requires 0 due to lack of recurring bills/data.',
       };
     }
   }

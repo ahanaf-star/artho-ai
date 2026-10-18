@@ -50,7 +50,7 @@
   "unsupportedClaimFailures": 0,
   "dataSufficiencyFailures": 0,
   "safetyFailures": 0,
-  "durationMs": 275,
+  "durationMs": 168,
   "results": [
     {
       "id": "TC-001",
@@ -1319,7 +1319,7 @@
       "expectedIntent": "budget_help | month_end_balance",
       "actualIntent": "month_end_balance",
       "status": "PASS",
-      "answerExcerpt": "Based on your liquid balance of **৳45,000**, your projected month-end balance is approximately **৳-5,010** (AI-assisted forecast). • **Cash ...",
+      "answerExcerpt": "Based on your verified liquid balance of **৳45,000**, your projected month-end balance is approximately **৳-5,010** (AI-assisted forecast). ...",
       "factsUsed": [
         "cashFlow.startingBalance",
         "cashFlow.monthEndBalance",
@@ -1328,6 +1328,8 @@
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
         "snapshot.netSavings",
+        "cashFlow.upcomingBills",
+        "cashFlow.safeSpendingLimitWeekly",
         "spending.topCategory"
       ],
       "failureReasons": [],
@@ -1378,7 +1380,7 @@
       "expectedIntent": "budget_help | month_end_balance",
       "actualIntent": "month_end_balance",
       "status": "PASS",
-      "answerExcerpt": "Based on your liquid balance of **৳45,000**, your projected month-end balance is approximately **৳-5,010** (AI-assisted forecast). • **Cash ...",
+      "answerExcerpt": "Based on your verified liquid balance of **৳45,000**, your projected month-end balance is approximately **৳-5,010** (AI-assisted forecast). ...",
       "factsUsed": [
         "cashFlow.startingBalance",
         "cashFlow.monthEndBalance",
@@ -1387,6 +1389,8 @@
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
         "snapshot.netSavings",
+        "cashFlow.upcomingBills",
+        "cashFlow.safeSpendingLimitWeekly",
         "spending.topCategory"
       ],
       "failureReasons": [],
@@ -1608,6 +1612,8 @@
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
         "snapshot.netSavings",
+        "cashFlow.upcomingBills",
+        "cashFlow.safeSpendingLimitWeekly",
         "spending.topCategory"
       ],
       "failureReasons": [],
@@ -1667,6 +1673,8 @@
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
         "snapshot.netSavings",
+        "cashFlow.upcomingBills",
+        "cashFlow.safeSpendingLimitWeekly",
         "spending.topCategory"
       ],
       "failureReasons": [],
@@ -1772,7 +1780,7 @@
       "expectedIntent": "month_end_balance",
       "actualIntent": "month_end_balance",
       "status": "PASS",
-      "answerExcerpt": "Based on your liquid balance of **৳45,000**, your projected month-end balance is approximately **৳-5,010** (AI-assisted forecast). • **Cash ...",
+      "answerExcerpt": "Based on your verified liquid balance of **৳45,000**, your projected month-end balance is approximately **৳-5,010** (AI-assisted forecast). ...",
       "factsUsed": [
         "cashFlow.startingBalance",
         "cashFlow.monthEndBalance",
@@ -1781,6 +1789,8 @@
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
         "snapshot.netSavings",
+        "cashFlow.upcomingBills",
+        "cashFlow.safeSpendingLimitWeekly",
         "spending.topCategory"
       ],
       "failureReasons": [],
@@ -1804,7 +1814,7 @@
       "expectedIntent": "month_end_balance",
       "actualIntent": "month_end_balance",
       "status": "PASS",
-      "answerExcerpt": "Based on your liquid balance of **৳5,000**, your projected month-end balance is approximately **৳-46,990** (AI-assisted forecast). • **Cash ...",
+      "answerExcerpt": "Based on your verified liquid balance of **৳5,000**, your projected month-end balance is approximately **৳-46,990** (AI-assisted forecast). ...",
       "factsUsed": [
         "cashFlow.startingBalance",
         "cashFlow.monthEndBalance",
@@ -1813,6 +1823,8 @@
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
         "snapshot.netSavings",
+        "cashFlow.upcomingBills",
+        "cashFlow.safeSpendingLimitWeekly",
         "spending.topCategory"
       ],
       "failureReasons": [],
@@ -2004,7 +2016,7 @@
       "expectedIntent": "month_end_balance | financial_projection",
       "actualIntent": "month_end_balance",
       "status": "PASS",
-      "answerExcerpt": "Based on your liquid balance of **৳5,000**, your projected month-end balance is approximately **৳-46,990** (AI-assisted forecast). • **Cash ...",
+      "answerExcerpt": "Based on your verified liquid balance of **৳5,000**, your projected month-end balance is approximately **৳-46,990** (AI-assisted forecast). ...",
       "factsUsed": [
         "cashFlow.startingBalance",
         "cashFlow.monthEndBalance",
@@ -2013,6 +2025,8 @@
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
         "snapshot.netSavings",
+        "cashFlow.upcomingBills",
+        "cashFlow.safeSpendingLimitWeekly",
         "spending.topCategory"
       ],
       "failureReasons": [],
@@ -2073,6 +2087,8 @@
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
         "snapshot.netSavings",
+        "cashFlow.upcomingBills",
+        "cashFlow.safeSpendingLimitWeekly",
         "spending.topCategory"
       ],
       "failureReasons": [],
@@ -2105,6 +2121,8 @@
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
         "snapshot.netSavings",
+        "cashFlow.upcomingBills",
+        "cashFlow.safeSpendingLimitWeekly",
         "spending.topCategory"
       ],
       "failureReasons": [],
@@ -2305,6 +2323,8 @@
         "snapshot.monthlyIncome",
         "snapshot.monthlySpending",
         "snapshot.netSavings",
+        "cashFlow.upcomingBills",
+        "cashFlow.safeSpendingLimitWeekly",
         "spending.topCategory"
       ],
       "failureReasons": [],

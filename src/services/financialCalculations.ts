@@ -926,5 +926,10 @@ export {
 export {
   generateCashFlowForecast,
   getDetailedForecast,
+  calculateSafeSpendingLimit,
+} from './forecastService';
+export type {
+  SafeSpendingLimitInput,
+  SafeSpendingLimitResult,
 } from './forecastService';
 

@@ -11,6 +11,7 @@ import {
   calculateScenarioPlans,
   detectSpendingAnomalies,
   getDetailedForecast,
+  calculateSafeSpendingLimit,
   getLocalDateString,
   getPreviousMonth,
   getLatestTransactionMonth,
@@ -49,6 +50,7 @@ export interface CoachContext {
     savingsRate: number;
     expenseRatio: number;
     currentBalance: number;
+    isBalanceEstimated?: boolean;
     profileMonthlyIncome?: number;
     hasRecordedIncome?: boolean;
     hasRecordedExpenses?: boolean;
@@ -174,6 +176,15 @@ export interface CoachContext {
     confidenceLevel: 'High' | 'Medium' | 'Low';
     recommendedWeeklyReduction: number;
     recommendedBuffer: number;
+    upcomingBills?: number;
+    safeSpendingLimitWeekly?: number;
+    safeSpendingLimitRemaining?: number;
+    uncommittedDiscretionaryPool?: number;
+    committedFunds?: number;
+    remainingDaysInMonth?: number;
+    isBalanceEstimated?: boolean;
+    isForecastSufficient?: boolean;
+    forecastAssumptions?: string[];
     facts: Record<string, FactItem>;
   };
   health: {
@@ -356,8 +367,10 @@ export function buildCoachContextFromData(
   // Must use the project's existing balance definition:
   // Sum of linkedAccounts balances; if accounts array empty, calculate cumulative all-time income - expenses
   let currentBalance = 0;
+  let isBalanceEstimated = false;
   if (user?.linkedAccounts && user.linkedAccounts.length > 0) {
     currentBalance = user.linkedAccounts.reduce((sum: number, a: any) => sum + (Number(a.balance) || 0), 0);
+    isBalanceEstimated = false;
   } else if (eligibleTransactions.length > 0) {
     const allTimeBal = eligibleTransactions.reduce((acc, t) => {
       if (t.type === 'income') return acc + t.amount;
@@ -365,8 +378,10 @@ export function buildCoachContextFromData(
       return acc;
     }, 0);
     currentBalance = Math.max(0, allTimeBal);
+    isBalanceEstimated = true;
   } else {
     currentBalance = 0;
+    isBalanceEstimated = false;
   }
 
   const monthlyIncome = monthlyOverview.totalIncome;
@@ -428,8 +443,15 @@ export function buildCoachContextFromData(
       key: 'snapshot.currentBalance',
       value: currentBalance,
       available: true,
-      labelEn: 'Available Liquid Balance',
-      labelBn: 'উপলব্ধ ব্যালেন্স',
+      labelEn: isBalanceEstimated ? 'Estimated Net Balance (Unlinked Ledger)' : 'Verified Liquid Balance (Linked Accounts)',
+      labelBn: isBalanceEstimated ? 'আনুমানিক নিট ব্যালেন্স (অসংযুক্ত লেজার)' : 'যাচাইকৃত উপলব্ধ ব্যালেন্স (সংযুক্ত অ্যাকাউন্ট)',
+    },
+    'snapshot.isBalanceEstimated': {
+      key: 'snapshot.isBalanceEstimated',
+      value: isBalanceEstimated,
+      available: true,
+      labelEn: 'Balance Is Derived Estimate (No Linked Accounts)',
+      labelBn: 'ব্যালেন্স হিসাব থেকে আনুমানিক (অ্যাকাউন্ট সংযুক্ত নেই)',
     },
   };
 
@@ -793,6 +815,9 @@ export function buildCoachContextFromData(
   // 4. Cash Flow Fact Group
   // Run deterministic forecast engine
   const recurringObligations = (user?.recurringObligations || []) as any;
+  const activeObligations = recurringObligations.filter((o: any) => o.isEnabled);
+  const upcomingBills = activeObligations.reduce((sum: number, o: any) => sum + (Number(o.amount) || 0), 0);
+
   const forecast = getDetailedForecast(currentBalance, false, eligibleTransactions, recurringObligations);
   const forecastMonthEndBalance = forecast.projectedMonthEnd;
   const recommendedBuffer = forecast.recommendedBuffer;
@@ -800,13 +825,47 @@ export function buildCoachContextFromData(
   // Deterministic recommended weekly reduction from forecast:
   const recommendedWeeklyReduction = shortfall > 0 ? Math.round(shortfall / 4) : 0;
 
+  // Remaining days in active month window:
+  const todayParts = today.split('-');
+  const currentDay = parseInt(todayParts[2] || '1', 10);
+  const currentYear = parseInt(todayParts[0] || '2026', 10);
+  const currentMonthNum = parseInt(todayParts[1] || '10', 10);
+  const daysInCurrentMonth = new Date(currentYear, currentMonthNum, 0).getDate();
+  const remainingDaysInMonth = activeMonth === calendarMonth
+    ? Math.max(1, daysInCurrentMonth - currentDay)
+    : daysInCurrentMonth;
+
+  // Active savings goals monthly commitments:
+  const activeGoals = goals.filter((g) => (g.targetAmount || 0) > (g.currentAmount || 0));
+  const monthlyGoalCommitments = activeGoals.reduce((sum, g) => {
+    return sum + (Number((g as any).requiredMonthlyContribution) || Number((g as any).monthlyPace) || 0);
+  }, 0);
+
+  const expenseTransactions = eligibleTransactions.filter((t) => t.type === 'expense');
+  const safeSpending = calculateSafeSpendingLimit({
+    availableBalance: currentBalance,
+    isBalanceEstimated,
+    upcomingBills,
+    monthlyGoalCommitments,
+    safetyBuffer: recommendedBuffer,
+    remainingDaysInMonth,
+    expenseTransactionCount: expenseTransactions.length,
+  });
+
   const cashFlowFacts: Record<string, FactItem> = {
     'cashFlow.startingBalance': {
       key: 'cashFlow.startingBalance',
       value: currentBalance,
       available: true,
-      labelEn: 'Starting Liquid Balance',
-      labelBn: 'প্রারম্ভিক ব্যালেন্স',
+      labelEn: isBalanceEstimated ? 'Starting Liquid Balance (Estimated from Ledger)' : 'Starting Liquid Balance (Verified)',
+      labelBn: isBalanceEstimated ? 'প্রারম্ভিক ব্যালেন্স (হিসাব থেকে আনুমানিক)' : 'প্রারম্ভিক ব্যালেন্স (যাচাইকৃত)',
+    },
+    'cashFlow.isBalanceEstimated': {
+      key: 'cashFlow.isBalanceEstimated',
+      value: isBalanceEstimated,
+      available: true,
+      labelEn: 'Balance Is Derived Estimate (No Linked Accounts)',
+      labelBn: 'ব্যালেন্স হিসাব থেকে আনুমানিক (অ্যাকাউন্ট সংযুক্ত নেই)',
     },
     'cashFlow.monthEndBalance': {
       key: 'cashFlow.monthEndBalance',
@@ -815,12 +874,47 @@ export function buildCoachContextFromData(
       labelEn: 'Forecast Month-End Balance',
       labelBn: 'সম্ভাব্য মাস শেষ ব্যালেন্স',
     },
+    'cashFlow.isForecastSufficient': {
+      key: 'cashFlow.isForecastSufficient',
+      value: forecast.isDataSufficient,
+      available: true,
+      labelEn: 'Forecast Data Sufficiency',
+      labelBn: 'পূর্বাভাস তথ্যের পর্যাপ্ততা',
+    },
+    'cashFlow.upcomingBills': {
+      key: 'cashFlow.upcomingBills',
+      value: upcomingBills,
+      available: true,
+      labelEn: 'Upcoming Scheduled Bills',
+      labelBn: 'আসন্ন নির্ধারিত বিল',
+    },
     'cashFlow.recommendedBuffer': {
       key: 'cashFlow.recommendedBuffer',
       value: recommendedBuffer,
       available: true,
       labelEn: 'Recommended Safety Buffer',
       labelBn: 'প্রস্তাবিত নিরাপত্তা বাফার',
+    },
+    'cashFlow.committedFunds': {
+      key: 'cashFlow.committedFunds',
+      value: safeSpending.committedFunds,
+      available: true,
+      labelEn: 'Committed Funds (Bills + Goals + Buffer)',
+      labelBn: 'মোট বরাদ্দকৃত অর্থ (বিল + লক্ষ্য + বাফার)',
+    },
+    'cashFlow.uncommittedDiscretionaryPool': {
+      key: 'cashFlow.uncommittedDiscretionaryPool',
+      value: safeSpending.uncommittedDiscretionaryPool,
+      available: true,
+      labelEn: 'Safe Uncommitted Spending Pool',
+      labelBn: 'নিরাপদ অবরাদ্দকৃত ব্যয়ের তহবিল',
+    },
+    'cashFlow.safeSpendingLimitWeekly': {
+      key: 'cashFlow.safeSpendingLimitWeekly',
+      value: safeSpending.safeSpendingLimitWeekly,
+      available: true,
+      labelEn: 'Weekly Safe Spending Limit',
+      labelBn: 'সাপ্তাহিক নিরাপদ খরচের সীমা',
     },
     'cashFlow.shortfall': {
       key: 'cashFlow.shortfall',
@@ -984,6 +1078,7 @@ export function buildCoachContextFromData(
       savingsRate,
       expenseRatio,
       currentBalance,
+      isBalanceEstimated,
       profileMonthlyIncome,
       hasRecordedIncome,
       hasRecordedExpenses,
@@ -1061,9 +1156,18 @@ export function buildCoachContextFromData(
       startingBalance: currentBalance,
       forecastMonthEndBalance,
       shortfall,
-      confidenceLevel: eligibleTransactions.length > 10 ? 'High' : 'Medium',
+      confidenceLevel: eligibleTransactions.length > 10 ? 'High' : (forecast.isDataSufficient ? 'Medium' : 'Low'),
       recommendedWeeklyReduction,
       recommendedBuffer,
+      upcomingBills,
+      safeSpendingLimitWeekly: safeSpending.safeSpendingLimitWeekly,
+      safeSpendingLimitRemaining: safeSpending.uncommittedDiscretionaryPool,
+      uncommittedDiscretionaryPool: safeSpending.uncommittedDiscretionaryPool,
+      committedFunds: safeSpending.committedFunds,
+      remainingDaysInMonth,
+      isBalanceEstimated,
+      isForecastSufficient: forecast.isDataSufficient,
+      forecastAssumptions: forecast.assumptions,
       facts: cashFlowFacts,
     },
     health: {
