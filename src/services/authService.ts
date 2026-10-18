@@ -288,15 +288,4 @@ export const authService = {
 
     return updatedUser;
   },
-
-  /**
-   * Directly sync active session user locally in localStorage without triggering remote update
-   */
-  setSessionUser(updatedUser: User): void {
-    const session = this.getSession();
-    if (session) {
-      session.user = { ...session.user, ...updatedUser };
-      localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(session));
-    }
-  },
 };
