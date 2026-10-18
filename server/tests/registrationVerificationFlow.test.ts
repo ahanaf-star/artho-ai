@@ -2,8 +2,9 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 
 process.env.NODE_ENV = 'test';
+process.env.EMAIL_OTP_ENABLED = 'true';
 
-import { signup, login, verifyEmail, fallbackUsers } from '../controllers/authController';
+import { signup, login, verifyEmail, resendVerification, fallbackUsers } from '../controllers/authController';
 import { getTestVerificationCode } from '../services/emailService';
 
 function createMockReqRes(body: any = {}, headers: any = {}) {
@@ -144,3 +145,109 @@ describe('Registration & Verification Flow Robustness Tests', () => {
     assert.ok(data.error.includes('already exists'));
   });
 });
+
+describe('Temporary Email OTP Bypass Mode (EMAIL_OTP_ENABLED=false)', () => {
+  const bypassEmail = `bypass.user.${Date.now()}@example.com`;
+
+  it('1. New user registration succeeds immediately without OTP when EMAIL_OTP_ENABLED=false', async () => {
+    process.env.EMAIL_OTP_ENABLED = 'false';
+
+    const { req, res, getStatus, getData } = createMockReqRes({
+      name: 'Bypass User',
+      email: bypassEmail,
+      password: 'SecurePassword123!',
+      preferredLanguage: 'en',
+      monthlyIncome: 60000,
+      monthlyIncomeCurrency: 'BDT',
+    });
+
+    await signup(req, res);
+    assert.strictEqual(getStatus(), 201);
+    const data = getData();
+    assert.strictEqual(data.requiresVerification, false);
+    assert.ok(data.token, 'Should return active JWT token');
+    assert.strictEqual(data.user.email, bypassEmail);
+    // Crucial check: email verification status is NOT permanently marked true
+    assert.strictEqual(data.user.isEmailVerified, false, 'isEmailVerified should remain false');
+  });
+
+  it('2. Existing unverified user can log in without being blocked when EMAIL_OTP_ENABLED=false', async () => {
+    process.env.EMAIL_OTP_ENABLED = 'false';
+
+    const { req, res, getStatus, getData } = createMockReqRes({
+      email: bypassEmail,
+      password: 'SecurePassword123!',
+    });
+
+    await login(req, res);
+    assert.strictEqual(getStatus(), 200);
+    const data = getData();
+    assert.ok(data.token);
+    assert.strictEqual(data.user.email, bypassEmail);
+    assert.strictEqual(data.user.isEmailVerified, false);
+  });
+
+  it('3. Password validation remains strictly enforced: wrong password rejected with 401', async () => {
+    process.env.EMAIL_OTP_ENABLED = 'false';
+
+    const { req, res, getStatus, getData } = createMockReqRes({
+      email: bypassEmail,
+      password: 'WrongPassword999!',
+    });
+
+    await login(req, res);
+    assert.strictEqual(getStatus(), 401);
+    const data = getData();
+    assert.ok(data.error.includes('Invalid email or password'));
+  });
+
+  it('4. Duplicate registration with existing email is rejected with 409 Conflict', async () => {
+    process.env.EMAIL_OTP_ENABLED = 'false';
+
+    const { req, res, getStatus, getData } = createMockReqRes({
+      name: 'Duplicate Attempt',
+      email: bypassEmail,
+      password: 'AnotherPassword123!',
+    });
+
+    await signup(req, res);
+    assert.strictEqual(getStatus(), 409);
+    const data = getData();
+    assert.ok(data.error.includes('already exists'));
+  });
+
+  it('5. Resend verification returns informative message when OTP is disabled', async () => {
+    process.env.EMAIL_OTP_ENABLED = 'false';
+
+    const { req, res, getStatus, getData } = createMockReqRes({
+      email: bypassEmail,
+    });
+
+    await resendVerification(req, res);
+    assert.strictEqual(getStatus(), 200);
+    const data = getData();
+    assert.strictEqual(data.otpDisabled, true);
+    assert.ok(data.message.includes('temporarily disabled'));
+  });
+
+  it('6. Re-enabling EMAIL_OTP_ENABLED=true immediately restores verification enforcement', async () => {
+    process.env.EMAIL_OTP_ENABLED = 'true';
+
+    // Fast-forward cooldown for clean test
+    const user = fallbackUsers.get(bypassEmail);
+    if (user) {
+      user.emailVerificationSentAt = new Date(Date.now() - 70000);
+    }
+
+    const { req, res, getStatus, getData } = createMockReqRes({
+      email: bypassEmail,
+      password: 'SecurePassword123!',
+    });
+
+    await login(req, res);
+    assert.strictEqual(getStatus(), 403, 'Must reject unverified login with 403 when OTP is re-enabled');
+    const data = getData();
+    assert.strictEqual(data.requiresVerification, true);
+  });
+});
+

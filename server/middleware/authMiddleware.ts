@@ -5,6 +5,7 @@ import { UserModel, IUser } from '../models/User';
 import { isDbConnected } from '../config/database';
 import { INITIAL_USER } from '../../src/data/mockUser';
 import { getFallbackUser } from '../controllers/authController';
+import { isEmailOtpEnabled } from '../services/emailService';
 
 export interface AuthenticatedRequest extends Request {
   user?: any;
@@ -31,7 +32,7 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
       // In offline fallback mode, check if user exists in fallback store
       const fbUser = decoded.email ? getFallbackUser(decoded.email) : null;
       if (fbUser) {
-        if (fbUser.isEmailVerified !== true) {
+        if (isEmailOtpEnabled() && fbUser.isEmailVerified !== true) {
           return res.status(403).json({
             error: 'Access denied. Please verify your email before accessing this feature.',
             requiresVerification: true,
@@ -72,8 +73,8 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
       return res.status(401).json({ error: 'Invalid authentication session. User not found.' });
     }
 
-    // Strictly enforce that isEmailVerified is explicitly true (reject false, null, undefined)
-    if (user.isEmailVerified !== true) {
+    // Enforce isEmailVerified when email OTP verification is active
+    if (isEmailOtpEnabled() && user.isEmailVerified !== true) {
       return res.status(403).json({
         error: 'Access denied. Please verify your email before accessing this feature.',
         requiresVerification: true,

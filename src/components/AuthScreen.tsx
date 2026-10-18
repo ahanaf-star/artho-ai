@@ -112,6 +112,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           parsedIncome,
           monthlyIncomeCurrency
         );
+        if (result?.token && !result.requiresVerification) {
+          onAuthenticated(result);
+          return;
+        }
         setVerificationEmail(result.email);
         setMode('verify');
         setInfoMsg(

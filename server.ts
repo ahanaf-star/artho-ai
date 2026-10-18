@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
@@ -19,8 +20,12 @@ import { buildCoachContext } from './server/services/coachContextBuilder';
 import { classifyIntent } from './server/services/intentClassifier';
 import { executeCoachInquiry } from './server/services/coachGeminiService';
 import { APPROVED_GEMINI_MODELS } from './server/config/geminiConfig';
+import { getEmailServiceStatus } from './server/services/emailService';
 
 dotenv.config();
+if (fs.existsSync('/etc/secrets/.env')) {
+  dotenv.config({ path: '/etc/secrets/.env', override: true });
+}
 
 async function startServer() {
   const app = express();
@@ -115,10 +120,25 @@ async function startServer() {
 
   // Health endpoint
   app.get('/api/health', (_req: Request, res: Response) => {
+    const emailStatus = getEmailServiceStatus();
     res.json({
       status: 'ok',
       database: isDbConnected() ? 'connected' : 'standalone_fallback',
       hasGeminiApiKey: !!apiKey,
+      emailService: {
+        provider: emailStatus.provider,
+        configured: emailStatus.configured,
+        brevoConfigured: emailStatus.brevoConfigured,
+        resendConfigured: emailStatus.resendConfigured,
+        smtpConfigured: emailStatus.smtpConfigured,
+        hasBrevoApiKey: emailStatus.hasBrevoApiKey,
+        hasResendApiKey: emailStatus.hasResendApiKey,
+        hasSmtpHost: emailStatus.hasSmtpHost,
+        hasSmtpPort: emailStatus.hasSmtpPort,
+        hasSmtpUser: emailStatus.hasSmtpUser,
+        hasSmtpPass: emailStatus.hasSmtpPass,
+        hasEmailFrom: emailStatus.hasEmailFrom,
+      },
       timestamp: new Date().toISOString(),
     });
   });
@@ -485,6 +505,8 @@ COACHING & FACTUAL RULES:
 
   app.listen(port, () => {
     console.log(`Artho AI server listening on http://localhost:${port} and http://127.0.0.1:${port}`);
+    const emailStatus = getEmailServiceStatus();
+    console.log(`[EmailService] Active provider: ${emailStatus.provider} (configured: ${emailStatus.configured})`);
   });
 }
 

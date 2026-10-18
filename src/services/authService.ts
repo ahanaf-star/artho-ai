@@ -128,6 +128,23 @@ export const authService = {
         monthlyIncome,
         monthlyIncomeCurrency
       );
+
+      // If backend returns an active session without requiring OTP verification
+      if (data?.token && !data?.requiresVerification) {
+        const session: AuthSession = {
+          user: data.user,
+          token: data.token,
+          expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7,
+        };
+        localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(session));
+        return {
+          ...session,
+          requiresVerification: false,
+          email,
+          message: data.message || 'Registration successful.',
+        };
+      }
+
       const user: User = data.user || {
         id: `usr-${Date.now()}`,
         name,

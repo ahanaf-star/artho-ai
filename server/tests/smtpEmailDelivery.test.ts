@@ -10,6 +10,7 @@ import {
   generateVerificationCredentials,
   verifySecretHash,
   checkResendCooldown,
+  cleanEnvValue,
 } from '../services/emailService';
 import { signup, fallbackUsers } from '../controllers/authController';
 
@@ -236,6 +237,87 @@ describe('SMTP & Multi-Provider Email Delivery Test Suite', () => {
     const serialized = JSON.stringify(status);
     assert.strictEqual(serialized.includes('super_secret_password_123'), false, 'Password must not be in status');
     assert.strictEqual(serialized.includes('re_super_secret_token_456'), false, 'API key must not be in status');
+  });
+
+  it('10. Environment Sanitization: cleanEnvValue handles whitespace and surrounding quotes safely', () => {
+    assert.strictEqual(cleanEnvValue(''), '');
+    assert.strictEqual(cleanEnvValue(undefined), '');
+    assert.strictEqual(cleanEnvValue(null), '');
+    assert.strictEqual(cleanEnvValue('   smtp   '), 'smtp');
+    assert.strictEqual(cleanEnvValue('"smtp"'), 'smtp');
+    assert.strictEqual(cleanEnvValue("'smtp'"), 'smtp');
+    assert.strictEqual(cleanEnvValue('  "smtp"  '), 'smtp');
+    assert.strictEqual(cleanEnvValue('""smtp""'), 'smtp');
+    assert.strictEqual(cleanEnvValue('"user@gmail.com"'), 'user@gmail.com');
+  });
+
+  it('11. Provider Detection: Handles quoted and aliased EMAIL_PROVIDER values gracefully', () => {
+    delete process.env.SMTP_USER;
+    delete process.env.SMTP_PASS;
+
+    // Double quoted
+    process.env.EMAIL_PROVIDER = '"smtp"';
+    assert.strictEqual(getActiveEmailProvider(), 'smtp');
+
+    // Single quoted
+    process.env.EMAIL_PROVIDER = "'smtp'";
+    assert.strictEqual(getActiveEmailProvider(), 'smtp');
+
+    // Gmail alias
+    process.env.EMAIL_PROVIDER = 'gmail';
+    assert.strictEqual(getActiveEmailProvider(), 'smtp');
+
+    // Nodemailer alias
+    process.env.EMAIL_PROVIDER = 'nodemailer';
+    assert.strictEqual(getActiveEmailProvider(), 'smtp');
+
+    // Quoted resend
+    process.env.EMAIL_PROVIDER = '"resend"';
+    assert.strictEqual(getActiveEmailProvider(), 'resend');
+  });
+
+  it('12. Configuration Validation: Strips surrounding quotes from credentials in getSmtpTransporter', () => {
+    process.env.SMTP_HOST = '"smtp.gmail.com"';
+    process.env.SMTP_PORT = '"465"';
+    process.env.SMTP_USER = '"quoted_user@gmail.com"';
+    process.env.SMTP_PASS = '"quoted_app_pass"';
+
+    const transporter = getSmtpTransporter();
+    const options = transporter.options as any;
+    assert.strictEqual(options.host, 'smtp.gmail.com');
+    assert.strictEqual(options.port, 465);
+    assert.strictEqual(options.auth?.user, 'quoted_user@gmail.com');
+    assert.strictEqual(options.auth?.pass, 'quoted_app_pass');
+  });
+
+  it('13. Status Reporting: Exposes safe presence booleans for /api/health', () => {
+    process.env.SMTP_HOST = 'smtp.gmail.com';
+    process.env.SMTP_PORT = '465';
+    process.env.SMTP_USER = 'sender@gmail.com';
+    process.env.SMTP_PASS = 'mock_pass';
+    process.env.EMAIL_FROM = 'Artho AI <custom@gmail.com>';
+    delete process.env.RESEND_API_KEY;
+
+    const status = getEmailServiceStatus();
+    assert.strictEqual(status.provider, 'smtp');
+    assert.strictEqual(status.configured, true);
+    assert.strictEqual(status.smtpConfigured, true);
+    assert.strictEqual(status.resendConfigured, false);
+    assert.strictEqual(status.hasSmtpHost, true);
+    assert.strictEqual(status.hasSmtpPort, true);
+    assert.strictEqual(status.hasSmtpUser, true);
+    assert.strictEqual(status.hasSmtpPass, true);
+    assert.strictEqual(status.hasEmailFrom, true);
+    assert.strictEqual(status.hasResendApiKey, false);
+  });
+
+  it('14. Auto-Selection: Prioritizes SMTP when SMTP_PASS is provided even if SMTP_USER is missing', () => {
+    delete process.env.EMAIL_PROVIDER;
+    delete process.env.SMTP_USER;
+    process.env.SMTP_PASS = 'some_pass';
+    delete process.env.RESEND_API_KEY;
+
+    assert.strictEqual(getActiveEmailProvider(), 'smtp');
   });
 });
 

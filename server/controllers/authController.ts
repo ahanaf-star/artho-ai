@@ -23,6 +23,7 @@ import {
   getTestVerificationCode,
   verifySecretHash,
   hashVerificationSecret,
+  isEmailOtpEnabled,
   MAX_VERIFICATION_ATTEMPTS,
 } from '../services/emailService';
 
@@ -163,7 +164,8 @@ export async function signup(req: Request, res: Response) {
   }
 
   try {
-    const creds = generateVerificationCredentials();
+    const otpEnabled = isEmailOtpEnabled();
+    const creds = otpEnabled ? generateVerificationCredentials() : null;
     const passwordHash = await bcrypt.hash(password, 10);
     const customId = `usr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
@@ -171,7 +173,7 @@ export async function signup(req: Request, res: Response) {
       // Check for existing user in MongoDB
       const existing = await UserModel.findOne({ email: cleanEmail });
       if (existing) {
-        if (!existing.isEmailVerified) {
+        if (otpEnabled && !existing.isEmailVerified && creds) {
           // Existing unverified account: update user details with submitted credentials
           existing.name = name.trim();
           existing.passwordHash = passwordHash;
@@ -233,7 +235,7 @@ export async function signup(req: Request, res: Response) {
 
         return res.status(409).json({
           error: 'An account with this email address already exists. Please sign in.',
-          isVerified: true,
+          isVerified: existing.isEmailVerified,
         });
       }
 
@@ -243,10 +245,10 @@ export async function signup(req: Request, res: Response) {
         email: cleanEmail,
         passwordHash,
         isEmailVerified: false,
-        emailVerificationOtp: creds.otpHashed,
-        emailVerificationToken: creds.tokenHashed,
-        emailVerificationExpires: creds.expiresAt,
-        emailVerificationSentAt: creds.sentAt,
+        emailVerificationOtp: creds?.otpHashed,
+        emailVerificationToken: creds?.tokenHashed,
+        emailVerificationExpires: creds?.expiresAt,
+        emailVerificationSentAt: creds?.sentAt,
         emailVerificationAttempts: 0,
         preferredLanguage: preferredLanguage === 'bn' ? 'bn' : 'en',
         currency: 'BDT',
@@ -268,7 +270,7 @@ export async function signup(req: Request, res: Response) {
       // Fallback offline / memory store
       if (fallbackUsers.has(cleanEmail)) {
         const fallbackUser = fallbackUsers.get(cleanEmail)!;
-        if (!fallbackUser.isEmailVerified) {
+        if (otpEnabled && !fallbackUser.isEmailVerified && creds) {
           fallbackUser.name = name.trim();
           fallbackUser.passwordHash = passwordHash;
           if (parsedIncome !== undefined) {
@@ -321,7 +323,7 @@ export async function signup(req: Request, res: Response) {
 
         return res.status(409).json({
           error: 'An account with this email address already exists. Please sign in.',
-          isVerified: true,
+          isVerified: fallbackUser.isEmailVerified,
         });
       }
 
@@ -332,10 +334,10 @@ export async function signup(req: Request, res: Response) {
         email: cleanEmail,
         passwordHash,
         isEmailVerified: false,
-        emailVerificationOtp: creds.otpHashed,
-        emailVerificationToken: creds.tokenHashed,
-        emailVerificationExpires: creds.expiresAt,
-        emailVerificationSentAt: creds.sentAt,
+        emailVerificationOtp: creds?.otpHashed,
+        emailVerificationToken: creds?.tokenHashed,
+        emailVerificationExpires: creds?.expiresAt,
+        emailVerificationSentAt: creds?.sentAt,
         emailVerificationAttempts: 0,
         preferredLanguage: preferredLanguage === 'bn' ? 'bn' : 'en',
         currency: 'BDT',
@@ -352,21 +354,45 @@ export async function signup(req: Request, res: Response) {
       });
     }
 
-    // Store in email verification service and dispatch email
-    storeVerificationCredentials(cleanEmail, creds);
-    const sendResult = await sendVerificationEmail(cleanEmail, name.trim(), creds.otp, creds.token);
-
-    if (!sendResult.success) {
-      // Rollback user record if email delivery critically fails
-      if (isDbConnected()) {
-        await UserModel.deleteOne({ email: cleanEmail }).catch(() => {});
-      } else {
-        fallbackUsers.delete(cleanEmail);
-      }
-      clearStoredVerificationCredentials(cleanEmail);
-      return res.status(502).json({
-        error: sendResult.error || 'Failed to dispatch verification email. Please try again.',
+    if (!otpEnabled) {
+      // Direct authentication when email OTP is temporarily disabled
+      const token = generateToken({ id: customId, customId, email: cleanEmail, name: name.trim() });
+      return res.status(201).json({
+        message: 'Registration successful. Welcome to Artho AI.',
+        requiresVerification: false,
+        token,
+        user: {
+          id: customId,
+          customId,
+          name: name.trim(),
+          email: cleanEmail,
+          isEmailVerified: false,
+          preferredLanguage: preferredLanguage === 'bn' ? 'bn' : 'en',
+          currency: 'BDT',
+          monthlyIncome: parsedIncome,
+          monthlyIncomeCurrency: parsedCurrency,
+          createdAt: new Date().toISOString(),
+        },
       });
+    }
+
+    // Store in email verification service and dispatch email (when OTP is enabled)
+    if (creds) {
+      storeVerificationCredentials(cleanEmail, creds);
+      const sendResult = await sendVerificationEmail(cleanEmail, name.trim(), creds.otp, creds.token);
+
+      if (!sendResult.success) {
+        // Rollback user record if email delivery critically fails
+        if (isDbConnected()) {
+          await UserModel.deleteOne({ email: cleanEmail }).catch(() => {});
+        } else {
+          fallbackUsers.delete(cleanEmail);
+        }
+        clearStoredVerificationCredentials(cleanEmail);
+        return res.status(502).json({
+          error: sendResult.error || 'Failed to dispatch verification email. Please try again.',
+        });
+      }
     }
 
     // Return success indicating verification is required (DO NOT leak OTP or token)
@@ -477,8 +503,9 @@ export async function login(req: Request, res: Response) {
       });
     }
 
-    // Reject login if email is not verified (with graceful auto-dispatch for legacy/unverified users)
-    if (user.isEmailVerified !== true) {
+    // Reject login if email is not verified (only enforced when EMAIL_OTP_ENABLED is active)
+    const otpEnabled = isEmailOtpEnabled();
+    if (otpEnabled && user.isEmailVerified !== true) {
       const cooldown = checkResendCooldown(user.emailVerificationSentAt);
       let dispatchMessage = 'Please verify your email before logging in.';
 
@@ -697,6 +724,14 @@ export async function resendVerification(req: Request, res: Response) {
 
     if (!user) {
       return res.status(404).json({ error: 'No account found with this email address.' });
+    }
+
+    if (!isEmailOtpEnabled()) {
+      return res.status(200).json({
+        message: 'Email OTP verification is temporarily disabled. You can log in directly.',
+        cooldownSeconds: 0,
+        otpDisabled: true,
+      });
     }
 
     if (user.isEmailVerified === true) {
