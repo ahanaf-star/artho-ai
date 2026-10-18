@@ -69,7 +69,6 @@ The project is built using synthetic/demo financial data and does not use real u
 
 - 🌍 **Language Support**
   - English
-  - বাংলা
 
 ---
 
