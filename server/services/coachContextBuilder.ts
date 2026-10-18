@@ -262,21 +262,7 @@ export async function buildCoachContext(
 
   if (isDbConnected()) {
     try {
-      // Find all transactions for this authenticated user (matching _id or customId)
-      rawTransactions = await TransactionModel.find({
-        $or: [{ userId }, { userId: String(userId) }],
-      })
-        .sort({ date: -1, createdAt: -1 })
-        .lean();
-
-      // Find all savings goals for this user
-      rawGoals = await SavingsGoalModel.find({
-        $or: [{ userId }, { userId: String(userId) }],
-      })
-        .sort({ createdAt: -1 })
-        .lean();
-
-      // If user doc not provided, fetch from DB
+      // If user doc not provided, fetch from DB first to gather all candidate IDs
       if (!user) {
         user = await UserModel.findOne({
           $or: [
@@ -285,6 +271,32 @@ export async function buildCoachContext(
           ],
         }).lean();
       }
+
+      const candidateUserIds = Array.from(
+        new Set(
+          [
+            userId,
+            String(userId),
+            user?._id?.toString(),
+            user?.customId,
+            (user as any)?.id,
+          ].filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+        )
+      );
+
+      // Find all transactions for this authenticated user (matching any candidate ID)
+      rawTransactions = await TransactionModel.find({
+        userId: { $in: candidateUserIds },
+      })
+        .sort({ date: -1, createdAt: -1 })
+        .lean();
+
+      // Find all savings goals for this user
+      rawGoals = await SavingsGoalModel.find({
+        userId: { $in: candidateUserIds },
+      })
+        .sort({ createdAt: -1 })
+        .lean();
     } catch (err: any) {
       console.warn(`[buildCoachContext] DB query error for user ${userId}:`, err?.message);
     }

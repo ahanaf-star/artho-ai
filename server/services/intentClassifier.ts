@@ -78,6 +78,22 @@ export function matchesKeyword(normText: string, pattern: string): boolean {
   return normText.includes(normalizeText(pattern));
 }
 
+function parseMultiplierAmount(numStr: string, multiplierStr?: string): number {
+  let val = parseFloat(numStr.replace(/,/g, ''));
+  if (isNaN(val)) return 0;
+  if (multiplierStr) {
+    const m = multiplierStr.toLowerCase().trim();
+    if (m === 'lac' || m === 'lakh' || m === 'লাখ' || m === 'লক্ষ') {
+      val *= 100000;
+    } else if (m === 'crore' || m === 'cr' || m === 'কোটি') {
+      val *= 10000000;
+    } else if (m === 'k' || m === 'thousand' || m === 'হাজার') {
+      val *= 1000;
+    }
+  }
+  return Math.round(val);
+}
+
 /**
  * Extracts target amount and duration or monthly recurring target from queries like:
  * "save ৳30,000 in 6 months", "save 50000 in 10 months", "৬ মাসে ৩০,০০০ টাকা সঞ্চয়",
@@ -89,6 +105,15 @@ export function parseSavingsTarget(
 ): ParsedSavingsPlan | undefined {
   // Avoid misclassifying simulations or projections as savings plans
   if (/(?:simulate|simulation|scenario|forecast|trajectory|risk|resilience|পূর্বাভাস|কত\s*(?:টাকা)?\s*জমবে|কত\s*(?:টাকা)?\s*সঞ্চ[য়য়]|প্রভাব\s*পড়বে|প্রভাব\s*পড়বে|বাফার)/i.test(query)) {
+    return undefined;
+  }
+
+  // Avoid misclassifying income analysis or income inquiries as savings plans
+  if (
+    /(?:analyze|review|check|breakdown|status|tell\s+me|show|what\s+is|how\s+is|summary\s+of)\s+(?:my\s+)?(?:monthly\s+|total\s+|recorded\s+)?(?:income|earnings|inflows?)\b/i.test(query) ||
+    /(?:my\s+)?(?:monthly\s+|total\s+|recorded\s+)?(?:income|earnings|inflow)\s+(?:analysis|breakdown|status|review|report)\b/i.test(query) ||
+    /(?:আয়|আয়|উপার্জন)\s*(?:পর্যালোচনা|বিশ্লেষণ|কত|হিসাব|রিভিউ)/i.test(query)
+  ) {
     return undefined;
   }
 
@@ -107,14 +132,14 @@ export function parseSavingsTarget(
   };
   const normalizedDigits = query.replace(/[০-৯]/g, (d) => bnToEnDigits[d] || d);
 
-  // Pattern 1: Fixed duration in English: "save [amount] in [months] months"
+  // Pattern 1: Fixed duration in English: "save [amount] [multiplier] in [months] months"
   const enMatch = normalizedDigits.match(
-    /(?:save|target|reach)\s*(?:bdt|tk|taka|৳|\$)?\s*([0-9,]+)\s*(?:bdt|tk|taka|৳|\$)?\s*(?:in|within|over|for)?\s*([0-9]+)\s*(?:months?|mas)/i
+    /(?:save|target|reach)\s*(?:bdt|tk|taka|৳|\$)?\s*([0-9,]+)\s*(lac|lakh|crore|cr|k|thousand)?\s*(?:bdt|tk|taka|৳|\$)?\s*(?:in|within|over|for)?\s*([0-9]+)\s*(?:months?|mas)/i
   );
   if (enMatch) {
-    const targetAmount = parseInt(enMatch[1].replace(/,/g, ''), 10);
-    const monthsDuration = parseInt(enMatch[2], 10);
-    if (targetAmount > 0 && monthsDuration > 0) {
+    const targetAmount = parseMultiplierAmount(enMatch[1], enMatch[2]);
+    const monthsDuration = parseInt(enMatch[3], 10);
+    if (targetAmount >= 100 && monthsDuration > 0) {
       const requiredMonthly = Math.round(targetAmount / monthsDuration);
       const isFeasible = currentNetSavings >= requiredMonthly;
       const monthlyGap = Math.max(0, requiredMonthly - currentNetSavings);
@@ -135,11 +160,11 @@ export function parseSavingsTarget(
   }
 
   // Pattern 2: Fixed duration in Bengali: "[months] মাসে [amount] টাকা" or "[amount] টাকা [months] মাসে"
-  const bnMatch1 = normalizedDigits.match(/([0-9]+)\s*মাসে\s*([0-9,]+)\s*(?:টাকা)?/);
+  const bnMatch1 = normalizedDigits.match(/([0-9]+)\s*মাসে\s*([0-9,]+)\s*(লাখ|লক্ষ|কোটি|হাজার)?\s*(?:টাকা)?/);
   if (bnMatch1) {
     const monthsDuration = parseInt(bnMatch1[1], 10);
-    const targetAmount = parseInt(bnMatch1[2].replace(/,/g, ''), 10);
-    if (targetAmount > 0 && monthsDuration > 0) {
+    const targetAmount = parseMultiplierAmount(bnMatch1[2], bnMatch1[3]);
+    if (targetAmount >= 100 && monthsDuration > 0) {
       const requiredMonthly = Math.round(targetAmount / monthsDuration);
       const isFeasible = currentNetSavings >= requiredMonthly;
       const monthlyGap = Math.max(0, requiredMonthly - currentNetSavings);
@@ -159,11 +184,11 @@ export function parseSavingsTarget(
     }
   }
 
-  const bnMatch2 = normalizedDigits.match(/([0-9,]+)\s*(?:টাকা)?\s*([0-9]+)\s*মাসে/);
+  const bnMatch2 = normalizedDigits.match(/([0-9,]+)\s*(লাখ|লক্ষ|কোটি|হাজার)?\s*(?:টাকা)?\s*([0-9]+)\s*মাসে/);
   if (bnMatch2) {
-    const targetAmount = parseInt(bnMatch2[1].replace(/,/g, ''), 10);
-    const monthsDuration = parseInt(bnMatch2[2], 10);
-    if (targetAmount > 0 && monthsDuration > 0) {
+    const targetAmount = parseMultiplierAmount(bnMatch2[1], bnMatch2[2]);
+    const monthsDuration = parseInt(bnMatch2[3], 10);
+    if (targetAmount >= 100 && monthsDuration > 0) {
       const requiredMonthly = Math.round(targetAmount / monthsDuration);
       const isFeasible = currentNetSavings >= requiredMonthly;
       const monthlyGap = Math.max(0, requiredMonthly - currentNetSavings);
@@ -183,20 +208,20 @@ export function parseSavingsTarget(
     }
   }
 
-  // Pattern 3: English monthly recurring savings target (e.g. "save 6000 tk per month", "save ৳6,000 monthly")
+  // Pattern 3: English monthly recurring savings target (e.g. "save 6000 tk per month", "save ৳6,000 monthly", "save 1 lac per month")
   const hasSavingsWordEn = /(?:save|reach|target|stash|accumulate|deposit|put aside|set aside)/i.test(normalizedDigits);
   const isMonthlyEn = hasSavingsWordEn && /(?:per|each|every|a)\s*month|monthly/i.test(normalizedDigits);
   if (isMonthlyEn) {
     const m =
       normalizedDigits.match(
-        /(?:save|reach|target|stash|accumulate|deposit|put aside|set aside).*?(?:bdt|tk|taka|৳|\$)?\s*([0-9,]+)(?!\s*%)\s*(?:bdt|tk|taka|৳|\$)?/i
+        /(?:save|reach|target|stash|accumulate|deposit|put aside|set aside).*?(?:bdt|tk|taka|৳|\$)?\s*([0-9,]+)\s*(lac|lakh|crore|cr|k|thousand)?\s*(?!\s*(?:%|months?|mas))\s*(?:bdt|tk|taka|৳|\$)?/i
       ) ||
       normalizedDigits.match(
-        /(?:bdt|tk|taka|৳|\$)?\s*([0-9,]+)(?!\s*%).*?(?:(?:per|each|every|a)\s*month|monthly)/i
+        /(?:bdt|tk|taka|৳|\$)?\s*([0-9,]+)\s*(lac|lakh|crore|cr|k|thousand)?\s*(?!\s*(?:%|months?|mas)).*?(?:(?:per|each|every|a)\s*month|monthly)/i
       );
     if (m) {
-      const targetAmount = parseInt(m[1].replace(/,/g, ''), 10);
-      if (targetAmount > 0) {
+      const targetAmount = parseMultiplierAmount(m[1], m[2]);
+      if (targetAmount >= 100) {
         const isFeasible = currentNetSavings >= targetAmount;
         const monthlyGap = Math.max(0, targetAmount - currentNetSavings);
         const surplusDiff = Math.abs(currentNetSavings - targetAmount);
@@ -215,16 +240,16 @@ export function parseSavingsTarget(
     }
   }
 
-  // Pattern 4: Bengali monthly recurring savings target (e.g. "প্রতি মাসে ৬০০০ টাকা কীভাবে সঞ্চয় করব", "মাসে ৬০০০ টাকা সঞ্চয়")
+  // Pattern 4: Bengali monthly recurring savings target (e.g. "প্রতি মাসে ৬০০০ টাকা কীভাবে সঞ্চয় করব", "মাসে ৬০০০ টাকা সঞ্চয়", "মাসে ১ লাখ টাকা সঞ্চয়")
   const hasSavingsWordBn = /(?:সঞ্চয়|সঞ্চয়|সেভ|জমা|বাঁচাব|বাঁচাবো)/.test(normalizedDigits);
   const isMonthlyBn = hasSavingsWordBn && /(?:প্রতি\s*মাসে|মাসে|মাসিক)/.test(normalizedDigits);
   if (isMonthlyBn) {
     const m =
-      normalizedDigits.match(/(?:প্রতি\s*মাসে|মাসে|মাসিক).*?([0-9,]+)\s*(?:টাকা)?/) ||
-      normalizedDigits.match(/([0-9,]+)\s*(?:টাকা)?.*?(?:প্রতি\s*মাসে|মাসে|মাসিক)/);
+      normalizedDigits.match(/(?:প্রতি\s*মাসে|মাসে|মাসিক).*?([0-9,]+)\s*(লাখ|লক্ষ|কোটি|হাজার)?\s*(?:টাকা)?/) ||
+      normalizedDigits.match(/([0-9,]+)\s*(লাখ|লক্ষ|কোটি|হাজার)?\s*(?:টাকা)?.*?(?:প্রতি\s*মাসে|মাসে|মাসিক)/);
     if (m) {
-      const targetAmount = parseInt(m[1].replace(/,/g, ''), 10);
-      if (targetAmount > 0) {
+      const targetAmount = parseMultiplierAmount(m[1], m[2]);
+      if (targetAmount >= 100) {
         const isFeasible = currentNetSavings >= targetAmount;
         const monthlyGap = Math.max(0, targetAmount - currentNetSavings);
         const surplusDiff = Math.abs(currentNetSavings - targetAmount);
@@ -243,11 +268,11 @@ export function parseSavingsTarget(
     }
   }
 
-  // Pattern 5: Standalone target (e.g. "Save ৳50,000", "Save 50000")
-  const standaloneMatch = normalizedDigits.match(/^(?:please\s+)?(?:how\s+to\s+)?save\s*(?:bdt|tk|taka|৳|\$)?\s*([0-9,]+)(?!\s*%)(?:\s*(?:bdt|tk|taka|৳|\$))?\.?$/i);
+  // Pattern 5: Standalone target (e.g. "Save ৳50,000", "Save 50000", "Save 1 lac")
+  const standaloneMatch = normalizedDigits.match(/^(?:please\s+)?(?:how\s+to\s+)?save\s*(?:bdt|tk|taka|৳|\$)?\s*([0-9,]+)\s*(lac|lakh|crore|cr|k|thousand)?(?!\s*(?:%|months?|mas))(?:\s*(?:bdt|tk|taka|৳|\$))?\.?$/i);
   if (standaloneMatch) {
-    const targetAmount = parseInt(standaloneMatch[1].replace(/,/g, ''), 10);
-    if (targetAmount > 0) {
+    const targetAmount = parseMultiplierAmount(standaloneMatch[1], standaloneMatch[2]);
+    if (targetAmount >= 100) {
       const isFeasible = currentNetSavings >= targetAmount;
       const monthlyGap = Math.max(0, targetAmount - currentNetSavings);
       const surplusDiff = Math.abs(currentNetSavings - targetAmount);
@@ -303,6 +328,19 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
         matchedKeywords: [p],
       };
     }
+  }
+
+  // 0b. Explicit Income Analysis or Inquiry check (prioritize before savings plan checks)
+  const isIncomeInquiry =
+    /(?:analyze|review|check|breakdown|status|tell\s+me|show|what\s+is|how\s+is)\s+(?:my\s+)?(?:monthly\s+|total\s+|recorded\s+)?(?:income|earnings|inflows?)\b/i.test(norm) ||
+    /(?:my\s+)?(?:monthly\s+|total\s+|recorded\s+)?(?:income|earnings|inflow)\s+(?:analysis|breakdown|status|review|report)\b/i.test(norm) ||
+    /(?:আয়|আয়|উপার্জন)\s*(?:পর্যালোচনা|বিশ্লেষণ|কত|হিসাব|রিভিউ)/i.test(norm);
+  if (isIncomeInquiry) {
+    return {
+      intent: 'income_total',
+      confidence: 0.96,
+      matchedKeywords: ['income_inquiry_explicit'],
+    };
   }
 
   // Check for savings plan with parsed parameters ("save 30,000 in 6 months")
@@ -747,11 +785,53 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'my earnings',
     'income this month',
     'monthly income',
+    'analyze my income',
+    'analyze income',
+    'income analysis',
+    'review my income',
+    'review income',
+    'check my income',
+    'check income',
+    'what is my income',
+    'what\'s my income',
+    'what s my income',
+    'how is my income',
+    'income status',
+    'income breakdown',
+    'expected income',
+    'baseline income',
+    'inflow baseline',
+    'monthly inflow',
+    'monthly inflow baseline',
+    'expected monthly income',
+    'tell me about my income',
+    'show my income',
+    'income overview',
+    'earnings overview',
+    'income vs baseline',
+    'baseline vs recorded',
     'মোট আয়',
+    'মোট আয়',
     'এ মাসের আয়',
+    'এ মাসের আয়',
     'কত টাকা আয়',
+    'কত টাকা আয়',
     'আমার আয় কত',
+    'আমার আয় কত',
     'উপার্জন কত',
+    'আয় বিশ্লেষণ',
+    'আয় বিশ্লেষণ',
+    'আমার আয় বিশ্লেষণ',
+    'আমার আয় বিশ্লেষণ',
+    'আয়ের হিসাব',
+    'আয়ের হিসাব',
+    'মাসিক আয় কত',
+    'মাসিক আয় কত',
+    'প্রত্যাশিত আয়',
+    'প্রত্যাশিত আয়',
+    'ইনফ্লো বেসলাইন',
+    'আয়ের বিবরণ',
+    'আয়ের বিবরণ',
   ];
   for (const p of incomeTotalPatterns) {
     if (matchesKeyword(norm, p)) {

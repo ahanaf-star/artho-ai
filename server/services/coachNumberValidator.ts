@@ -653,6 +653,22 @@ export function validateCoachNumbers(
     }
   }
 
+  // Manufactured ৳1 savings target check
+  const claims1TakaTarget =
+    /(?<![\d০-৯])(?:(?:৳|tk|taka)\s*)?1\s*(?:\/|\s*per\s*)month\b|(?<![\d০-৯])১\s*টাকা\s*(?:\/|\s*প্রতি\s*)\s*মাস/i.test(
+      answer
+    ) ||
+    /(?:savings?\s*(?:target|plan|goal)|target|plan|সঞ্চয়\s*(?:লক্ষ্য|পরিকল্পনা)|লক্ষ্য)[^.\n]*?(?<![\d০-৯])(?:(?:৳|tk|taka)\s*)?0\s*(?:\/|\s*per\s*)week\b/i.test(
+      answer
+    );
+  const queryHas1Taka = query && /(?:৳|tk|taka|\$)\s*1\b|\b1\s*(?:tk|taka|৳|\$)\b|১\s*টাকা/i.test(query);
+  if (claims1TakaTarget && !queryHas1Taka) {
+    return {
+      valid: false,
+      reason: 'Semantic contradiction: Answer manufactured an unrequested ৳1/month savings target.',
+    };
+  }
+
   // Extract all numbers from the generated response
   const numbersInAnswer = extractNumbersFromText(answer);
   const allowedSet = extractAllowedNumbers(ctx, additionalPrecomputed, intent, query);

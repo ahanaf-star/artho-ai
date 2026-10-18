@@ -18,6 +18,31 @@ function convertBnToAsciiDigits(str: string): string {
   return str.replace(/[০-৯]/g, (ch) => bnToAscii[ch] || ch);
 }
 
+function getDisplayMonth(monthStr?: string): { monthName: string; monthNameBn: string } {
+  if (!monthStr || !/^\d{4}-\d{2}$/.test(monthStr)) {
+    return { monthName: 'the current month', monthNameBn: 'চলতি মাসে' };
+  }
+  const [yearStr, mStr] = monthStr.split('-');
+  const mIdx = (parseInt(mStr, 10) || 1) - 1;
+  const monthsEn = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+  const monthsBn = [
+    'জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
+    'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর',
+  ];
+  const bnToEnYear: Record<string, string> = {
+    '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪',
+    '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯',
+  };
+  const yearBn = yearStr.replace(/[0-9]/g, (d) => bnToEnYear[d] || d);
+  return {
+    monthName: `${monthsEn[mIdx]} ${yearStr}`,
+    monthNameBn: `${monthsBn[mIdx]} ${yearBn}`,
+  };
+}
+
 /**
  * Deterministic Fallback Engine
  * Generates data-grounded, educational responses in English and Bengali using ONLY real ledger facts.
@@ -343,16 +368,90 @@ export function generateDeterministicCoachResponse(
     }
 
     case 'income_total': {
-      factsUsed.push('snapshot.monthlyIncome', 'snapshot.netSavings', 'snapshot.savingsRate');
-      if (income === 0) {
-        dataGaps.push('No income records found for the current billing period');
-        answer = isBn
-          ? 'চলতি মাসে আপনার কোনো আয়ের তথ্য এখনো রেকর্ড করা হয়নি।'
-          : 'No income records found for the current billing period.';
+      const activeMonthStr = ctx.metadata?.dataWindow?.currentMonth;
+      const { monthName, monthNameBn } = getDisplayMonth(activeMonthStr);
+      const profileInc = ctx.snapshot.profileMonthlyIncome || 0;
+      const profileCurr = (ctx.snapshot.profileMonthlyIncomeCurrency || 'BDT').toUpperCase();
+      const curSymbol = profileCurr === 'USD' ? '$' : profileCurr === 'EUR' ? '€' : profileCurr === 'GBP' ? '£' : '৳';
+      const hasProfileInc = profileInc > 0;
+      const hasRecordedInc = income > 0;
+      const isSameCurr = profileCurr === 'BDT';
+
+      factsUsed.push('snapshot.monthlyIncome', 'snapshot.monthlySpending', 'snapshot.netSavings');
+      if (hasRecordedInc) {
+        factsUsed.push('snapshot.savingsRate');
+      }
+      if (hasProfileInc) {
+        factsUsed.push('snapshot.profileMonthlyIncome');
+        if (ctx.snapshot.profileMonthlyIncomeCurrency) {
+          factsUsed.push('snapshot.profileMonthlyIncomeCurrency');
+        }
+      }
+
+      if (!hasRecordedInc && hasProfileInc) {
+        // State 1: Profile baseline exists, but no recorded income transactions for current month
+        dataGaps.push('Profile benchmark income configured, but no recorded income transactions found for the current period');
+        if (isBn) {
+          answer = `আপনার প্রোফাইলে নির্দেশিত প্রত্যাশিত মাসিক আয়ের বেসলাইন **${curSymbol}${fmt(profileInc)}** (${profileCurr}), তবে **${monthNameBn}** হিসাবকালে আপনার লেজারে কোনো প্রকৃত আয়ের লেনদেন রেকর্ড করা হয়নি।\n\n` +
+            `• **প্রত্যাশিত মাসিক বেসলাইন**: ${curSymbol}${fmt(profileInc)} (নির্দেশিত বেসলাইন; ওয়ালেটের প্রকৃত নগদ অর্থ নয়)\n` +
+            `• **রেকর্ডকৃত আয় (${monthNameBn})**: ৳০\n` +
+            `• **রেকর্ডকৃত ব্যয় (${monthNameBn})**: ৳${fmt(spending)}\n` +
+            `• **লেনদেনভিত্তিক নিট ক্যাশ-ফ্লো**: ${spending > 0 ? `-৳${fmt(spending)} (ঘাটতি)` : '৳০'}\n\n` +
+            `প্রোফাইল বেসলাইনটি একটি নির্দেশক পরিকল্পনা মানদণ্ড মাত্র, এটি নিশ্চিত বা অর্জিত আয় নয়। প্রকৃত ক্যাশ-ফ্লো এবং সঞ্চয় পরিস্থিতি দেখতে আপনার বাস্তব আয়ের লেনদেনগুলো নিয়মিত যুক্ত করুন।`;
+        } else {
+          answer = `Your profile indicates an expected monthly income baseline of **${curSymbol}${fmt(profileInc)}** (${profileCurr} declared benchmark), but no actual income transactions have been logged in your ledger for **${monthName}**.\n\n` +
+            `• **Expected Monthly Baseline**: ${curSymbol}${fmt(profileInc)} (Declared benchmark; not realized cash in hand)\n` +
+            `• **Recorded Inflows (${monthName})**: ৳0\n` +
+            `• **Recorded Expenses (${monthName})**: ৳${fmt(spending)}\n` +
+            `• **Net Cash Flow from Transactions**: ${spending > 0 ? `-৳${fmt(spending)} (Deficit from unbuffered outflows)` : '৳0'}\n\n` +
+            `Your profile baseline serves as an expected monthly planning benchmark, not guaranteed or realized income. To observe authentic cash flow and track actual savings margins, please log your realized income transactions as they arrive.`;
+        }
+      } else if (hasRecordedInc && hasProfileInc) {
+        // State 2: Both recorded income and profile baseline exist
+        const progressPct = isSameCurr && profileInc > 0 ? Math.round((income / profileInc) * 100) : null;
+        const remBaseline = isSameCurr && profileInc > income ? profileInc - income : 0;
+        if (isBn) {
+          answer = `**${monthNameBn}** মাসে আপনার মোট রেকর্ডকৃত আয় **৳${fmt(income)}** এবং আপনার প্রোফাইল নির্দেশিত প্রত্যাশিত মাসিক বেসলাইন **${curSymbol}${fmt(profileInc)}**।\n\n` +
+            `• **রেকর্ডকৃত আয়**: ৳${fmt(income)}${progressPct !== null ? ` (মাসিক বেসলাইনের ${progressPct.toLocaleString('bn-BD')}% অর্জিত)` : ''}\n` +
+            `• **প্রত্যাশিত মাসিক বেসলাইন**: ${curSymbol}${fmt(profileInc)}${remBaseline > 0 ? ` (অবশিষ্ট প্রত্যাশিত: ৳${fmt(remBaseline)})` : ''}\n` +
+            `• **রেকর্ডকৃত মোট ব্যয়**: ৳${fmt(spending)}\n` +
+            `• **নিট উদ্বৃত্ত**: ৳${fmt(netSavings)} (সঞ্চয়ের হার: **${savingsRate}%**)\n\n` +
+            (isSameCurr
+              ? 'আপনার বেসলাইনটি একটি প্রত্যাশিত মাসিক লক্ষ্য, আর রেকর্ডকৃত লেনদেনগুলো আপনার অ্যাকাউন্টে প্রকৃত অর্জিত নগদ প্রবাহকে নির্দেশ করে।'
+              : `নোট: আপনার বেসলাইন ${profileCurr} মুদ্রায় এবং লেজার লেনদেন BDT মুদ্রায় নথিবদ্ধ; কোনো কৃত্রিম রূপান্তর ছাড়াই পৃথকভাবে প্রদর্শিত হচ্ছে।`);
+        } else {
+          answer = `For **${monthName}**, your recorded total income is **৳${fmt(income)}** against your expected monthly profile baseline of **${curSymbol}${fmt(profileInc)}**.\n\n` +
+            `• **Recorded Monthly Inflows**: ৳${fmt(income)}${progressPct !== null ? ` (${progressPct}% of monthly baseline realized)` : ''}\n` +
+            `• **Expected Monthly Baseline**: ${curSymbol}${fmt(profileInc)}${remBaseline > 0 ? ` (Remaining expected: ৳${fmt(remBaseline)})` : ''}\n` +
+            `• **Recorded Monthly Outflows**: ৳${fmt(spending)}\n` +
+            `• **Net Cash Surplus from Transactions**: ৳${fmt(netSavings)} (Savings rate: **${savingsRate}%**)\n\n` +
+            (isSameCurr
+              ? 'Your baseline serves as an expected monthly planning target, while your recorded transactions represent actual realized cash inflows.'
+              : `Note: Your profile baseline is recorded in ${profileCurr} while your transaction ledger is in BDT; each is maintained in its native currency without arbitrary conversion.`);
+        }
+      } else if (hasRecordedInc && !hasProfileInc) {
+        // State 3: Recorded income exists, but no profile baseline configured
+        if (isBn) {
+          answer = `**${monthNameBn}** মাসে আপনার মোট রেকর্ডকৃত আয় **৳${fmt(income)}**। মোট ব্যয় ৳${fmt(spending)} বাদ দিয়ে আপনার নিট উদ্বৃত্ত রয়েছে **৳${fmt(netSavings)}** (সঞ্চয়ের হার: **${savingsRate}%**)।\n\n` +
+            `• **রেকর্ডকৃত আয়**: ৳${fmt(income)}\n` +
+            `• **রেকর্ডকৃত ব্যয়**: ৳${fmt(spending)}\n` +
+            `• **নিট উদ্বৃত্ত**: ৳${fmt(netSavings)}\n\n` +
+            `আপনার প্রোফাইলে কোনো মাসিক আয়ের বেসলাইন সেট করা নেই। নিয়মিত বেঞ্চমার্কিংয়ের জন্য প্রোফাইল থেকে মাসিক ইনফ্লো বেসলাইন সেট করতে পারেন।`;
+        } else {
+          answer = `For **${monthName}**, your recorded total income is **৳${fmt(income)}**. After total expenses of ৳${fmt(spending)}, your net savings is **৳${fmt(netSavings)}** (savings rate: **${savingsRate}%**).\n\n` +
+            `• **Recorded Monthly Inflows**: ৳${fmt(income)}\n` +
+            `• **Recorded Monthly Outflows**: ৳${fmt(spending)}\n` +
+            `• **Net Cash Surplus**: ৳${fmt(netSavings)}\n\n` +
+            `No expected monthly income baseline is currently configured in your profile. You can set a monthly inflow baseline in your profile for ongoing benchmarking.`;
+        }
       } else {
-        answer = isBn
-          ? `চলতি মাসে আপনার মোট রেকর্ডকৃত আয় **৳${income.toLocaleString()}**। এর মধ্যে মোট ব্যয় ৳${spending.toLocaleString()} বাদ দিয়ে নিট সঞ্চয় রয়েছে **৳${netSavings.toLocaleString()}** (সঞ্চয়ের হার: **${savingsRate}%**)।`
-          : `Your recorded total income for the current month is **৳${income.toLocaleString()}**. After total expenses of ৳${spending.toLocaleString()}, your net savings is **৳${netSavings.toLocaleString()}** (savings rate: **${savingsRate}%**).`;
+        // State 4: Neither recorded income nor profile baseline exist
+        dataGaps.push('No income records found for the current billing period');
+        if (isBn) {
+          answer = `**${monthNameBn}** মাসে কোনো আয়ের লেনদেন রেকর্ড করা হয়নি এবং আপনার প্রোফাইলেও কোনো মাসিক বেসলাইন সেট করা নেই। এ সময়ে রেকর্ডকৃত মোট ব্যয় **৳${fmt(spending)}**।\n\nসঠিক ক্যাশ-ফ্লো এবং সঞ্চয় সক্ষমতা মূল্যায়নের জন্য আপনার আয়ের লেনদেন যুক্ত করুন অথবা প্রোফাইলে মাসিক ইনফ্লো বেসলাইন নির্ধারণ করুন।`;
+        } else {
+          answer = `No income transactions have been recorded for **${monthName}**, and no expected monthly baseline is configured in your profile. Your recorded spending for this period is **৳${fmt(spending)}**.\n\nPlease log your income transactions or configure a monthly inflow baseline in your profile to track your cash-flow and saving capacity.`;
+        }
       }
       followUps.push(
         isBn ? 'আমার মোট খরচ কত?' : 'What is my total spending?',
@@ -497,7 +596,12 @@ export function generateDeterministicCoachResponse(
     }
 
     case 'savings_plan': {
-      if (parsedPlan) {
+      const hasValidPlan = Boolean(
+        parsedPlan &&
+          (parsedPlan.targetAmount >= 100 || (parsedPlan.monthlyTarget && parsedPlan.monthlyTarget >= 100))
+      );
+
+      if (hasValidPlan && parsedPlan) {
         if (!parsedPlan.isRecurringMonthly && parsedPlan.monthsDuration && parsedPlan.monthsDuration > 1) {
           factsUsed.push(
             'savingsPlan.parsedTargetAmount',
@@ -548,10 +652,12 @@ export function generateDeterministicCoachResponse(
             // Profile income exists but no recorded income transaction
             dataGaps.push('Profile benchmark income present, but no recorded income transactions found');
             factsUsed.push('snapshot.profileMonthlyIncome', 'snapshot.monthlySpending');
+            const profileCurr = (ctx.snapshot.profileMonthlyIncomeCurrency || 'BDT').toUpperCase();
+            const curSymbol = profileCurr === 'USD' ? '$' : profileCurr === 'EUR' ? '€' : profileCurr === 'GBP' ? '£' : '৳';
             if (isBn) {
-              answer = `আপনার প্রোফাইল অনুযায়ী নির্দেশিত মাসিক আয় **৳${fmt(profileInc)}**, তবে চলতি মাসে কোনো আয়ের লেনদেন রেকর্ড করা হয়নি। রেকর্ডকৃত লেনদেন অনুযায়ী বর্তমান ব্যয় **৳${fmt(spending)}**।\n\nপ্রতি মাসে **৳${fmt(monthlyTarget)}** (সাপ্তাহিক প্রায় **৳${fmt(weeklyTarget)}**) সঞ্চয়ের লক্ষ্য বাস্তবায়নের জন্য প্রকৃত আয়ের লেনদেন যুক্ত করুন, যেন আপনার প্রকৃত মাসিক নগদ উদ্বৃত্তের ভিত্তিতে সঠিক পরিকল্পনা করা যায়।`;
+              answer = `আপনার প্রোফাইল অনুযায়ী নির্দেশিত মাসিক আয় **${curSymbol}${fmt(profileInc)}** (${profileCurr}), তবে চলতি মাসে কোনো আয়ের লেনদেন রেকর্ড করা হয়নি। রেকর্ডকৃত লেনদেন অনুযায়ী বর্তমান ব্যয় **৳${fmt(spending)}**।\n\nপ্রতি মাসে **৳${fmt(monthlyTarget)}** (সাপ্তাহিক প্রায় **৳${fmt(weeklyTarget)}**) সঞ্চয়ের লক্ষ্য বাস্তবায়নের জন্য প্রকৃত আয়ের লেনদেন যুক্ত করুন, যেন আপনার প্রকৃত মাসিক নগদ উদ্বৃত্তের ভিত্তিতে সঠিক পরিকল্পনা করা যায়।`;
             } else {
-              answer = `Your profile indicates an expected monthly income of **৳${fmt(profileInc)}**, but no income transactions have been logged for this period. Based on recorded transactions, current spending is **৳${fmt(spending)}**.\n\nTo construct an authentic savings plan for your **৳${fmt(monthlyTarget)}/month** target (approx. **৳${fmt(weeklyTarget)}/week**), please record your actual income transactions.`;
+              answer = `Your profile indicates an expected monthly income of **${curSymbol}${fmt(profileInc)}** (${profileCurr} baseline), but no income transactions have been logged for this period. Based on recorded transactions, current spending is **৳${fmt(spending)}**.\n\nTo construct an authentic savings plan for your **৳${fmt(monthlyTarget)}/month** target (approx. **৳${fmt(weeklyTarget)}/week**), please record your actual income transactions.`;
             }
           } else if (!hasRecordedInc && profileInc === 0) {
             // Income transactions absent, no profile income
@@ -664,19 +770,74 @@ export function generateDeterministicCoachResponse(
           }
         }
       } else {
-        factsUsed.push('snapshot.netSavings', 'snapshot.savingsRate');
-        const discCats = ctx.spending.discretionaryCategories || [];
-        const targetTrimCat =
-          discCats.length > 0
-            ? discCats[0].category
-            : topCat && !topCat.category.toLowerCase().includes('health')
-            ? topCat.category
-            : 'flexible spending';
-
-        if (isBn) {
-          answer = `আপনার বর্তমান মাসিক সঞ্চয় ৳${netSavings.toLocaleString()} (সঞ্চয়ের হার: ${savingsRate}%)। সঞ্চয় বাড়ানোর বাস্তবসম্মত পদক্ষেপ:\n১. **আয়ের শুরুতেই সঞ্চয় আলাদা করুন (Pay Yourself First)**: বেতন বা আয় পাওয়ার সাথে সাথে উদ্বৃত্ত অর্থ একটি পৃথক সেভিংস অ্যাকাউন্ট বা ডিপিএসে স্থানান্তর করুন।\n২. নমনীয় খরচের খাত **${targetTrimCat}** এর খরচ নিয়ন্ত্রণে রাখা।\n৩. অপ্রয়োজনীয় ক্যাশ-আউট চার্জ এড়িয়ে চলা।`;
+        // No explicit savings target requested in the query
+        const activeGoals = (ctx.goals?.items || []).filter((g) => (g.remainingAmount > 0 || (g.targetAmount || 0) > (g.currentAmount || 0)));
+        if (activeGoals.length > 0) {
+          const primaryGoal = activeGoals[0];
+          factsUsed.push(
+            'goals.goal1.title',
+            'goals.goal1.targetAmount',
+            'goals.goal1.currentAmount',
+            'goals.goal1.progressPercentage',
+            'goals.goal1.remainingAmount',
+            'goals.goal1.requiredMonthlyContribution'
+          );
+          if (isBn) {
+            answer = `আপনার একটি সক্রিয় সঞ্চয় লক্ষ্য রয়েছে: **${primaryGoal.title}**।\n` +
+              `• **লক্ষ্যমাত্রা**: ৳${primaryGoal.targetAmount.toLocaleString()}\n` +
+              `• **বর্তমান জমা**: ৳${primaryGoal.currentAmount.toLocaleString()} (${primaryGoal.progressPercentage}% সম্পন্ন)\n` +
+              `• **অবশিষ্ট ঘাটতি**: ৳${primaryGoal.remainingAmount.toLocaleString()}\n` +
+              `• **নির্ধারিত সময়ে পৌঁছাতে প্রয়োজনীয় গতি**: **৳${primaryGoal.requiredMonthlyContribution.toLocaleString()}/মাস** (${primaryGoal.deadline} এর মধ্যে)।\n\n` +
+              `লক্ষ্য অর্জনের বাস্তবমুখী পদক্ষেপ:\n` +
+              `১. **আয়ের শুরুতেই সঞ্চয় আলাদা করুন (Pay Yourself First)**: আয় পাওয়ার সাথে সাথে প্রয়োজনীয় কিস্তির অর্থ পৃথক সঞ্চয় তহবিলে স্থানান্তর করুন।\n` +
+              `২. নমনীয় ব্যয়ের খাতগুলোতে নজর রাখুন যেন সঞ্চয়ের গতি ব্যাহত না হয়।`;
+          } else {
+            answer = `You have an active savings goal **${primaryGoal.title}**:\n` +
+              `• **Target**: ৳${primaryGoal.targetAmount.toLocaleString()}\n` +
+              `• **Current Progress**: ৳${primaryGoal.currentAmount.toLocaleString()} (${primaryGoal.progressPercentage}% achieved)\n` +
+              `• **Remaining Gap**: ৳${primaryGoal.remainingAmount.toLocaleString()}\n` +
+              `• **Required Monthly Pace**: **৳${primaryGoal.requiredMonthlyContribution.toLocaleString()}/month** to achieve your goal by ${primaryGoal.deadline}.\n\n` +
+              `Actionable steps toward your goal:\n` +
+              `1. **Pay Yourself First**: Transfer your required contribution of ৳${primaryGoal.requiredMonthlyContribution.toLocaleString()} directly into your savings vault as soon as income arrives.\n` +
+              `2. **Guard Discretionary Outflows**: Maintain discipline in non-essential spending to protect this monthly contribution.`;
+          }
         } else {
-          answer = `Your current monthly savings is ৳${netSavings.toLocaleString()} (savings rate: ${savingsRate}%). Practical steps to save more:\n1. **Pay Yourself First**: Transfer your surplus directly into a separate savings account or DPS on payday rather than waiting for month end.\n2. Moderate outflows in your flexible category **${targetTrimCat}**.\n3. Eliminate avoidable cash-out tariffs and subscription leaks.`;
+          // No active savings goals recorded and no explicit target in query
+          dataGaps.push('No active savings goals recorded');
+          factsUsed.push('snapshot.netSavings', 'snapshot.savingsRate');
+          const profileInc = ctx.snapshot.profileMonthlyIncome || 0;
+          const profileCurr = (ctx.snapshot.profileMonthlyIncomeCurrency || 'BDT').toUpperCase();
+          const curSymbol = profileCurr === 'USD' ? '$' : profileCurr === 'EUR' ? '€' : profileCurr === 'GBP' ? '£' : '৳';
+
+          let statusDetailBn = '';
+          let statusDetailEn = '';
+          if (income > 0) {
+            factsUsed.push('snapshot.monthlyIncome', 'snapshot.monthlySpending');
+            statusDetailBn = `• **বর্তমান মাসিক উদ্বৃত্ত**: ৳${income.toLocaleString()} রেকর্ডকৃত আয় এবং ৳${spending.toLocaleString()} ব্যয়ের পর নিট উদ্বৃত্ত ৳${netSavings.toLocaleString()} (সঞ্চয়ের হার: ${savingsRate}%)।\n• **পরামর্শ**: এই উদ্বৃত্তের মধ্যে একটি বাস্তবসম্মত মাসিক সঞ্চয় লক্ষ্য নির্ধারণ করুন।`;
+            statusDetailEn = `• **Current Monthly Surplus**: ৳${netSavings.toLocaleString()} (based on ৳${income.toLocaleString()} recorded income and ৳${spending.toLocaleString()} spending; savings rate: ${savingsRate}%).\n• **Recommended Step**: Establish a recurring savings target within this surplus to begin automated accumulation.`;
+          } else if (profileInc > 0) {
+            factsUsed.push('snapshot.profileMonthlyIncome', 'snapshot.monthlySpending');
+            statusDetailBn = `• **প্রোফাইল নির্দেশিত মাসিক আয়**: ${curSymbol}${profileInc.toLocaleString()} (চলতি মাসে কোনো আয়ের লেনদেন রেকর্ড করা হয়নি; বর্তমান ব্যয়: ৳${spending.toLocaleString()})।\n• **পরামর্শ**: প্রকৃত সঞ্চয় সক্ষমতা যাচাই করতে আপনার আয়ের লেনদেন যুক্ত করুন।`;
+            statusDetailEn = `• **Profile Inflow Baseline**: ${curSymbol}${profileInc.toLocaleString()} expected monthly benchmark (no income transactions logged yet; recorded spending: ৳${spending.toLocaleString()}).\n• **Recommended Step**: Log your realized income to verify your actual net monthly savings margin.`;
+          } else {
+            factsUsed.push('snapshot.monthlySpending');
+            statusDetailBn = `• **বর্তমান হিসাবের চিত্র**: চলতি মাসে কোনো আয় রেকর্ড করা হয়নি (মোট ব্যয়: ৳${spending.toLocaleString()})।\n• **পরামর্শ**: সঞ্চয় সক্ষমতা মূল্যায়নের জন্য আপনার আয় ও ব্যয়ের তথ্য যুক্ত করুন।`;
+            statusDetailEn = `• **Current Ledger Status**: No income transactions recorded for this period (spending: ৳${spending.toLocaleString()}).\n• **Recommended Step**: Log your income and expenses to reveal your authentic saving capacity.`;
+          }
+
+          if (isBn) {
+            answer = `বর্তমানে আপনার কোনো সক্রিয় সঞ্চয় লক্ষ্য রেকর্ড করা নেই। সুনির্দিষ্ট সঞ্চয় পরিকল্পনা তৈরির জন্য গোল সেকশন থেকে একটি নতুন লক্ষ্য যোগ করুন (যেমন: জরুরি তহবিল বা প্রয়োজনীয় গ্যাজেট) অথবা একটি নির্দিষ্ট লক্ষ্য উল্লেখ করুন (যেমন: *"আমি কীভাবে প্রতি মাসে নির্দিষ্ট পরিমাণ টাকা সঞ্চয় করব?"*)।\n\n` +
+              `${statusDetailBn}\n\n` +
+              `সঞ্চয়ের প্রাথমিক নিয়মাবলী:\n` +
+              `১. **আয়ের দিনই সঞ্চয় আলাদা করুন (Pay Yourself First)**: মাস শেষের জন্য অপেক্ষা না করে আয় প্রাপ্তির সাথে সাথে একটি নির্দিষ্ট অংশ পৃথক করে রাখুন।\n` +
+              `২. নমনীয় ও অপ্রয়োজনীয় খরচগুলো নিয়ন্ত্রণে রাখুন।`;
+          } else {
+            answer = `You do not have any active savings goals recorded. To construct an authentic savings plan, add a goal from the Savings Goals screen (such as an Emergency Fund or Device) or specify a monthly target amount (for example: *"How can I save a specific amount each month?"*).\n\n` +
+              `${statusDetailEn}\n\n` +
+              `Fundamental saving principles:\n` +
+              `1. **Pay Yourself First**: Transfer a designated portion of your income into savings as soon as it arrives.\n` +
+              `2. **Audit Flexible Leaks**: Review discretionary subscriptions and casual outflows to protect your saving margin.`;
+          }
         }
       }
       followUps.push(

@@ -50,7 +50,7 @@
   "unsupportedClaimFailures": 0,
   "dataSufficiencyFailures": 0,
   "safetyFailures": 0,
-  "durationMs": 164,
+  "durationMs": 185,
   "results": [
     {
       "id": "TC-001",
@@ -707,10 +707,12 @@
       "expectedIntent": "savings_plan",
       "actualIntent": "savings_plan",
       "status": "PASS",
-      "answerExcerpt": "Your current monthly savings is ৳30,000 (savings rate: 37.5%). Practical steps to save more: 1. **Pay Yourself First**: Transfer your surplu...",
+      "answerExcerpt": "You do not have any active savings goals recorded. To construct an authentic savings plan, add a goal from the Savings Goals screen (such as...",
       "factsUsed": [
         "snapshot.netSavings",
-        "snapshot.savingsRate"
+        "snapshot.savingsRate",
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending"
       ],
       "failureReasons": [],
       "codeLocation": "server/services/coachFallbackEngine.ts",
@@ -733,10 +735,12 @@
       "expectedIntent": "savings_plan",
       "actualIntent": "savings_plan",
       "status": "PASS",
-      "answerExcerpt": "Your current monthly savings is ৳30,000 (savings rate: 37.5%). Practical steps to save more: 1. **Pay Yourself First**: Transfer your surplu...",
+      "answerExcerpt": "You do not have any active savings goals recorded. To construct an authentic savings plan, add a goal from the Savings Goals screen (such as...",
       "factsUsed": [
         "snapshot.netSavings",
-        "snapshot.savingsRate"
+        "snapshot.savingsRate",
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending"
       ],
       "failureReasons": [],
       "codeLocation": "server/services/coachFallbackEngine.ts",
@@ -759,10 +763,12 @@
       "expectedIntent": "savings_plan",
       "actualIntent": "savings_plan",
       "status": "PASS",
-      "answerExcerpt": "Your current monthly savings is ৳30,000 (savings rate: 37.5%). Practical steps to save more: 1. **Pay Yourself First**: Transfer your surplu...",
+      "answerExcerpt": "You do not have any active savings goals recorded. To construct an authentic savings plan, add a goal from the Savings Goals screen (such as...",
       "factsUsed": [
         "snapshot.netSavings",
-        "snapshot.savingsRate"
+        "snapshot.savingsRate",
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending"
       ],
       "failureReasons": [],
       "codeLocation": "server/services/coachFallbackEngine.ts",
@@ -785,10 +791,12 @@
       "expectedIntent": "savings_plan",
       "actualIntent": "savings_plan",
       "status": "PASS",
-      "answerExcerpt": "Your current monthly savings is ৳61,000 (savings rate: 69.3%). Practical steps to save more: 1. **Pay Yourself First**: Transfer your surplu...",
+      "answerExcerpt": "You do not have any active savings goals recorded. To construct an authentic savings plan, add a goal from the Savings Goals screen (such as...",
       "factsUsed": [
         "snapshot.netSavings",
-        "snapshot.savingsRate"
+        "snapshot.savingsRate",
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending"
       ],
       "failureReasons": [],
       "codeLocation": "server/services/coachFallbackEngine.ts",
@@ -811,10 +819,12 @@
       "expectedIntent": "savings_plan",
       "actualIntent": "savings_plan",
       "status": "PASS",
-      "answerExcerpt": "Your current monthly savings is ৳30,000 (savings rate: 37.5%). Practical steps to save more: 1. **Pay Yourself First**: Transfer your surplu...",
+      "answerExcerpt": "You do not have any active savings goals recorded. To construct an authentic savings plan, add a goal from the Savings Goals screen (such as...",
       "factsUsed": [
         "snapshot.netSavings",
-        "snapshot.savingsRate"
+        "snapshot.savingsRate",
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending"
       ],
       "failureReasons": [],
       "codeLocation": "server/services/coachFallbackEngine.ts",
@@ -990,10 +1000,12 @@
       "expectedIntent": "savings_plan",
       "actualIntent": "savings_plan",
       "status": "PASS",
-      "answerExcerpt": "আপনার বর্তমান মাসিক সঞ্চয় ৳30,000 (সঞ্চয়ের হার: 37.5%)। সঞ্চয় বাড়ানোর বাস্তবসম্মত পদক্ষেপ: ১. **আয়ের শুরুতেই সঞ্চয় আলাদা করুন (Pay Yourself ...",
+      "answerExcerpt": "বর্তমানে আপনার কোনো সক্রিয় সঞ্চয় লক্ষ্য রেকর্ড করা নেই। সুনির্দিষ্ট সঞ্চয় পরিকল্পনা তৈরির জন্য গোল সেকশন থেকে একটি নতুন লক্ষ্য যোগ করুন (যেম...",
       "factsUsed": [
         "snapshot.netSavings",
-        "snapshot.savingsRate"
+        "snapshot.savingsRate",
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending"
       ],
       "failureReasons": [],
       "codeLocation": "server/services/coachFallbackEngine.ts",
@@ -1016,10 +1028,12 @@
       "expectedIntent": "savings_plan",
       "actualIntent": "savings_plan",
       "status": "PASS",
-      "answerExcerpt": "আপনার বর্তমান মাসিক সঞ্চয় ৳30,000 (সঞ্চয়ের হার: 37.5%)। সঞ্চয় বাড়ানোর বাস্তবসম্মত পদক্ষেপ: ১. **আয়ের শুরুতেই সঞ্চয় আলাদা করুন (Pay Yourself ...",
+      "answerExcerpt": "বর্তমানে আপনার কোনো সক্রিয় সঞ্চয় লক্ষ্য রেকর্ড করা নেই। সুনির্দিষ্ট সঞ্চয় পরিকল্পনা তৈরির জন্য গোল সেকশন থেকে একটি নতুন লক্ষ্য যোগ করুন (যেম...",
       "factsUsed": [
         "snapshot.netSavings",
-        "snapshot.savingsRate"
+        "snapshot.savingsRate",
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending"
       ],
       "failureReasons": [],
       "codeLocation": "server/services/coachFallbackEngine.ts",
@@ -1072,10 +1086,12 @@
       "expectedIntent": "savings_plan",
       "actualIntent": "savings_plan",
       "status": "PASS",
-      "answerExcerpt": "আপনার বর্তমান মাসিক সঞ্চয় ৳61,000 (সঞ্চয়ের হার: 69.3%)। সঞ্চয় বাড়ানোর বাস্তবসম্মত পদক্ষেপ: ১. **আয়ের শুরুতেই সঞ্চয় আলাদা করুন (Pay Yourself ...",
+      "answerExcerpt": "বর্তমানে আপনার কোনো সক্রিয় সঞ্চয় লক্ষ্য রেকর্ড করা নেই। সুনির্দিষ্ট সঞ্চয় পরিকল্পনা তৈরির জন্য গোল সেকশন থেকে একটি নতুন লক্ষ্য যোগ করুন (যেম...",
       "factsUsed": [
         "snapshot.netSavings",
-        "snapshot.savingsRate"
+        "snapshot.savingsRate",
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending"
       ],
       "failureReasons": [],
       "codeLocation": "server/services/coachFallbackEngine.ts",
@@ -1098,10 +1114,12 @@
       "expectedIntent": "savings_plan",
       "actualIntent": "savings_plan",
       "status": "PASS",
-      "answerExcerpt": "আপনার বর্তমান মাসিক সঞ্চয় ৳30,000 (সঞ্চয়ের হার: 37.5%)। সঞ্চয় বাড়ানোর বাস্তবসম্মত পদক্ষেপ: ১. **আয়ের শুরুতেই সঞ্চয় আলাদা করুন (Pay Yourself ...",
+      "answerExcerpt": "বর্তমানে আপনার কোনো সক্রিয় সঞ্চয় লক্ষ্য রেকর্ড করা নেই। সুনির্দিষ্ট সঞ্চয় পরিকল্পনা তৈরির জন্য গোল সেকশন থেকে একটি নতুন লক্ষ্য যোগ করুন (যেম...",
       "factsUsed": [
         "snapshot.netSavings",
-        "snapshot.savingsRate"
+        "snapshot.savingsRate",
+        "snapshot.monthlyIncome",
+        "snapshot.monthlySpending"
       ],
       "failureReasons": [],
       "codeLocation": "server/services/coachFallbackEngine.ts",
