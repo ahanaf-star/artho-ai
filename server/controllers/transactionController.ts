@@ -1,8 +1,84 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { TransactionModel } from '../models/Transaction';
+import { UserModel } from '../models/User';
 import { isDbConnected } from '../config/database';
 import { INITIAL_TRANSACTIONS } from '../../src/data/mockTransactions';
+import { INITIAL_USER } from '../../src/data/mockUser';
+import { applyTransactionToAccounts } from '../utils/balanceUtils';
+
+/**
+ * Synchronizes user account balances upon transaction create, update, or delete.
+ * Persists the updated linkedAccounts and lastFinancialUpdate timestamp to MongoDB.
+ */
+async function syncUserAccountBalances(
+  userId: string,
+  tx: {
+    type: string;
+    amount: number;
+    account?: string;
+    merchant?: string;
+    description?: string;
+    toAccount?: string;
+  },
+  direction: 'apply' | 'revert'
+) {
+  if (!userId) return;
+
+  if (!isDbConnected()) {
+    if (userId === 'usr-ahmed-01' || userId === INITIAL_USER.email) {
+      INITIAL_USER.linkedAccounts = applyTransactionToAccounts(
+        INITIAL_USER.linkedAccounts || [],
+        tx,
+        direction
+      );
+      INITIAL_USER.lastFinancialUpdate = new Date().toISOString();
+    }
+    return;
+  }
+
+  try {
+    const isObjectId = mongoose.Types.ObjectId.isValid(userId);
+    let user = await UserModel.findOne({
+      $or: [
+        ...(isObjectId ? [{ _id: userId }] : []),
+        { customId: userId },
+        { email: userId.toLowerCase() },
+      ],
+    });
+
+    if (!user && (userId === 'usr-ahmed-01' || userId === INITIAL_USER.email)) {
+      user = await UserModel.create({
+        customId: INITIAL_USER.id,
+        name: INITIAL_USER.name,
+        email: INITIAL_USER.email,
+        preferredLanguage: INITIAL_USER.preferredLanguage,
+        currency: INITIAL_USER.currency,
+        timeZone: INITIAL_USER.timeZone,
+        timeFormat: INITIAL_USER.timeFormat,
+        monthlyIncome: INITIAL_USER.monthlyIncome,
+        monthlyIncomeCurrency: INITIAL_USER.monthlyIncomeCurrency,
+        monthlyInflowBaseline: INITIAL_USER.monthlyInflowBaseline,
+        baselineCurrency: INITIAL_USER.baselineCurrency,
+        riskTolerance: INITIAL_USER.riskTolerance,
+        tagline: INITIAL_USER.tagline,
+        city: INITIAL_USER.city,
+        memberStatus: INITIAL_USER.memberStatus,
+        linkedAccounts: INITIAL_USER.linkedAccounts,
+      });
+    }
+
+    if (user) {
+      const currentAccounts = Array.isArray(user.linkedAccounts) ? user.linkedAccounts : [];
+      const updatedAccounts = applyTransactionToAccounts(currentAccounts, tx, direction);
+      user.linkedAccounts = updatedAccounts as any;
+      user.lastFinancialUpdate = new Date().toISOString();
+      await user.save();
+    }
+  } catch (err: any) {
+    console.error(`Failed to sync account balances for user ${userId}:`, err.message);
+  }
+}
 
 /**
  * Normalizes transaction category to maintain schema consistency and eliminate misclassifications
@@ -328,6 +404,7 @@ export async function createTransaction(req: Request, res: Response) {
       isRecurring: Boolean(isRecurring),
       createdAt: new Date().toISOString(),
     };
+    await syncUserAccountBalances(targetUserId, fallbackTx, 'apply');
     return res.status(201).json(fallbackTx);
   }
 
@@ -348,6 +425,8 @@ export async function createTransaction(req: Request, res: Response) {
       location: location || 'Dhaka',
       isRecurring: Boolean(isRecurring),
     });
+
+    await syncUserAccountBalances(targetUserId, newTx, 'apply');
 
     const ret = newTx.toJSON ? newTx.toJSON() : newTx;
     return res.status(201).json(ret);
@@ -523,10 +602,21 @@ export async function updateTransaction(req: Request, res: Response) {
       updates.category = normalizedCategory;
     }
 
+    const oldTxData = {
+      type: existingTx.type,
+      amount: existingTx.amount,
+      account: existingTx.account,
+      merchant: existingTx.merchant,
+      description: existingTx.description,
+    };
+
     Object.assign(existingTx, updates);
     const updatedTx = await existingTx.save();
     const retObj = updatedTx.toJSON ? updatedTx.toJSON() : (updatedTx.toObject ? updatedTx.toObject() : { ...updatedTx });
     retObj.category = normalizeServerCategory(retObj);
+
+    await syncUserAccountBalances(existingTx.userId, oldTxData, 'revert');
+    await syncUserAccountBalances(existingTx.userId, updatedTx, 'apply');
 
     return res.json(retObj);
   } catch (error: any) {
@@ -589,7 +679,17 @@ export async function deleteTransaction(req: Request, res: Response) {
       return res.status(401).json({ error: 'Authentication required to delete this transaction' });
     }
 
+    const txToDelete = {
+      type: existingTx.type,
+      amount: existingTx.amount,
+      account: existingTx.account,
+      merchant: existingTx.merchant,
+      description: existingTx.description,
+    };
+    const targetUserId = existingTx.userId;
+
     await existingTx.deleteOne();
+    await syncUserAccountBalances(targetUserId, txToDelete, 'revert');
     return res.json({ message: 'Transaction deleted successfully', id: txId });
   } catch (error: any) {
     console.error('Error deleting transaction:', error.message);

@@ -22,6 +22,7 @@ import { financialDataService } from './services/financialDataService';
 import { calculateFinancialHealthScore, getLocalDateString, normalizeTransactionCategory } from './services/financialCalculations';
 import { Transaction, SavingsGoal, UserProfile, CustomCategory, CategoryName } from './types/financial';
 import { fetchExchangeRates, getLoadedRates, ExchangeRatesState } from './services/currencyService';
+import { applyTransactionToAccounts } from './utils/balanceUtils';
 
 const PRIVATE_SCREENS: NavScreen[] = [
   'dashboard',
@@ -268,11 +269,16 @@ export default function App() {
   const refreshFinancialData = async (userId: string) => {
     setIsRefreshingFinancialData(true);
     try {
-      const [backendTxs, backendGoals, backendCats] = await Promise.all([
+      const [backendTxs, backendGoals, backendCats, backendUser] = await Promise.all([
         apiService.getTransactions(userId),
         apiService.getGoals(userId),
         apiService.getCategories(userId),
+        apiService.getUser(userId),
       ]);
+      if (backendUser) {
+        setCurrentUser(backendUser);
+        authService.setSessionUser(backendUser);
+      }
       if (backendTxs && Array.isArray(backendTxs)) {
         const normalizedTxs = backendTxs.map((t) => ({
           ...t,
@@ -291,8 +297,7 @@ export default function App() {
       }
 
       // Record successful live data refresh timestamp
-      const nowIso = recordFinancialUpdateTimestamp(userId);
-      apiService.updateUser(userId, { lastFinancialUpdate: nowIso }).catch(() => {});
+      recordFinancialUpdateTimestamp(userId, backendUser?.lastFinancialUpdate);
     } catch (e) {
       console.warn('[App] Failed fetching live data from backend:', e);
     } finally {
@@ -306,6 +311,25 @@ export default function App() {
       refreshFinancialData(currentUser.id);
     }
   }, [currentUser?.id]);
+
+  // Listen for storage events across tabs to synchronize balance & user state
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'finmate_auth_session' && e.newValue) {
+        try {
+          const session = JSON.parse(e.newValue);
+          if (session?.user?.id) {
+            setCurrentUser(session.user);
+            refreshFinancialData(session.user.id);
+          }
+        } catch (err) {
+          // Ignore parse errors
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   // When user signs in or changes, reload user-specific data
   const handleAuthenticated = async (session: AuthSession) => {
@@ -368,55 +392,58 @@ export default function App() {
 
   // Add Transaction Handler - persists to MongoDB and revalidates
   const handleAddTransaction = async (newTx: Transaction) => {
+    if (!currentUser) return;
+    const previousUser = currentUser;
+    const previousTransactions = transactions;
+
+    // Optimistically update transactions
     setTransactions((prev) => [newTx, ...prev]);
 
-    // Adjust user account balance
-    if (currentUser) {
-      const updatedAccounts = currentUser.linkedAccounts.map((acc) => {
-        if (acc.name === newTx.account) {
-          const newBal =
-            newTx.type === 'income' ? acc.balance + newTx.amount : acc.balance - newTx.amount;
-          return { ...acc, balance: Math.max(0, newBal) };
-        }
-        return acc;
-      });
-      const updatedUser = { ...currentUser, linkedAccounts: updatedAccounts };
-      handleUpdateUser(updatedUser);
+    // Optimistically adjust user account balance using balanceUtils
+    const updatedAccounts = applyTransactionToAccounts(
+      currentUser.linkedAccounts || [],
+      newTx,
+      'apply'
+    );
+    const updatedUser = { ...currentUser, linkedAccounts: updatedAccounts };
+    setCurrentUser(updatedUser);
+    authService.setSessionUser(updatedUser);
 
-      try {
-        await apiService.createTransaction(currentUser.id, newTx);
-        await refreshFinancialData(currentUser.id);
-      } catch (err) {
-        console.error('Failed to persist transaction to backend:', err);
-        await refreshFinancialData(currentUser.id);
-      }
+    try {
+      await apiService.createTransaction(currentUser.id, newTx);
+      await refreshFinancialData(currentUser.id);
+    } catch (err) {
+      console.error('Failed to persist transaction to backend:', err);
+      // Rollback optimistic updates on failure
+      setTransactions(previousTransactions);
+      setCurrentUser(previousUser);
+      authService.setSessionUser(previousUser);
+      await refreshFinancialData(currentUser.id);
+      throw err;
     }
   };
 
   // Update Transaction Handler - persists to MongoDB, adjusts account balance delta, revalidates
   const handleUpdateTransaction = async (updatedTx: Transaction) => {
     if (!currentUser) return;
+    const previousUser = currentUser;
+    const previousTransactions = transactions;
     const oldTx = transactions.find((t) => t.id === updatedTx.id);
 
     // Optimistically update transactions
     setTransactions((prev) => prev.map((t) => (t.id === updatedTx.id ? updatedTx : t)));
 
-    // Adjust user account balance based on delta
+    // Adjust user account balance: revert oldTx, apply updatedTx
     if (oldTx) {
-      const updatedAccounts = currentUser.linkedAccounts.map((acc) => {
-        let bal = acc.balance;
-        // Reverse old transaction impact
-        if (acc.name === oldTx.account) {
-          bal = oldTx.type === 'income' ? bal - oldTx.amount : bal + oldTx.amount;
-        }
-        // Apply new transaction impact
-        if (acc.name === updatedTx.account) {
-          bal = updatedTx.type === 'income' ? bal + updatedTx.amount : bal - updatedTx.amount;
-        }
-        return { ...acc, balance: Math.max(0, bal) };
-      });
+      let updatedAccounts = applyTransactionToAccounts(
+        currentUser.linkedAccounts || [],
+        oldTx,
+        'revert'
+      );
+      updatedAccounts = applyTransactionToAccounts(updatedAccounts, updatedTx, 'apply');
       const updatedUser = { ...currentUser, linkedAccounts: updatedAccounts };
-      handleUpdateUser(updatedUser);
+      setCurrentUser(updatedUser);
+      authService.setSessionUser(updatedUser);
     }
 
     try {
@@ -424,6 +451,10 @@ export default function App() {
       await refreshFinancialData(currentUser.id);
     } catch (err) {
       console.error('Failed to persist transaction update to backend:', err);
+      // Rollback optimistic updates on failure
+      setTransactions(previousTransactions);
+      setCurrentUser(previousUser);
+      authService.setSessionUser(previousUser);
       await refreshFinancialData(currentUser.id);
       throw err;
     }
@@ -432,23 +463,23 @@ export default function App() {
   // Delete Transaction Handler - persists to MongoDB, restores account balance, revalidates
   const handleDeleteTransaction = async (txId: string) => {
     if (!currentUser) return;
+    const previousUser = currentUser;
+    const previousTransactions = transactions;
     const oldTx = transactions.find((t) => t.id === txId);
 
     // Optimistically remove
     setTransactions((prev) => prev.filter((t) => t.id !== txId));
 
-    // Restore user account balance
+    // Restore user account balance by reverting the transaction
     if (oldTx) {
-      const updatedAccounts = currentUser.linkedAccounts.map((acc) => {
-        if (acc.name === oldTx.account) {
-          const restoredBal =
-            oldTx.type === 'income' ? acc.balance - oldTx.amount : acc.balance + oldTx.amount;
-          return { ...acc, balance: Math.max(0, restoredBal) };
-        }
-        return acc;
-      });
-      const updatedUser = { ...currentUser, linkedAccounts: updatedAccounts };
-      handleUpdateUser(updatedUser);
+      const restoredAccounts = applyTransactionToAccounts(
+        currentUser.linkedAccounts || [],
+        oldTx,
+        'revert'
+      );
+      const updatedUser = { ...currentUser, linkedAccounts: restoredAccounts };
+      setCurrentUser(updatedUser);
+      authService.setSessionUser(updatedUser);
     }
 
     try {
@@ -456,6 +487,10 @@ export default function App() {
       await refreshFinancialData(currentUser.id);
     } catch (err) {
       console.error('Failed to delete transaction from backend:', err);
+      // Rollback optimistic updates on failure
+      setTransactions(previousTransactions);
+      setCurrentUser(previousUser);
+      authService.setSessionUser(previousUser);
       await refreshFinancialData(currentUser.id);
       throw err;
     }
@@ -502,6 +537,11 @@ export default function App() {
 
   // Deposit directly to Goal Handler (moves money into savings vault)
   const handleDepositToGoal = async (goalId: string, amount: number) => {
+    if (!currentUser) return;
+    const previousUser = currentUser;
+    const previousTransactions = transactions;
+    const previousGoals = goals;
+
     let targetGoalTitle = '';
     const targetGoal = goals.find((g) => g.id === goalId);
     if (targetGoal) {
@@ -521,18 +561,6 @@ export default function App() {
       })
     );
 
-    // Deduct from bKash (primary liquid savings account)
-    if (currentUser) {
-      const updatedAccounts = currentUser.linkedAccounts.map((acc) => {
-        if (acc.name === 'bKash') {
-          return { ...acc, balance: Math.max(0, acc.balance - amount) };
-        }
-        return acc;
-      });
-      const updatedUser = { ...currentUser, linkedAccounts: updatedAccounts };
-      handleUpdateUser(updatedUser);
-    }
-
     // Record internal transfer transaction
     const depositTx: Transaction = {
       id: `tx-deposit-${Date.now()}`,
@@ -549,30 +577,39 @@ export default function App() {
     };
     setTransactions((prev) => [depositTx, ...prev]);
 
-    if (currentUser) {
-      try {
-        await Promise.all([
-          apiService.updateGoal(goalId, { currentAmount: updatedAmount }),
-          apiService.createTransaction(currentUser.id, depositTx),
-        ]);
-        await refreshFinancialData(currentUser.id);
-      } catch (err) {
-        console.error('Failed to persist deposit to backend:', err);
-      }
+    // Deduct from linked accounts using balanceUtils
+    const updatedAccounts = applyTransactionToAccounts(
+      currentUser.linkedAccounts || [],
+      depositTx,
+      'apply'
+    );
+    const updatedUser = { ...currentUser, linkedAccounts: updatedAccounts };
+    setCurrentUser(updatedUser);
+    authService.setSessionUser(updatedUser);
+
+    try {
+      await Promise.all([
+        apiService.updateGoal(goalId, { currentAmount: updatedAmount }),
+        apiService.createTransaction(currentUser.id, depositTx),
+      ]);
+      await refreshFinancialData(currentUser.id);
+    } catch (err) {
+      console.error('Failed to persist deposit to backend:', err);
+      // Rollback optimistic updates on failure
+      setTransactions(previousTransactions);
+      setGoals(previousGoals);
+      setCurrentUser(previousUser);
+      authService.setSessionUser(previousUser);
+      await refreshFinancialData(currentUser.id);
+      throw err;
     }
   };
 
   // Transfer Funds Handler
   const handleTransfer = async (from: string, to: string, amount: number) => {
-    if (currentUser) {
-      const updatedAccounts = currentUser.linkedAccounts.map((acc) => {
-        if (acc.name === from) return { ...acc, balance: Math.max(0, acc.balance - amount) };
-        if (acc.name === to) return { ...acc, balance: acc.balance + amount };
-        return acc;
-      });
-      const updatedUser = { ...currentUser, linkedAccounts: updatedAccounts };
-      handleUpdateUser(updatedUser);
-    }
+    if (!currentUser) return;
+    const previousUser = currentUser;
+    const previousTransactions = transactions;
 
     const transferTx: Transaction = {
       id: `tx-transfer-${Date.now()}`,
@@ -589,13 +626,27 @@ export default function App() {
     };
     setTransactions((prev) => [transferTx, ...prev]);
 
-    if (currentUser) {
-      try {
-        await apiService.createTransaction(currentUser.id, transferTx);
-        await refreshFinancialData(currentUser.id);
-      } catch (err) {
-        console.error('Failed to persist transfer to backend:', err);
-      }
+    // Optimistically update accounts using balanceUtils
+    const updatedAccounts = applyTransactionToAccounts(
+      currentUser.linkedAccounts || [],
+      transferTx,
+      'apply'
+    );
+    const updatedUser = { ...currentUser, linkedAccounts: updatedAccounts };
+    setCurrentUser(updatedUser);
+    authService.setSessionUser(updatedUser);
+
+    try {
+      await apiService.createTransaction(currentUser.id, transferTx);
+      await refreshFinancialData(currentUser.id);
+    } catch (err) {
+      console.error('Failed to persist transfer to backend:', err);
+      // Rollback optimistic updates on failure
+      setTransactions(previousTransactions);
+      setCurrentUser(previousUser);
+      authService.setSessionUser(previousUser);
+      await refreshFinancialData(currentUser.id);
+      throw err;
     }
   };
 
