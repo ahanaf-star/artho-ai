@@ -577,4 +577,213 @@ describe('Deterministic Financial Extrema & Accuracy Test Suite (TEST A - TEST N
     assert.strictEqual(val.valid, false, 'Contradictory answer must be rejected');
     assert.ok(val.reason?.includes('Semantic contradiction'), `Expected contradiction reason, got ${val.reason}`);
   });
+
+  // Prompt 10: User bug verification - "Which category I spend lowest money?"
+  it('Prompt 10 regression: "Which category I spend lowest money?" correctly identifies lowest category and never claims data is unavailable', async () => {
+    // Exact scenario from prompt: Health ৳2500, Food ৳1200, Transport ৳1000 = Total ৳4700
+    const promptScenarioTxs: Transaction[] = [
+      {
+        id: 'tx-health-1',
+        type: 'expense',
+        amount: 2500,
+        category: 'Health',
+        description: 'Doctor consultation & medicine',
+        date: '2026-10-02',
+        merchant: 'Square Hospital',
+        account: 'bKash',
+        paymentMethod: 'bKash Direct',
+        classification: 'essential',
+      },
+      {
+        id: 'tx-food-1',
+        type: 'expense',
+        amount: 1200,
+        category: 'Food & Groceries',
+        description: 'Bazaar vegetables & groceries',
+        date: '2026-10-05',
+        merchant: 'Karwan Bazar',
+        account: 'bKash',
+        paymentMethod: 'bKash Direct',
+        classification: 'essential',
+      },
+      {
+        id: 'tx-transport-1',
+        type: 'expense',
+        amount: 1000,
+        category: 'Transportation',
+        description: 'Commute and rides',
+        date: '2026-10-08',
+        merchant: 'Pathao',
+        account: 'bKash',
+        paymentMethod: 'bKash Direct',
+        classification: 'discretionary',
+      },
+      {
+        id: 'tx-income-1',
+        type: 'income',
+        amount: 30000,
+        category: 'Salary & Professional',
+        description: 'Monthly income',
+        date: '2026-10-01',
+        merchant: 'Employer',
+        account: 'City Bank',
+        paymentMethod: 'Bank Transfer',
+        classification: 'essential',
+      },
+    ];
+
+    const ctx = createMockContext(promptScenarioTxs);
+    assert.strictEqual(ctx.spending.totalSpending, 4700, 'Total spending must be 4700');
+    assert.strictEqual(ctx.spending.topCategory?.category, 'Health', 'Top category must be Health');
+    assert.strictEqual(ctx.spending.topCategory?.amount, 2500, 'Top category amount must be 2500');
+    assert.strictEqual(ctx.spending.lowestCategory?.category, 'Transportation', 'Lowest category must be Transportation');
+    assert.strictEqual(ctx.spending.lowestCategory?.amount, 1000, 'Lowest category amount must be 1000');
+
+    const query = 'Which category I spend lowest money?';
+    const intentRes = classifyIntent(query);
+    assert.strictEqual(intentRes.intent, 'lowest_category', 'Intent must be lowest_category');
+
+    const res = await executeCoachInquiry({
+      userId: 'test-user-prompt10',
+      query,
+      language: 'en',
+      fullContext: ctx,
+      intentResult: intentRes,
+    });
+
+    assert.ok(!res.answer.toLowerCase().includes('data on your lowest spending category is currently unavailable'),
+      'Must NOT claim lowest spending category data is unavailable');
+    assert.ok(res.answer.includes('Transportation'), 'Answer must identify Transportation as lowest category');
+    assert.ok(res.answer.includes('1,000'), 'Answer must cite ৳1,000 for Transportation');
+  });
+
+  it('Single category spending: correctly reports single category 100% share without error', async () => {
+    const singleCatTxs: Transaction[] = [
+      {
+        id: 'tx-single-1',
+        type: 'expense',
+        amount: 2500,
+        category: 'Health',
+        description: 'Medicine purchase',
+        date: '2026-10-03',
+        merchant: 'Lazz Pharma',
+        account: 'bKash',
+        paymentMethod: 'bKash Direct',
+        classification: 'essential',
+      },
+    ];
+
+    const ctx = createMockContext(singleCatTxs);
+    const query = 'Which category did I spend the least on?';
+    const intentRes = classifyIntent(query);
+    assert.strictEqual(intentRes.intent, 'lowest_category');
+
+    const res = await executeCoachInquiry({
+      userId: 'test-user-single',
+      query,
+      language: 'en',
+      fullContext: ctx,
+      intentResult: intentRes,
+    });
+
+    assert.ok(res.answer.includes('Health'), 'Answer must mention Health');
+    assert.ok(res.answer.includes('2,500'), 'Answer must cite ৳2,500');
+    assert.ok(res.answer.includes('100%'), 'Answer must indicate 100% of spending');
+  });
+
+  it('Specific category inquiry: "How much did I spend on Health?" correctly returns Health amount and percentage', async () => {
+    const multiCatTxs: Transaction[] = [
+      {
+        id: 'tx-health-1',
+        type: 'expense',
+        amount: 2500,
+        category: 'Health',
+        description: 'Medicine',
+        date: '2026-10-04',
+        merchant: 'Pharmacy',
+        account: 'bKash',
+        paymentMethod: 'bKash Direct',
+        classification: 'essential',
+      },
+      {
+        id: 'tx-food-1',
+        type: 'expense',
+        amount: 2200,
+        category: 'Food & Groceries',
+        description: 'Food',
+        date: '2026-10-05',
+        merchant: 'Shwapno',
+        account: 'bKash',
+        paymentMethod: 'bKash Direct',
+        classification: 'essential',
+      },
+    ];
+
+    const ctx = createMockContext(multiCatTxs);
+    const query = 'How much did I spend on Health?';
+    const intentRes = classifyIntent(query);
+    assert.strictEqual(intentRes.intent, 'category_spending');
+    assert.strictEqual(intentRes.matchedCategory, 'Health');
+
+    const res = await executeCoachInquiry({
+      userId: 'test-user-cat',
+      query,
+      language: 'en',
+      fullContext: ctx,
+      intentResult: intentRes,
+    });
+
+    assert.ok(res.answer.includes('Health'), 'Answer must mention Health');
+    assert.ok(res.answer.includes('2,500'), 'Answer must cite ৳2,500');
+    assert.ok(res.answer.includes('53.2%'), 'Answer must cite correct percentage (2500/4700 = 53.2%)');
+  });
+
+  it('Income transactions are strictly excluded from spending extrema and category breakdowns', () => {
+    const txsWithLargeIncome: Transaction[] = [
+      {
+        id: 'tx-inc-huge',
+        type: 'income',
+        amount: 500000,
+        category: 'Salary & Professional',
+        description: 'Major contract bonus',
+        date: '2026-10-01',
+        merchant: 'Client Direct',
+        account: 'City Bank',
+        paymentMethod: 'Wire',
+        classification: 'essential',
+      },
+      {
+        id: 'tx-exp-1',
+        type: 'expense',
+        amount: 2000,
+        category: 'Food & Groceries',
+        description: 'Dinner',
+        date: '2026-10-02',
+        merchant: 'KFC',
+        account: 'bKash',
+        paymentMethod: 'bKash QR',
+        classification: 'discretionary',
+      },
+      {
+        id: 'tx-exp-2',
+        type: 'expense',
+        amount: 500,
+        category: 'Transportation',
+        description: 'Rickshaw fare',
+        date: '2026-10-03',
+        merchant: 'General Merchant',
+        account: 'bKash',
+        paymentMethod: 'Cash',
+        classification: 'discretionary',
+      },
+    ];
+
+    const factual = calculateFactualAnalysis(txsWithLargeIncome, '2026-10');
+    assert.strictEqual(factual.totalIncome, 500000, 'Income must be 500,000');
+    assert.strictEqual(factual.totalExpenses, 2500, 'Expenses must be 2,500');
+    assert.strictEqual(factual.highestCategory?.category, 'Food & Groceries', 'Top expense category must be Food & Groceries, NOT Salary');
+    assert.strictEqual(factual.highestCategory?.amount, 2000);
+    assert.strictEqual(factual.lowestCategory?.category, 'Transportation', 'Lowest expense category must be Transportation, NOT Salary');
+    assert.strictEqual(factual.lowestCategory?.amount, 500);
+  });
 });

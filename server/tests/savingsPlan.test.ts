@@ -132,8 +132,8 @@ function createMockSavingsContext(
       discretionaryCategories,
       discretionaryTotal,
       topCategories: overview.categories.filter((c) => c.amount > 0),
-      categoryTotals: {},
-      categoryPercentages: {},
+      categoryTotals: overview.categories.reduce((acc, c) => ({ ...acc, [c.category]: c.amount }), {}),
+      categoryPercentages: overview.categories.reduce((acc, c) => ({ ...acc, [c.category]: c.percentage }), {}),
       merchants: {
         highestMerchant: factual.highestMerchant,
         lowestMerchant: factual.lowestMerchant,

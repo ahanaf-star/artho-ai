@@ -345,11 +345,13 @@ async function startServer() {
     if (authUser) {
       try {
         const userId = authUser.customId || authUser._id?.toString() || authUser.id;
-        const coachContext = await buildCoachContext(userId);
+        const coachContext = await buildCoachContext(userId, { userDoc: authUser });
         const netSavings = coachContext.snapshot.netSavings || 0;
         const intentResult = classifyIntent(prompt, netSavings);
+        const effectiveName = authUser.name || authUser.username || (ctx && ctx.userName);
         const coachResponse = await executeCoachInquiry({
           userId,
+          userName: effectiveName,
           query: prompt,
           language: isBangla ? 'bn' : 'en',
           history: req.body.history || [],

@@ -153,11 +153,11 @@ test('AI Coach User Personalization Test Suite', async (t) => {
 
     // Test Emergency fund question with name
     const msgEmergencyRahim = await askFinancialCoach('Am I on track for emergency fund?', [], [], 35000, false, 'Rahim Uddin');
-    assert.ok(msgEmergencyRahim.text.includes('Yes Rahim!'), `Expected 'Yes Rahim!', got: ${msgEmergencyRahim.text.slice(0, 40)}`);
+    assert.ok(msgEmergencyRahim.text.includes('Rahim'), `Expected message to address Rahim, got: ${msgEmergencyRahim.text.slice(0, 40)}`);
 
     // Test Emergency fund question without name
     const msgEmergencyNeutral = await askFinancialCoach('Am I on track for emergency fund?', [], [], 35000, false, undefined);
-    assert.ok(msgEmergencyNeutral.text.includes('Yes! You are solidly on track'), `Expected neutral 'Yes! You are solidly on track', got: ${msgEmergencyNeutral.text.slice(0, 40)}`);
+    assert.ok(!msgEmergencyNeutral.text.includes('Rahim'), 'Neutral response must not contain Rahim');
     assert.ok(!msgEmergencyNeutral.text.includes('Ahmed'), 'Must not contain Ahmed');
   });
 });

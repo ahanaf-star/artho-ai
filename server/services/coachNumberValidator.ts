@@ -101,10 +101,10 @@ export function extractAllowedNumbers(
     allowed.add(Math.round(cat.percentage));
     allowed.add(Math.abs(cat.momChangePercentage));
   }
-  for (const amt of Object.values(ctx.spending.categoryTotals)) {
+  for (const amt of Object.values(ctx.spending.categoryTotals || {})) {
     allowed.add(amt);
   }
-  for (const pct of Object.values(ctx.spending.categoryPercentages)) {
+  for (const pct of Object.values(ctx.spending.categoryPercentages || {})) {
     allowed.add(pct);
     allowed.add(Math.round(pct));
   }
@@ -170,6 +170,10 @@ export function extractAllowedNumbers(
       allowed.add(Math.abs(Number(p.toFixed(1))));
       allowed.add(Math.abs(Math.round(p)));
     });
+    // Standard 50/30/20 benchmark amounts
+    allowed.add(Math.round(inc * 0.5));
+    allowed.add(Math.round(inc * 0.3));
+    allowed.add(Math.round(inc * 0.2));
   }
   if (exp > 0) {
     const essExpPct = (essTotal / exp) * 100;
@@ -178,6 +182,14 @@ export function extractAllowedNumbers(
       allowed.add(Number(p.toFixed(1)));
       allowed.add(Math.round(p));
     });
+    // Emergency fund living expenses benchmarks (3-month and 6-month)
+    allowed.add(Math.round(exp * 3));
+    allowed.add(Math.round(exp * 6));
+  }
+
+  // Illustrative starter budget amounts for users with 0 recorded income and expenses
+  if (inc === 0 && exp === 0) {
+    [30000, 15000, 9000, 6000].forEach((n) => allowed.add(n));
   }
 
   // Precomputed baseline recommendations for health_recommendations
@@ -238,6 +250,21 @@ export function extractAllowedNumbers(
         allowed.add(net + qn); // adjusted surplus with additional savings
         allowed.add(Math.round(qn * 6)); // 6-month accumulation
         allowed.add(Math.round(qn * 12)); // 1-year accumulation
+      }
+    }
+
+    // Target amount divided by duration months (e.g., 50000 in 6 months)
+    for (const t of queryNumbers) {
+      if (t >= 1000) {
+        for (const m of queryNumbers) {
+          if (m >= 1 && m <= 60 && m !== t) {
+            allowed.add(Math.round(t / m));
+            allowed.add(Math.ceil(t / m));
+            allowed.add(Math.floor(t / m));
+            allowed.add(Math.round(t / m / 4));
+            allowed.add(m * 4); // ~weeks
+          }
+        }
       }
     }
 

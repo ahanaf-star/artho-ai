@@ -754,6 +754,24 @@ export function buildCoachContextFromData(
     },
   };
 
+  for (const [catName, amt] of Object.entries(categoryTotals)) {
+    const pct = categoryPercentages[catName] || 0;
+    spendingFacts[`spending.category.${catName}`] = {
+      key: `spending.category.${catName}`,
+      value: amt,
+      available: amt > 0,
+      labelEn: `${catName} Spending Amount`,
+      labelBn: `${catName} খাতের খরচের পরিমাণ`,
+    };
+    spendingFacts[`spending.categoryPct.${catName}`] = {
+      key: `spending.categoryPct.${catName}`,
+      value: pct,
+      available: amt > 0,
+      labelEn: `${catName} Spending Share (%)`,
+      labelBn: `${catName} খাতের খরচের অংশ (%)`,
+    };
+  }
+
   // 3. Goals Fact Group
   const goalItems = goals.map((g, idx) => {
     const progress = calculateGoalProgressPercentage(g);

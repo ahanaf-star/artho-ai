@@ -11,6 +11,7 @@ export interface ChatHistoryTurn {
 
 export interface CoachCallParams {
   userId?: string;
+  userName?: string;
   query: string;
   language: 'en' | 'bn';
   history?: ChatHistoryTurn[];
@@ -26,10 +27,23 @@ const APPROVED_MODELS = APPROVED_GEMINI_MODELS;
 /**
  * Builds the authoritative system prompt for the AI Financial Coach
  */
-function buildSystemInstruction(language: 'en' | 'bn', slicedContext: SlicedContext): string {
+function buildSystemInstruction(language: 'en' | 'bn', slicedContext: SlicedContext, userName?: string): string {
   const isBn = language === 'bn';
+  const trimmedName = typeof userName === 'string' ? userName.trim() : '';
+  const firstName = trimmedName ? trimmedName.split(' ')[0] : null;
 
   return `You are Artho AI, an expert, empathetic, and strictly factual personal financial health and savings coach built specifically for Bangladesh (Dhaka lifestyle, bKash, Nagad, City Bank, ATM withdrawals).
+
+GREETING & PERSONALIZATION:
+${
+  isBn
+    ? firstName
+      ? `Address the user respectfully as "${firstName}" or "আপনি". Start with a warm greeting: "আসসালামু আলাইকুম ${firstName}!".`
+      : 'Address the user respectfully as "আপনি". Start with a warm neutral greeting: "আসসালামু আলাইকুম!". Do NOT use any name, "User", "Guest", or placeholder.'
+    : firstName
+      ? `Start with a warm greeting: "Assalamu Alaikum ${firstName}!".`
+      : 'Start with a warm neutral greeting: "Assalamu Alaikum!". Do NOT use any name, "User", "Guest", or placeholder.'
+}
 
 CORE MISSION & ETHICS:
 1. Answer the user's actual question directly, empathetically, and concisely.
@@ -77,19 +91,21 @@ Every single monetary value (৳), percentage (%), or metric in "answer" must EX
  * Calls Gemini with structured output enforcement, 12s timeout, 1-retry backoff, and strict number validation
  */
 export async function executeCoachInquiry(params: CoachCallParams): Promise<CoachResponsePayload> {
-  const { query, language, history, fullContext, aiClient } = params;
+  const { query, language, history, fullContext, aiClient, userName } = params;
   const intentResult = params.intentResult || classifyIntent(query);
 
   // 1. If intent is out of scope, immediately return deterministic educational boundary message
   if (intentResult.intent === 'out_of_scope') {
-    return generateDeterministicCoachResponse(intentResult, fullContext, language, query);
+    return generateDeterministicCoachResponse(intentResult, fullContext, language, query, userName);
   }
 
   // 1b. Direct factual routing for deterministic extrema queries (highest/lowest spending category, merchant, extrema, zero spending, MoM)
   // Ensures 100% precision, zero arithmetic error, zero hallucination, and instant responsiveness
   const directFactualIntents = [
+    'spending_vs_income',
     'top_category',
     'lowest_category',
+    'category_spending',
     'highest_merchant',
     'lowest_merchant',
     'largest_expense',
@@ -99,7 +115,7 @@ export async function executeCoachInquiry(params: CoachCallParams): Promise<Coac
     'income_total',
   ];
   if (directFactualIntents.includes(intentResult.intent)) {
-    return generateDeterministicCoachResponse(intentResult, fullContext, language, query);
+    return generateDeterministicCoachResponse(intentResult, fullContext, language, query, userName);
   }
 
   // 2. Slice context deterministically
@@ -156,11 +172,11 @@ export async function executeCoachInquiry(params: CoachCallParams): Promise<Coac
 
   // If Gemini client is not initialized, run deterministic fallback
   if (!aiClient) {
-    return generateDeterministicCoachResponse(intentResult, fullContext, language, query);
+    return generateDeterministicCoachResponse(intentResult, fullContext, language, query, userName);
   }
 
   // 3. Prepare Prompt Structure
-  const systemInstruction = buildSystemInstruction(language, sliced);
+  const systemInstruction = buildSystemInstruction(language, sliced, userName);
 
   // Format past history turns (max last 6 turns, text capped)
   const cappedHistory = (history || []).slice(-6).map((turn) => ({
@@ -240,14 +256,39 @@ export async function executeCoachInquiry(params: CoachCallParams): Promise<Coac
             `[Gemini Validation Rejected] Reason: ${validation.reason}. Falling back to deterministic response.`
           );
           // Rejection triggers deterministic fallback
-          return generateDeterministicCoachResponse(intentResult, fullContext, language, query);
+          return generateDeterministicCoachResponse(intentResult, fullContext, language, query, userName);
         }
 
         // Valid AI response
+        let finalAnswer = parsed.answer.trim();
+        const trimmedName = typeof userName === 'string' ? userName.trim() : '';
+        const firstName = trimmedName ? trimmedName.split(' ')[0] : null;
+        if (firstName) {
+          const targetGreeting = language === 'bn' ? `আসসালামু আলাইকুম ${firstName}!` : `Assalamu Alaikum ${firstName}!`;
+          if (!finalAnswer.startsWith(targetGreeting)) {
+            if (finalAnswer.startsWith('Assalamu Alaikum!') || finalAnswer.startsWith('Assalamu Alaikum,')) {
+              finalAnswer = finalAnswer.replace(/^Assalamu Alaikum[!,\s]*/, `${targetGreeting} `).trim();
+            } else if (finalAnswer.startsWith('আসসালামু আলাইকুম!') || finalAnswer.startsWith('আসসালামু আলাইকুম,')) {
+              finalAnswer = finalAnswer.replace(/^আসসালামু আলাইকুম[!,\s]*/, `${targetGreeting} `).trim();
+            } else {
+              finalAnswer = `${targetGreeting}\n\n${finalAnswer}`;
+            }
+          }
+        } else {
+          const targetGreeting = language === 'bn' ? 'আসসালামু আলাইকুম!' : 'Assalamu Alaikum!';
+          const normQ = query.toLowerCase();
+          if (
+            (normQ.includes('hi') || normQ.includes('hello') || normQ.includes('overview') || normQ.includes('কেমন') || normQ.includes('হাই')) &&
+            !finalAnswer.startsWith(targetGreeting)
+          ) {
+            finalAnswer = `${targetGreeting}\n\n${finalAnswer}`;
+          }
+        }
+
         return {
           source: 'ai',
           modelUsed: model,
-          answer: parsed.answer,
+          answer: finalAnswer,
           factsUsed: Array.isArray(parsed.factsUsed) ? parsed.factsUsed : sliced.factKeys,
           followUps: Array.isArray(parsed.followUps) ? parsed.followUps.slice(0, 2) : [],
           dataGaps: Array.isArray(parsed.dataGaps) ? parsed.dataGaps : [],
@@ -277,5 +318,5 @@ export async function executeCoachInquiry(params: CoachCallParams): Promise<Coac
   );
 
   // Return reliable deterministic fallback
-  return generateDeterministicCoachResponse(intentResult, fullContext, language, query);
+  return generateDeterministicCoachResponse(intentResult, fullContext, language, query, userName);
 }

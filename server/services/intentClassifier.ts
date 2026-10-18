@@ -2,8 +2,10 @@ import { CoachContext, FactItem } from './coachContextBuilder';
 
 export type CoachIntent =
   | 'spending_total'
+  | 'spending_vs_income'
   | 'top_category'
   | 'lowest_category'
+  | 'category_spending'
   | 'highest_merchant'
   | 'lowest_merchant'
   | 'largest_expense'
@@ -41,6 +43,7 @@ export interface IntentResult {
   intent: CoachIntent;
   confidence: number;
   parsedPlan?: ParsedSavingsPlan;
+  matchedCategory?: string;
   matchedKeywords: string[];
 }
 
@@ -101,8 +104,13 @@ function parseMultiplierAmount(numStr: string, multiplierStr?: string): number {
  */
 export function parseSavingsTarget(
   query: string,
-  currentNetSavings: number = 0
+  netSavingsOrCtx: number | CoachContext = 0
 ): ParsedSavingsPlan | undefined {
+  const currentNetSavings =
+    typeof netSavingsOrCtx === 'number'
+      ? netSavingsOrCtx
+      : (netSavingsOrCtx as any)?.snapshot?.netSavings ?? 0;
+
   // Avoid misclassifying simulations or projections as savings plans
   if (/(?:simulate|simulation|scenario|forecast|trajectory|risk|resilience|পূর্বাভাস|কত\s*(?:টাকা)?\s*জমবে|কত\s*(?:টাকা)?\s*সঞ্চ[য়য়]|প্রভাব\s*পড়বে|প্রভাব\s*পড়বে|বাফার)/i.test(query)) {
     return undefined;
@@ -132,13 +140,14 @@ export function parseSavingsTarget(
   };
   const normalizedDigits = query.replace(/[০-৯]/g, (d) => bnToEnDigits[d] || d);
 
-  // Pattern 1: Fixed duration in English: "save [amount] [multiplier] in [months] months"
-  const enMatch = normalizedDigits.match(
-    /(?:save|target|reach)\s*(?:bdt|tk|taka|৳|\$)?\s*([0-9,]+)\s*(lac|lakh|crore|cr|k|thousand)?\s*(?:bdt|tk|taka|৳|\$)?\s*(?:in|within|over|for)?\s*([0-9]+)\s*(?:months?|mas)/i
+  // Pattern 1: Fixed duration in English: "save [amount] in [duration] [months/years]"
+  const enMatch1 = normalizedDigits.match(
+    /(?:save|target|reach|buy|accumulate|deposit|put aside|set aside).*?(?:bdt|tk|taka|৳|\$)?\s*([0-9,]+)\s*(lac|lakh|crore|cr|k|thousand)?\s*(?:bdt|tk|taka|৳|\$)?\s*(?:in|within|over|for)?\s*([0-9]+)\s*(months?|mas|years?|yrs?|yr)/i
   );
-  if (enMatch) {
-    const targetAmount = parseMultiplierAmount(enMatch[1], enMatch[2]);
-    const monthsDuration = parseInt(enMatch[3], 10);
+  if (enMatch1) {
+    const targetAmount = parseMultiplierAmount(enMatch1[1], enMatch1[2]);
+    const isYear = /year|yr/i.test(enMatch1[4]);
+    const monthsDuration = parseInt(enMatch1[3], 10) * (isYear ? 12 : 1);
     if (targetAmount >= 100 && monthsDuration > 0) {
       const requiredMonthly = Math.round(targetAmount / monthsDuration);
       const isFeasible = currentNetSavings >= requiredMonthly;
@@ -159,11 +168,40 @@ export function parseSavingsTarget(
     }
   }
 
-  // Pattern 2: Fixed duration in Bengali: "[months] মাসে [amount] টাকা" or "[amount] টাকা [months] মাসে"
-  const bnMatch1 = normalizedDigits.match(/([0-9]+)\s*মাসে\s*([0-9,]+)\s*(লাখ|লক্ষ|কোটি|হাজার)?\s*(?:টাকা)?/);
+  // Pattern 1b: "in [duration] [months/years] save [amount]"
+  const enMatch2 = normalizedDigits.match(
+    /(?:in|within|over|for)?\s*([0-9]+)\s*(months?|mas|years?|yrs?|yr).*?(?:save|target|reach|buy|accumulate|deposit|put aside|set aside).*?(?:bdt|tk|taka|৳|\$)?\s*([0-9,]+)\s*(lac|lakh|crore|cr|k|thousand)?/i
+  );
+  if (enMatch2) {
+    const isYear = /year|yr/i.test(enMatch2[2]);
+    const monthsDuration = parseInt(enMatch2[1], 10) * (isYear ? 12 : 1);
+    const targetAmount = parseMultiplierAmount(enMatch2[3], enMatch2[4]);
+    if (targetAmount >= 100 && monthsDuration > 0) {
+      const requiredMonthly = Math.round(targetAmount / monthsDuration);
+      const isFeasible = currentNetSavings >= requiredMonthly;
+      const monthlyGap = Math.max(0, requiredMonthly - currentNetSavings);
+      const surplusDiff = Math.abs(currentNetSavings - requiredMonthly);
+      return {
+        targetAmount,
+        monthsDuration,
+        monthlyTarget: requiredMonthly,
+        weeklyTarget: Math.round(requiredMonthly / 4),
+        requiredMonthly,
+        currentMonthlySurplus: currentNetSavings,
+        isFeasible,
+        monthlyGap,
+        surplusDiff,
+        isRecurringMonthly: false,
+      };
+    }
+  }
+
+  // Pattern 2: Fixed duration in Bengali: "[months/years] মাসে/বছরে [amount] টাকা"
+  const bnMatch1 = normalizedDigits.match(/([0-9]+)\s*(মাসে|মাস|বছরে|বছর)\s*([0-9,]+)\s*(লাখ|লক্ষ|কোটি|হাজার)?\s*(?:টাকা)?/);
   if (bnMatch1) {
-    const monthsDuration = parseInt(bnMatch1[1], 10);
-    const targetAmount = parseMultiplierAmount(bnMatch1[2], bnMatch1[3]);
+    const isYear = /বছর/.test(bnMatch1[2]);
+    const monthsDuration = parseInt(bnMatch1[1], 10) * (isYear ? 12 : 1);
+    const targetAmount = parseMultiplierAmount(bnMatch1[3], bnMatch1[4]);
     if (targetAmount >= 100 && monthsDuration > 0) {
       const requiredMonthly = Math.round(targetAmount / monthsDuration);
       const isFeasible = currentNetSavings >= requiredMonthly;
@@ -184,10 +222,11 @@ export function parseSavingsTarget(
     }
   }
 
-  const bnMatch2 = normalizedDigits.match(/([0-9,]+)\s*(লাখ|লক্ষ|কোটি|হাজার)?\s*(?:টাকা)?\s*([0-9]+)\s*মাসে/);
+  const bnMatch2 = normalizedDigits.match(/([0-9,]+)\s*(লাখ|লক্ষ|কোটি|হাজার)?\s*(?:টাকা)?\s*([0-9]+)\s*(মাসে|মাস|বছরে|বছর)/);
   if (bnMatch2) {
     const targetAmount = parseMultiplierAmount(bnMatch2[1], bnMatch2[2]);
-    const monthsDuration = parseInt(bnMatch2[3], 10);
+    const isYear = /বছর/.test(bnMatch2[4]);
+    const monthsDuration = parseInt(bnMatch2[3], 10) * (isYear ? 12 : 1);
     if (targetAmount >= 100 && monthsDuration > 0) {
       const requiredMonthly = Math.round(targetAmount / monthsDuration);
       const isFeasible = currentNetSavings >= requiredMonthly;
@@ -352,6 +391,58 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
       parsedPlan,
       matchedKeywords: ['parsed_target_plan'],
     };
+  }
+
+  // 0c. Spending vs. Income Deficit Check (e.g. "Am I spending more than I earn?", "Do I spend more than my income?")
+  const spendingVsIncomePatterns = [
+    'spending more than i earn',
+    'spending more than my income',
+    'spend more than i earn',
+    'spend more than my income',
+    'spend more than earn',
+    'expenses higher than my income',
+    'expenses exceed income',
+    'spending exceeds income',
+    'outflow exceeds inflow',
+    'living beyond my means',
+    'living beyond means',
+    'deficit this month',
+    'am i in a deficit',
+    'am i running a deficit',
+    'do i have a deficit',
+    'do i spend more than i earn',
+    'do i spend more than my income',
+    'am i spending more than i earn',
+    'am i spending more than my income',
+    'spending more than earning',
+    'spends more than earns',
+    'আয়ের চেয়ে বেশি খরচ',
+    'আয়ের চেয়ে বেশি খরচ',
+    'আয়ের চেয়ে ব্যয় বেশি',
+    'আয়ের চেয়ে ব্যয় বেশি',
+    'ব্যয় কি আয়ের চেয়ে বেশি',
+    'ব্যয় কি আয়ের চেয়ে বেশি',
+    'খরচ কি আয়ের চেয়ে বেশি',
+    'খরচ কি আয়ের চেয়ে বেশি',
+    'আয়ের তুলনায় খরচ বেশি',
+    'আয়ের তুলনায় খরচ বেশি',
+    'ঘাটতি হচ্ছে কি',
+    'ঘাটতিতে আছি কি',
+    'আয়ের বেশি খরচ',
+    'আয়ের বেশি খরচ',
+  ];
+  for (const p of spendingVsIncomePatterns) {
+    if (matchesKeyword(norm, p)) {
+      return { intent: 'spending_vs_income', confidence: 0.96, matchedKeywords: [p] };
+    }
+  }
+
+  const isSmartSpendingVsIncome =
+    (norm.includes('more than') || norm.includes('exceed') || norm.includes('higher than') || norm.includes('চেয়ে বেশি') || norm.includes('চেয়ে বেশি')) &&
+    (norm.includes('income') || norm.includes('earn') || norm.includes('আয়') || norm.includes('আয়')) &&
+    (norm.includes('spend') || norm.includes('expense') || norm.includes('outflow') || norm.includes('খরচ') || norm.includes('ব্যয়') || norm.includes('ব্যয়'));
+  if (isSmartSpendingVsIncome) {
+    return { intent: 'spending_vs_income', confidence: 0.94, matchedKeywords: ['spending_vs_income_smart'] };
   }
 
   // 1. Cash-out & MFS Fee reduction
@@ -549,6 +640,24 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'খরচের নিরাপদ সীমা',
     'সাপ্তাহিক খরচের সীমা',
     'নিরাপদ সীমা',
+    'how much money do i have left',
+    'how much money is left',
+    'how much money left',
+    'how much do i have left',
+    'how much is left',
+    'money do i have left',
+    'money i have left',
+    'how much left',
+    'what is left',
+    'money left',
+    'টাকা কত বাকি আছে',
+    'কত টাকা বাকি আছে',
+    'কত টাকা অবশিষ্ট আছে',
+    'কত অবশিষ্ট আছে',
+    'অবশিষ্ট টাকা',
+    'আমার কত টাকা আছে',
+    'কত টাকা আছে',
+    'কত টাকা জমা আছে',
   ];
   if (!norm.includes('checklist')) {
     for (const p of monthEndPatterns) {
@@ -672,6 +781,7 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'where do i spend least',
     'where do i spend the least',
     'spend the least',
+    'spend least',
     'lowest spending',
     'lowest spend',
     'lowest expense',
@@ -679,14 +789,38 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'smallest category',
     'minimum spending category',
     'minimum spend',
+    'which category i spend lowest',
+    'which category did i spend the least',
+    'which category did i spend least',
+    'which category i spend least',
+    'which category lowest',
+    'which category least',
+    'spend lowest money',
+    'spend least money',
+    'spend lowest',
+    'lowest money',
+    'least money',
+    'lowest cost category',
+    'least expensive category',
+    'where do i spend lowest',
+    'where i spend lowest',
+    'where i spend least',
     'সর্বনিম্ন খরচ',
     'সবচেয়ে কম খরচ',
     'সবচেয়ে কম ব্যয়',
+    'সবচেয়ে কম খরচ',
+    'সবচেয়ে কম ব্যয়',
     'কোন খাতে সবচেয়ে কম',
+    'কোন খাতে সবচেয়ে কম',
+    'কোন খাতে কম টাকা',
+    'সবচেয়ে কম টাকা',
+    'সবচেয়ে কম টাকা',
+    'কম টাকা খরচ',
     'কোন খাতে কম',
     'কম খরচ',
     'ন্যূনতম খরচ',
     'সর্বনিম্ন ব্যয়ের খাত',
+    'সর্বনিম্ন খরচের খাত',
     'সবচেয়ে কম খরচের খাত',
     'সবচেয়ে কম খরচের খাত',
   ];
@@ -694,6 +828,16 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     if (matchesKeyword(norm, p)) {
       return { intent: 'lowest_category', confidence: 0.94, matchedKeywords: [p] };
     }
+  }
+
+  const isLowestCategoryQuery =
+    !/(?:merchant|মার্চেন্ট|vendor|shop\s+at)/i.test(norm) &&
+    (/(?:category|খাত|ক্যাটাগরি).*?(?:lowest|least|minimum|smallest|সবচেয়ে\s*কম|সবচেয়ে\s*কম|সর্বনিম্ন)/i.test(norm) ||
+      /(?:lowest|least|minimum|smallest|সবচেয়ে\s*কম|সবচেয়ে\s*কম|সর্বনিম্ন).*?(?:category|খাত|ক্যাটাগরি)/i.test(norm) ||
+      (/(?:spend|spent|spending|expense|outflow|money|cost|খরচ|ব্যয়|ব্যয়)/i.test(norm) &&
+        /(?:lowest|least|minimum|smallest|সবচেয়ে\s*কম|সবচেয়ে\s*কম|সর্বনিম্ন)/i.test(norm)));
+  if (isLowestCategoryQuery) {
+    return { intent: 'lowest_category', confidence: 0.94, matchedKeywords: ['lowest_category_smart_match'] };
   }
 
   // 3f. Top / Highest Spending Category
@@ -711,15 +855,40 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'where do i spend most',
     'where do i spend the most',
     'spend the most',
+    'spend most',
     'biggest outflow',
     'highest category spending',
     'most expensive category',
+    'which category i spend highest',
+    'which category i spend most',
+    'which category did i spend the most',
+    'which category did i spend most',
+    'which category highest',
+    'which category most',
+    'spend highest money',
+    'spend most money',
+    'highest money',
+    'most money',
+    'highest cost category',
+    'where do i spend highest',
+    'where i spend highest',
+    'where i spend most',
     'শীর্ষ খাত',
     'সবচেয়ে বেশি খরচ',
+    'সবচেয়ে বেশি খরচ',
+    'সবচেয়ে বেশি ব্যয়',
+    'সবচেয়ে বেশি ব্যয়',
+    'কোন খাতে সবচেয়ে বেশি',
+    'কোন খাতে সবচেয়ে বেশি',
+    'কোন খাতে বেশি টাকা',
+    'সবচেয়ে বেশি টাকা',
+    'সবচেয়ে বেশি টাকা',
+    'বেশি টাকা খরচ',
     'কোন খাতে বেশি',
     'কোথায় বেশি খরচ',
     'সর্বোচ্চ খরচ',
     'সর্বোচ্চ খরচের খাত',
+    'শীর্ষ খরচের খাত',
   ];
   for (const p of topCatPatterns) {
     if (matchesKeyword(norm, p)) {
@@ -727,7 +896,53 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     }
   }
 
-  // 3g. Zero Spending Categories
+  const isTopCategoryQuery =
+    !/(?:merchant|মার্চেন্ট|vendor|shop\s+at)/i.test(norm) &&
+    (/(?:category|খাত|ক্যাটাগরি).*?(?:highest|most|top|maximum|biggest|largest|সবচেয়ে\s*বেশি|সবচেয়ে\s*বেশি|সর্বোচ্চ|শীর্ষ)/i.test(norm) ||
+      /(?:highest|most|top|maximum|biggest|largest|সবচেয়ে\s*বেশি|সবচেয়ে\s*বেশি|সর্বোচ্চ|শীর্ষ).*?(?:category|খাত|ক্যাটাগরি)/i.test(norm) ||
+      (/(?:spend|spent|spending|expense|outflow|money|cost|খরচ|ব্যয়|ব্যয়)/i.test(norm) &&
+        /(?:highest|most|top|maximum|biggest|largest|সবচেয়ে\s*বেশি|সবচেয়ে\s*বেশি|সর্বোচ্চ|শীর্ষ)/i.test(norm)));
+  if (isTopCategoryQuery) {
+    return { intent: 'top_category', confidence: 0.93, matchedKeywords: ['top_category_smart_match'] };
+  }
+
+  // 3g. Specific Category Spending Inquiry (e.g. "How much did I spend on Health?", "What did I spend on Food?", "স্বাস্থ্য খাতে খরচ কত?")
+  const categoryMapForInquiry: Record<string, string[]> = {
+    'Health': ['health', 'healthcare', 'medical', 'medicine', 'medicines', 'doctor', 'hospital', 'clinic', 'pharma', 'pharmacy', 'চিকিৎসা', 'স্বাস্থ্য', 'ডাক্তার', 'ওষুধ', 'ঔষধ'],
+    'Food & Groceries': ['food & groceries', 'groceries', 'grocery', 'food', 'dining', 'dine', 'restaurant', 'bazar', 'bazaar', 'shawarma', 'cafe', 'খাবার', 'বাজার', 'গ্রোসারি', 'রেস্টুরেন্ট'],
+    'Shopping & Gadgets': ['shopping & gadgets', 'shopping', 'gadgets', 'gadget', 'clothes', 'clothing', 'apparel', 'electronics', 'দারাজ', 'শপিং', 'কেনাকাটা', 'গ্যাজেট'],
+    'Utility & Fixed Costs': ['utility & fixed costs', 'utilities', 'utility', 'bills', 'bill', 'electric', 'electricity', 'current bill', 'gas', 'water', 'wasa', 'desco', 'dpdc', 'internet', 'wifi', 'broadband', 'বিদ্যুৎ', 'গ্যাস', 'পানি', 'ইউটিলিটি', 'বিল', 'ওয়াইফাই'],
+    'Transportation': ['transportation', 'transport', 'commute', 'uber', 'pathao', 'cng', 'bus', 'metro', 'fare', 'fuel', 'petrol', 'octane', 'ভাড়া', 'ভাড়া', 'যাতায়াত', 'যাতায়াত', 'পরিবহন'],
+    'Cash-out & Bank Fees': ['cash-out & bank fees', 'cash out', 'cash-out', 'bank fees', 'bank fee', 'atm fee', 'tariff', 'fee leak', 'bkash fee', 'nagad fee', 'ক্যাশ আউট', 'ক্যাশআউট', 'ব্যাংক ফি', 'এজেন্ট ফি'],
+    'Entertainment & Others': ['entertainment & others', 'entertainment', 'movies', 'movie', 'leisure', 'games', 'outing', 'বিনোদন', 'অন্যান্য'],
+    'Education': ['education', 'tuition', 'school', 'college', 'university', 'books', 'শিক্ষা', 'টিউশন', 'পড়াশোনা', 'লেখাপড়া'],
+  };
+
+  const isAskingCategoryAmount =
+    !isLowestCategoryQuery &&
+    !isTopCategoryQuery &&
+    !/(?:anomaly|unusual|higher\s+than\s+usual|spike|surge|অস্বাভাবিক|অপ্রত্যাশিত)/i.test(norm) &&
+    (/(?:how\s+much|what|show|tell\s+me|check|breakdown).*?(?:spend|spent|spending|expense|cost|outflow|কত\s*খরচ|কত\s*টাকা|খরচের\s*পরিমাণ)/i.test(norm) ||
+      /(?:spend|spent|spending|expense|cost|outflow|খরচ|ব্যয়|ব্যয়).*?(?:on|in|for|বাবদ|খাতে)/i.test(norm) ||
+      /(?:spending|expense|cost|outflow|খরচ|ব্যয়|ব্যয়)\s*(?:on|in|for|বাবদ|খাতে)/i.test(norm) ||
+      /(?:health|food|groceries|shopping|gadgets|transportation|utility|utilities|education)\s*(?:spending|expense|cost|outflow|খরচ)/i.test(norm));
+
+  if (isAskingCategoryAmount) {
+    for (const [catName, keywords] of Object.entries(categoryMapForInquiry)) {
+      for (const kw of keywords) {
+        if (norm.includes(kw)) {
+          return {
+            intent: 'category_spending',
+            confidence: 0.95,
+            matchedCategory: catName,
+            matchedKeywords: [kw, 'category_inquiry'],
+          };
+        }
+      }
+    }
+  }
+
+  // 3h. Zero Spending Categories
   const zeroSpendingPatterns = [
     'zero spending',
     'zero expense',
@@ -833,9 +1048,19 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'আয়ের বিবরণ',
     'আয়ের বিবরণ',
   ];
-  for (const p of incomeTotalPatterns) {
-    if (matchesKeyword(norm, p)) {
-      return { intent: 'income_total', confidence: 0.92, matchedKeywords: [p] };
+  const isBudgetAllocation =
+    norm.includes('allocate') ||
+    norm.includes('allocation') ||
+    norm.includes('across categories') ||
+    norm.includes('distribution') ||
+    norm.includes('distribute') ||
+    norm.includes('বণ্টন') ||
+    norm.includes('বিভিন্ন খাতে');
+  if (!isBudgetAllocation) {
+    for (const p of incomeTotalPatterns) {
+      if (matchesKeyword(norm, p)) {
+        return { intent: 'income_total', confidence: 0.92, matchedKeywords: [p] };
+      }
     }
   }
 
@@ -875,6 +1100,32 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
         return { intent: 'unusual_spending', confidence: 0.88, matchedKeywords: [p] };
       }
     }
+  }
+
+  // 4b. Emergency Fund Planning & Future Goal Prioritization
+  const isEmergencyFundPlanning =
+    (norm.includes('emergency fund') || norm.includes('জরুরি তহবিল') || norm.includes('জরুরী তহবিল') || norm.includes('emergency reserve')) &&
+    (norm.includes('build') || norm.includes('create') || norm.includes('how') || norm.includes('start') || norm.includes('should i save') || norm.includes('কীভাবে') || norm.includes('গড়ব') || norm.includes('গড়বো') || norm.includes('তৈরি') || norm.includes('কত টাকা'));
+  if (isEmergencyFundPlanning) {
+    return { intent: 'savings_plan', confidence: 0.95, matchedKeywords: ['emergency_fund_plan'] };
+  }
+
+  const isNextGoalPlanning =
+    norm.includes('next financial goal') ||
+    norm.includes('next goal') ||
+    norm.includes('পরবর্তী আর্থিক লক্ষ্য') ||
+    norm.includes('পরবর্তী লক্ষ্য') ||
+    norm.includes('next year') ||
+    norm.includes('আগামী বছর') ||
+    norm.includes('financial stability') ||
+    norm.includes('আর্থিক স্থিতিশীলতা') ||
+    norm.includes('step-by-step') ||
+    norm.includes('ধাপে ধাপে') ||
+    norm.includes('how long will it take to reach') ||
+    norm.includes('কত সময় লাগবে') ||
+    norm.includes('কত সময় লাগবে');
+  if (isNextGoalPlanning) {
+    return { intent: 'savings_plan', confidence: 0.94, matchedKeywords: ['next_goal_planning'] };
   }
 
   // 5. Savings Goals Progress & On-Track Status
@@ -945,6 +1196,48 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'savings improvement',
     'three-month savings',
     '3-month savings',
+    'percentage of my income should i save',
+    'percentage of income should i save',
+    'what percentage of my income',
+    'what percentage should i save',
+    'percentage should i save',
+    'what percentage to save',
+    'percent of income to save',
+    'percent of my income should i save',
+    'how much should i save every month',
+    'how much should i save each month',
+    'how much should i save a month',
+    'how much should i save monthly',
+    'how to save more',
+    'stop overspending',
+    'prevent overspending',
+    'how can i stop overspending',
+    'how to stop overspending',
+    'how do i stop overspending',
+    'emergency fund',
+    'build an emergency fund',
+    'how can i build an emergency fund',
+    'how to build an emergency fund',
+    'how much should i save for emergencies',
+    'next financial goal',
+    'what should be my next goal',
+    'what should be my next financial goal',
+    'what goals should i focus on',
+    'focus on next year',
+    'goals for next year',
+    'goals next year',
+    'financial stability',
+    'how do i achieve financial stability',
+    'achieve financial stability',
+    'how long will it take to reach my target',
+    'how long to reach target',
+    'how long to reach goal',
+    'can i reach this goal with my current income',
+    'can i reach this goal',
+    'reach this goal with my current income',
+    'step-by-step savings plan',
+    'step by step savings plan',
+    'step-by-step plan',
     'বেশি সঞ্চয়',
     'সঞ্চয় বাড়াব',
     'কীভাবে সঞ্চয়',
@@ -971,6 +1264,27 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'নিয়মিত সঞ্চয়',
     '৩ মাসে সঞ্চয়',
     '৩ মাসে সঞ্চয়',
+    'কত শতাংশ সঞ্চয় করা উচিত',
+    'কত শতাংশ সঞ্চয় করা উচিত',
+    'কত পারসেন্ট সঞ্চয় করা উচিত',
+    'কত পার্সেন্ট সঞ্চয়',
+    'প্রতি মাসে কত সঞ্চয় করা উচিত',
+    'প্রতি মাসে কত সঞ্চয় করা উচিত',
+    'অতিরিক্ত খরচ বন্ধ',
+    'অতিরিক্ত খরচ কীভাবে বন্ধ করব',
+    'অতিরিক্ত খরচ থামাব কীভাবে',
+    'জরুরি তহবিল কীভাবে গড়ব',
+    'জরুরি তহবিল কীভাবে তৈরি করব',
+    'জরুরি তহবিলে কত টাকা থাকা দরকার',
+    'পরবর্তী আর্থিক লক্ষ্য কী হওয়া উচিত',
+    'পরবর্তী লক্ষ্য কী হওয়া উচিত',
+    'আগামী বছর কোন লক্ষ্যে নজর দেওয়া উচিত',
+    'আর্থিক স্থিতিশীলতা কীভাবে অর্জন করব',
+    'টার্গেটে পৌঁছাতে কত সময় লাগবে',
+    'টার্গেটে পৌঁছাতে কত সময় লাগবে',
+    'বর্তমান আয়ে কি এই লক্ষ্য অর্জন সম্ভব',
+    'বর্তমান আয়ে কি এই লক্ষ্য অর্জন সম্ভব',
+    'ধাপে ধাপে সঞ্চয় পরিকল্পনা',
   ];
   if (!norm.includes('checklist')) {
     for (const p of savingsPlanPatterns) {
@@ -1086,9 +1400,18 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'fixed and variable',
     'fixed expenses',
     'variable expenses',
+    'allocate',
     'allocate my income',
+    'allocate my monthly income',
     'allocate income across',
     'allocate income',
+    'how should i allocate',
+    'how to allocate',
+    'how should i budget',
+    'help me budget',
+    'budget my monthly income',
+    'distribute my income',
+    'distribution across categories',
     'allocation across categories',
     'allocation',
     'spending limits',
@@ -1281,6 +1604,17 @@ export function sliceContext(fullContext: CoachContext, intentResult: IntentResu
   };
 
   switch (intent) {
+    case 'spending_vs_income':
+      includeSnapshot(true);
+      addFact('spending.totalSpending', fullContext.spending.totalSpending);
+      if (fullContext.spending.topCategory) {
+        addFact('spending.topCategory', fullContext.spending.topCategory.category);
+        addFact('spending.topCategoryAmount', fullContext.spending.topCategory.amount);
+        addFact('spending.topCategoryPercentage', fullContext.spending.topCategory.percentage);
+      }
+      addFact('snapshot.netCashFlow', fullContext.snapshot.netCashFlow);
+      break;
+
     case 'top_category':
       includeSnapshot(true);
       if (fullContext.spending.topCategory) {
@@ -1290,6 +1624,17 @@ export function sliceContext(fullContext: CoachContext, intentResult: IntentResu
         addFact('spending.topCategoryMomChange', fullContext.spending.topCategory.momChangePercentage);
         if (fullContext.spending.topCategory.isTie && fullContext.spending.topCategory.tiedCategories) {
           addFact('spending.topCategoryTied', fullContext.spending.topCategory.tiedCategories);
+        }
+      }
+      if (fullContext.spending.lowestCategory) {
+        addFact('spending.lowestCategory', fullContext.spending.lowestCategory.category);
+        addFact('spending.lowestCategoryAmount', fullContext.spending.lowestCategory.amount);
+      }
+      if (fullContext.spending.categoryTotals) {
+        for (const [cat, amt] of Object.entries(fullContext.spending.categoryTotals)) {
+          if (amt > 0) {
+            addFact(`spending.category.${cat}`, amt);
+          }
         }
       }
       addFact('spending.totalSpending', fullContext.spending.totalSpending);
@@ -1310,7 +1655,35 @@ export function sliceContext(fullContext: CoachContext, intentResult: IntentResu
         addFact('spending.topCategory', fullContext.spending.topCategory.category);
         addFact('spending.topCategoryAmount', fullContext.spending.topCategory.amount);
       }
+      if (fullContext.spending.categoryTotals) {
+        for (const [cat, amt] of Object.entries(fullContext.spending.categoryTotals)) {
+          if (amt > 0) {
+            addFact(`spending.category.${cat}`, amt);
+          }
+        }
+      }
       addFact('spending.totalSpending', fullContext.spending.totalSpending);
+      break;
+
+    case 'category_spending':
+      includeSnapshot(true);
+      addFact('spending.totalSpending', fullContext.spending.totalSpending);
+      if (intentResult.matchedCategory) {
+        const catKey = Object.keys(fullContext.spending.categoryTotals || {}).find(
+          (k) => k.toLowerCase() === intentResult.matchedCategory?.toLowerCase()
+        ) || intentResult.matchedCategory;
+        const amt = fullContext.spending.categoryTotals?.[catKey] ?? 0;
+        const pct = fullContext.spending.categoryPercentages?.[catKey] ?? 0;
+        addFact(`spending.category.${catKey}`, amt);
+        addFact(`spending.categoryPct.${catKey}`, pct);
+      }
+      if (fullContext.spending.categoryTotals) {
+        for (const [cat, amt] of Object.entries(fullContext.spending.categoryTotals)) {
+          if (amt > 0) {
+            addFact(`spending.category.${cat}`, amt);
+          }
+        }
+      }
       break;
 
     case 'highest_merchant':
@@ -1395,6 +1768,22 @@ export function sliceContext(fullContext: CoachContext, intentResult: IntentResu
       if (fullContext.spending.topCategory) {
         addFact('spending.topCategory', fullContext.spending.topCategory.category);
         addFact('spending.topCategoryAmount', fullContext.spending.topCategory.amount);
+        addFact('spending.topCategoryPercentage', fullContext.spending.topCategory.percentage);
+      }
+      if (fullContext.spending.lowestCategory) {
+        addFact('spending.lowestCategory', fullContext.spending.lowestCategory.category);
+        addFact('spending.lowestCategoryAmount', fullContext.spending.lowestCategory.amount);
+        addFact('spending.lowestCategoryPercentage', fullContext.spending.lowestCategory.percentage);
+      }
+      if (fullContext.spending.categoryTotals) {
+        for (const [cat, amt] of Object.entries(fullContext.spending.categoryTotals)) {
+          if (amt > 0) {
+            addFact(`spending.category.${cat}`, amt);
+            if (fullContext.spending.categoryPercentages?.[cat] !== undefined) {
+              addFact(`spending.categoryPct.${cat}`, fullContext.spending.categoryPercentages[cat]);
+            }
+          }
+        }
       }
       break;
 
