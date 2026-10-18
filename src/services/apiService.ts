@@ -54,8 +54,11 @@ export const apiService = {
     if (!res.ok) {
       const error: any = new Error(data.error || 'Registration failed');
       error.requiresVerification = data.requiresVerification;
+      error.isUnverified = data.isUnverified;
+      error.isVerified = data.isVerified;
       error.email = data.email || email;
       error.status = res.status;
+      error.cooldownRemainingSeconds = data.cooldownRemainingSeconds;
       throw error;
     }
     return data;

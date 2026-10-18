@@ -103,7 +103,7 @@ export const authService = {
     preferredLanguage: 'en' | 'bn' = 'en',
     monthlyIncome?: number,
     monthlyIncomeCurrency: string = 'BDT'
-  ): Promise<AuthSession & { requiresVerification: boolean; email: string; message: string }> {
+  ): Promise<AuthSession & { requiresVerification: boolean; email: string; message: string; cooldownSeconds?: number }> {
     const name = nameInput.trim();
     if (!name) {
       throw new Error('Name is required.');
@@ -146,6 +146,7 @@ export const authService = {
         requiresVerification: true,
         email,
         message: data.message || 'Please check your email for your verification code.',
+        cooldownSeconds: data.cooldownRemainingSeconds || 60,
       };
     } catch (apiErr: any) {
       if (apiErr?.message && !apiErr.message.includes('fetch') && !apiErr.message.includes('Failed to fetch')) {

@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { UserModel, IUser } from '../models/User';
 import { isDbConnected } from '../config/database';
 import { INITIAL_USER } from '../../src/data/mockUser';
-import { AuthenticatedRequest } from '../middleware/authMiddleware';
+import type { AuthenticatedRequest } from '../middleware/authMiddleware';
 import {
   isValidCurrency,
   normalizeCurrency,
@@ -21,13 +21,15 @@ import {
   clearStoredVerificationCredentials,
   sendVerificationEmail,
   getTestVerificationCode,
+  verifySecretHash,
+  hashVerificationSecret,
   MAX_VERIFICATION_ATTEMPTS,
 } from '../services/emailService';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'arthobachao_secure_jwt_secret_key_2026_dev';
 
 // In-memory user store for offline fallback mode or test runs when MongoDB is offline
-interface FallbackUser {
+export interface FallbackUser {
   id: string;
   customId: string;
   name: string;
@@ -42,6 +44,7 @@ interface FallbackUser {
   preferredLanguage: string;
   currency: string;
   monthlyIncome?: number;
+  monthlyIncomeCurrency?: string;
   riskTolerance?: string;
   tagline?: string;
   city?: string;
@@ -51,7 +54,11 @@ interface FallbackUser {
   recurringObligations: any[];
 }
 
-const fallbackUsers = new Map<string, FallbackUser>();
+export const fallbackUsers = new Map<string, FallbackUser>();
+
+export function getFallbackUser(email: string): FallbackUser | undefined {
+  return fallbackUsers.get(email.trim().toLowerCase());
+}
 
 // Seed INITIAL_USER in fallback store with isEmailVerified = true
 const initialUserHash = bcrypt.hashSync('ahmed123', 10);
@@ -164,7 +171,70 @@ export async function signup(req: Request, res: Response) {
       // Check for existing user in MongoDB
       const existing = await UserModel.findOne({ email: cleanEmail });
       if (existing) {
-        return res.status(409).json({ error: 'An account with this email address already exists.' });
+        if (!existing.isEmailVerified) {
+          // Existing unverified account: update user details with submitted credentials
+          existing.name = name.trim();
+          existing.passwordHash = passwordHash;
+          if (parsedIncome !== undefined) {
+            existing.monthlyIncome = parsedIncome;
+          }
+          if (parsedCurrency !== undefined) {
+            existing.monthlyIncomeCurrency = parsedCurrency;
+          }
+          if (preferredLanguage) {
+            existing.preferredLanguage = preferredLanguage === 'bn' ? 'bn' : 'en';
+          }
+
+          const cooldown = checkResendCooldown(existing.emailVerificationSentAt);
+          let message = 'An unverified account with this email was found. Your account details have been updated.';
+
+          if (cooldown.allowed) {
+            existing.emailVerificationOtp = creds.otpHashed;
+            existing.emailVerificationToken = creds.tokenHashed;
+            existing.emailVerificationExpires = creds.expiresAt;
+            existing.emailVerificationSentAt = creds.sentAt;
+            existing.emailVerificationAttempts = 0;
+            await existing.save();
+
+            storeVerificationCredentials(cleanEmail, creds);
+            const sendResult = await sendVerificationEmail(cleanEmail, existing.name, creds.otp, creds.token);
+
+            if (!sendResult.success) {
+              return res.status(502).json({
+                error: sendResult.error || 'Failed to dispatch verification email. Please try again.',
+              });
+            }
+            message += ' A fresh 6-digit verification code has been sent to your email.';
+          } else {
+            await existing.save();
+            message += ` Please enter the verification code sent to your email (or request a new code in ${cooldown.remainingSeconds}s).`;
+          }
+
+          return res.status(200).json({
+            message,
+            requiresVerification: true,
+            email: cleanEmail,
+            isUnverified: true,
+            cooldownRemainingSeconds: cooldown.allowed ? 60 : cooldown.remainingSeconds,
+            user: {
+              id: existing.customId || (existing._id ? existing._id.toString() : customId),
+              customId: existing.customId,
+              name: existing.name,
+              email: cleanEmail,
+              isEmailVerified: false,
+              preferredLanguage: existing.preferredLanguage || 'en',
+              currency: 'BDT',
+              monthlyIncome: existing.monthlyIncome,
+              monthlyIncomeCurrency: existing.monthlyIncomeCurrency,
+              createdAt: existing.createdAt || new Date().toISOString(),
+            },
+          });
+        }
+
+        return res.status(409).json({
+          error: 'An account with this email address already exists. Please sign in.',
+          isVerified: true,
+        });
       }
 
       await UserModel.create({
@@ -173,8 +243,8 @@ export async function signup(req: Request, res: Response) {
         email: cleanEmail,
         passwordHash,
         isEmailVerified: false,
-        emailVerificationOtp: creds.otp,
-        emailVerificationToken: creds.token,
+        emailVerificationOtp: creds.otpHashed,
+        emailVerificationToken: creds.tokenHashed,
         emailVerificationExpires: creds.expiresAt,
         emailVerificationSentAt: creds.sentAt,
         emailVerificationAttempts: 0,
@@ -197,7 +267,62 @@ export async function signup(req: Request, res: Response) {
     } else {
       // Fallback offline / memory store
       if (fallbackUsers.has(cleanEmail)) {
-        return res.status(409).json({ error: 'An account with this email address already exists.' });
+        const fallbackUser = fallbackUsers.get(cleanEmail)!;
+        if (!fallbackUser.isEmailVerified) {
+          fallbackUser.name = name.trim();
+          fallbackUser.passwordHash = passwordHash;
+          if (parsedIncome !== undefined) {
+            fallbackUser.monthlyIncome = parsedIncome;
+          }
+          if (parsedCurrency !== undefined) {
+            fallbackUser.monthlyIncomeCurrency = parsedCurrency;
+          }
+          if (preferredLanguage) {
+            fallbackUser.preferredLanguage = preferredLanguage === 'bn' ? 'bn' : 'en';
+          }
+
+          const cooldown = checkResendCooldown(fallbackUser.emailVerificationSentAt);
+          let message = 'An unverified account with this email was found. Your account details have been updated.';
+
+          if (cooldown.allowed) {
+            fallbackUser.emailVerificationOtp = creds.otpHashed;
+            fallbackUser.emailVerificationToken = creds.tokenHashed;
+            fallbackUser.emailVerificationExpires = creds.expiresAt;
+            fallbackUser.emailVerificationSentAt = creds.sentAt;
+            fallbackUser.emailVerificationAttempts = 0;
+
+            storeVerificationCredentials(cleanEmail, creds);
+            await sendVerificationEmail(cleanEmail, fallbackUser.name, creds.otp, creds.token);
+            message += ' A fresh 6-digit verification code has been sent to your email.';
+          } else {
+            message += ` Please enter the verification code sent to your email (or request a new code in ${cooldown.remainingSeconds}s).`;
+          }
+
+          return res.status(200).json({
+            message,
+            requiresVerification: true,
+            email: cleanEmail,
+            isUnverified: true,
+            cooldownRemainingSeconds: cooldown.allowed ? 60 : cooldown.remainingSeconds,
+            user: {
+              id: fallbackUser.customId || fallbackUser.id,
+              customId: fallbackUser.customId,
+              name: fallbackUser.name,
+              email: cleanEmail,
+              isEmailVerified: false,
+              preferredLanguage: fallbackUser.preferredLanguage || 'en',
+              currency: 'BDT',
+              monthlyIncome: fallbackUser.monthlyIncome,
+              monthlyIncomeCurrency: fallbackUser.monthlyIncomeCurrency,
+              createdAt: new Date().toISOString(),
+            },
+          });
+        }
+
+        return res.status(409).json({
+          error: 'An account with this email address already exists. Please sign in.',
+          isVerified: true,
+        });
       }
 
       fallbackUsers.set(cleanEmail, {
@@ -207,8 +332,8 @@ export async function signup(req: Request, res: Response) {
         email: cleanEmail,
         passwordHash,
         isEmailVerified: false,
-        emailVerificationOtp: creds.otp,
-        emailVerificationToken: creds.token,
+        emailVerificationOtp: creds.otpHashed,
+        emailVerificationToken: creds.tokenHashed,
         emailVerificationExpires: creds.expiresAt,
         emailVerificationSentAt: creds.sentAt,
         emailVerificationAttempts: 0,
@@ -229,7 +354,20 @@ export async function signup(req: Request, res: Response) {
 
     // Store in email verification service and dispatch email
     storeVerificationCredentials(cleanEmail, creds);
-    await sendVerificationEmail(cleanEmail, name.trim(), creds.otp, creds.token);
+    const sendResult = await sendVerificationEmail(cleanEmail, name.trim(), creds.otp, creds.token);
+
+    if (!sendResult.success) {
+      // Rollback user record if email delivery critically fails
+      if (isDbConnected()) {
+        await UserModel.deleteOne({ email: cleanEmail }).catch(() => {});
+      } else {
+        fallbackUsers.delete(cleanEmail);
+      }
+      clearStoredVerificationCredentials(cleanEmail);
+      return res.status(502).json({
+        error: sendResult.error || 'Failed to dispatch verification email. Please try again.',
+      });
+    }
 
     // Return success indicating verification is required (DO NOT leak OTP or token)
     return res.status(201).json({
@@ -281,8 +419,10 @@ export async function login(req: Request, res: Response) {
     if (isDbConnected()) {
       user = await UserModel.findOne({ email: cleanEmail });
 
+      const isDemoUserAllowed = process.env.NODE_ENV !== 'production' || process.env.ENABLE_DEMO_USER === 'true';
+
       // Auto-seed demo user Ahmed Rahman if not yet seeded
-      if (!user && cleanEmail === INITIAL_USER.email.toLowerCase()) {
+      if (!user && cleanEmail === INITIAL_USER.email.toLowerCase() && isDemoUserAllowed) {
         const demoHash = await bcrypt.hash('ahmed123', 10);
         user = await UserModel.create({
           customId: INITIAL_USER.id,
@@ -303,7 +443,7 @@ export async function login(req: Request, res: Response) {
       }
 
       // If demo user exists but passwordHash is empty or isEmailVerified not set, ensure verified
-      if (user && cleanEmail === INITIAL_USER.email.toLowerCase()) {
+      if (user && cleanEmail === INITIAL_USER.email.toLowerCase() && isDemoUserAllowed) {
         let changed = false;
         if (!user.passwordHash) {
           user.passwordHash = await bcrypt.hash('ahmed123', 10);
@@ -337,12 +477,44 @@ export async function login(req: Request, res: Response) {
       });
     }
 
-    // Reject login if email is not verified
+    // Reject login if email is not verified (with graceful auto-dispatch for legacy/unverified users)
     if (user.isEmailVerified !== true) {
+      const cooldown = checkResendCooldown(user.emailVerificationSentAt);
+      let dispatchMessage = 'Please verify your email before logging in.';
+
+      if (cooldown.allowed) {
+        try {
+          const freshCreds = generateVerificationCredentials();
+          if (isDbConnected()) {
+            user.emailVerificationOtp = freshCreds.otpHashed;
+            user.emailVerificationToken = freshCreds.tokenHashed;
+            user.emailVerificationExpires = freshCreds.expiresAt;
+            user.emailVerificationSentAt = freshCreds.sentAt;
+            user.emailVerificationAttempts = 0;
+            await user.save();
+          } else {
+            user.emailVerificationOtp = freshCreds.otpHashed;
+            user.emailVerificationToken = freshCreds.tokenHashed;
+            user.emailVerificationExpires = freshCreds.expiresAt;
+            user.emailVerificationSentAt = freshCreds.sentAt;
+            user.emailVerificationAttempts = 0;
+          }
+
+          storeVerificationCredentials(cleanEmail, freshCreds);
+          await sendVerificationEmail(cleanEmail, user.name || 'User', freshCreds.otp, freshCreds.token);
+          dispatchMessage = 'Please verify your email before logging in. A new verification code has been sent to your email.';
+        } catch (dispatchErr: any) {
+          console.error('[Auth] Failed to auto-dispatch verification code on login:', dispatchErr.message);
+        }
+      } else {
+        dispatchMessage = `Please verify your email before logging in. A verification code was recently sent; you may request another in ${cooldown.remainingSeconds}s.`;
+      }
+
       return res.status(403).json({
-        error: 'Please verify your email before logging in.',
+        error: dispatchMessage,
         requiresVerification: true,
         email: cleanEmail,
+        cooldownRemainingSeconds: cooldown.allowed ? 60 : cooldown.remainingSeconds,
       });
     }
 
@@ -406,9 +578,11 @@ export async function verifyEmail(req: Request, res: Response) {
       // Invalidate existing code
       if (isDbConnected()) {
         user.emailVerificationOtp = undefined;
+        user.emailVerificationToken = undefined;
         await user.save();
       } else {
         user.emailVerificationOtp = undefined;
+        user.emailVerificationToken = undefined;
       }
       clearStoredVerificationCredentials(cleanEmail);
 
@@ -427,9 +601,9 @@ export async function verifyEmail(req: Request, res: Response) {
       });
     }
 
-    // Verify code or token
-    const otpMatch = cleanCode && user.emailVerificationOtp && cleanCode === user.emailVerificationOtp;
-    const tokenMatch = cleanToken && user.emailVerificationToken && cleanToken === user.emailVerificationToken;
+    // Verify code or token using timing-safe SHA-256 hash comparison
+    const otpMatch = cleanCode && user.emailVerificationOtp ? verifySecretHash(cleanCode, user.emailVerificationOtp) : false;
+    const tokenMatch = cleanToken && user.emailVerificationToken ? verifySecretHash(cleanToken, user.emailVerificationToken) : false;
 
     if (!otpMatch && !tokenMatch) {
       // Increment attempt counter
@@ -438,12 +612,14 @@ export async function verifyEmail(req: Request, res: Response) {
         user.emailVerificationAttempts = updatedAttempts;
         if (updatedAttempts >= MAX_VERIFICATION_ATTEMPTS) {
           user.emailVerificationOtp = undefined;
+          user.emailVerificationToken = undefined;
         }
         await user.save();
       } else {
         user.emailVerificationAttempts = updatedAttempts;
         if (updatedAttempts >= MAX_VERIFICATION_ATTEMPTS) {
           user.emailVerificationOtp = undefined;
+          user.emailVerificationToken = undefined;
         }
       }
 
@@ -543,22 +719,28 @@ export async function resendVerification(req: Request, res: Response) {
     const creds = generateVerificationCredentials();
 
     if (isDbConnected()) {
-      user.emailVerificationOtp = creds.otp;
-      user.emailVerificationToken = creds.token;
+      user.emailVerificationOtp = creds.otpHashed;
+      user.emailVerificationToken = creds.tokenHashed;
       user.emailVerificationExpires = creds.expiresAt;
       user.emailVerificationSentAt = creds.sentAt;
       user.emailVerificationAttempts = 0;
       await user.save();
     } else {
-      user.emailVerificationOtp = creds.otp;
-      user.emailVerificationToken = creds.token;
+      user.emailVerificationOtp = creds.otpHashed;
+      user.emailVerificationToken = creds.tokenHashed;
       user.emailVerificationExpires = creds.expiresAt;
       user.emailVerificationSentAt = creds.sentAt;
       user.emailVerificationAttempts = 0;
     }
 
     storeVerificationCredentials(cleanEmail, creds);
-    await sendVerificationEmail(cleanEmail, user.name, creds.otp, creds.token);
+    const sendResult = await sendVerificationEmail(cleanEmail, user.name, creds.otp, creds.token);
+
+    if (!sendResult.success) {
+      return res.status(502).json({
+        error: sendResult.error || 'Failed to dispatch verification email. Please try again.',
+      });
+    }
 
     return res.json({
       message: 'A new 6-digit verification code has been sent to your email address.',
@@ -575,8 +757,9 @@ export async function resendVerification(req: Request, res: Response) {
  * Strictly for automated testing in non-production loopback environment
  */
 export async function getTestVerificationCodeEndpoint(req: Request, res: Response) {
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(403).json({ error: 'Forbidden' });
+  const isTestAllowed = process.env.NODE_ENV === 'test' || process.env.ENABLE_TEST_AUTH_ENDPOINTS === 'true';
+  if (!isTestAllowed || process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ error: 'Not Found' });
   }
 
   // Verify request is from local machine
@@ -590,23 +773,8 @@ export async function getTestVerificationCodeEndpoint(req: Request, res: Respons
     return res.status(400).json({ error: 'Email parameter required' });
   }
 
-  // Check in-memory emailService store
-  let code = getTestVerificationCode(email);
-
-  // If not found in emailService store, check DB or fallbackUsers
-  if (!code) {
-    if (isDbConnected()) {
-      const user = await UserModel.findOne({ email });
-      if (user?.emailVerificationOtp) {
-        code = user.emailVerificationOtp;
-      }
-    } else {
-      const fbUser = fallbackUsers.get(email);
-      if (fbUser?.emailVerificationOtp) {
-        code = fbUser.emailVerificationOtp;
-      }
-    }
-  }
+  // Check in-memory emailService test store (holds ephemeral raw OTP strictly during test runs)
+  const code = getTestVerificationCode(email);
 
   if (!code) {
     return res.status(404).json({ error: 'No active verification code found for this email' });

@@ -118,7 +118,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           result.message ||
             `A 6-digit verification code has been sent to ${result.email}. Please enter it below to verify your account.`
         );
-        setResendCooldown(60);
+        setResendCooldown(result.cooldownSeconds || 60);
       } else if (mode === 'login') {
         const emailCheck = validateLoginEmail(email);
         if (!emailCheck.isValid) {
@@ -135,10 +135,17 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         onAuthenticated(session);
       }
     } catch (err: any) {
-      if (err?.requiresVerification) {
+      if (err?.requiresVerification || err?.isUnverified) {
         setVerificationEmail(err.email || email);
         setMode('verify');
-        setErrorMsg('Please verify your email before logging in. Enter your 6-digit verification code below.');
+        setInfoMsg(
+          err.message ||
+            'An unverified account with this email was found. Please enter your 6-digit verification code below.'
+        );
+        setErrorMsg(null);
+        if (err.cooldownRemainingSeconds) {
+          setResendCooldown(err.cooldownRemainingSeconds);
+        }
       } else {
         setErrorMsg(err.message || 'Authentication failed. Please check your credentials.');
       }
@@ -314,9 +321,41 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
           {/* Error Banner */}
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-error-container text-on-error-container text-xs font-semibold flex items-start gap-2 animate-in fade-in duration-200">
-              <span className="material-symbols-outlined text-[18px] shrink-0 mt-0.5">error</span>
-              <span className="leading-snug">{errorMsg}</span>
+            <div className="p-3.5 rounded-xl bg-error-container text-on-error-container text-xs font-semibold flex flex-col gap-2.5 animate-in fade-in duration-200">
+              <div className="flex items-start gap-2">
+                <span className="material-symbols-outlined text-[18px] shrink-0 mt-0.5">error</span>
+                <span className="leading-snug">{errorMsg}</span>
+              </div>
+              {errorMsg.toLowerCase().includes('already exists') && (
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-error/20 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('login');
+                      setErrorMsg(null);
+                      setInfoMsg(null);
+                      onModeChange?.('login');
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg bg-surface-container-lowest text-primary font-bold hover:bg-surface transition-colors shadow-2xs flex items-center gap-1 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">login</span>
+                    <span>Sign In</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVerificationEmail(email);
+                      setMode('verify');
+                      setErrorMsg(null);
+                      setInfoMsg('Enter the 6-digit verification code sent to your email, or click Resend if expired.');
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface transition-colors shadow-2xs flex items-center gap-1 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">verified</span>
+                    <span>Verify Existing Email</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -387,17 +426,33 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     <span>Resend verification code</span>
                   )}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('signup');
-                    setErrorMsg(null);
-                    setInfoMsg(null);
-                  }}
-                  className="text-[11px] text-on-surface-variant hover:text-on-surface transition-colors"
-                >
-                  Wrong email address? Return to signup
-                </button>
+                <div className="flex items-center gap-2 text-[11px] text-on-surface-variant pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('signup');
+                      setErrorMsg(null);
+                      setInfoMsg(null);
+                      onModeChange?.('signup');
+                    }}
+                    className="hover:text-on-surface transition-colors cursor-pointer"
+                  >
+                    Return to signup
+                  </button>
+                  <span>•</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('login');
+                      setErrorMsg(null);
+                      setInfoMsg(null);
+                      onModeChange?.('login');
+                    }}
+                    className="text-primary hover:underline transition-colors cursor-pointer"
+                  >
+                    Switch to Sign In
+                  </button>
+                </div>
               </div>
             </form>
           ) : (
@@ -606,6 +661,39 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   </>
                 )}
               </button>
+
+              {/* Mode Switching Helper */}
+              <div className="flex items-center justify-between text-xs pt-1 px-1 text-on-surface-variant">
+                <span>{mode === 'signup' ? 'Already registered?' : 'Need an account?'}</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = mode === 'signup' ? 'login' : 'signup';
+                      setMode(next);
+                      setErrorMsg(null);
+                      setInfoMsg(null);
+                      onModeChange?.(next);
+                    }}
+                    className="font-semibold text-primary hover:underline cursor-pointer"
+                  >
+                    {mode === 'signup' ? 'Sign In' : 'Sign Up'}
+                  </button>
+                  <span>•</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVerificationEmail(email);
+                      setMode('verify');
+                      setErrorMsg(null);
+                      setInfoMsg(null);
+                    }}
+                    className="font-semibold text-secondary hover:underline cursor-pointer"
+                  >
+                    Verify Email
+                  </button>
+                </div>
+              </div>
             </form>
           )}
 

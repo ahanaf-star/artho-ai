@@ -19,8 +19,8 @@ import { authService, AuthSession } from './services/authService';
 import { userService } from './services/userService';
 import { apiService } from './services/apiService';
 import { financialDataService } from './services/financialDataService';
-import { calculateFinancialHealthScore, getLocalDateString } from './services/financialCalculations';
-import { Transaction, SavingsGoal, UserProfile, CustomCategory } from './types/financial';
+import { calculateFinancialHealthScore, getLocalDateString, normalizeTransactionCategory } from './services/financialCalculations';
+import { Transaction, SavingsGoal, UserProfile, CustomCategory, CategoryName } from './types/financial';
 import { fetchExchangeRates, getLoadedRates, ExchangeRatesState } from './services/currencyService';
 
 const PRIVATE_SCREENS: NavScreen[] = [
@@ -274,8 +274,12 @@ export default function App() {
         apiService.getCategories(userId),
       ]);
       if (backendTxs && Array.isArray(backendTxs)) {
-        setTransactions(backendTxs);
-        financialDataService.saveTransactions(userId, backendTxs);
+        const normalizedTxs = backendTxs.map((t) => ({
+          ...t,
+          category: normalizeTransactionCategory(t) as CategoryName,
+        }));
+        setTransactions(normalizedTxs);
+        financialDataService.saveTransactions(userId, normalizedTxs);
       }
       if (backendGoals && Array.isArray(backendGoals)) {
         setGoals(backendGoals);
@@ -306,7 +310,10 @@ export default function App() {
   // When user signs in or changes, reload user-specific data
   const handleAuthenticated = async (session: AuthSession) => {
     setCurrentUser(session.user);
-    const userTxs = financialDataService.getTransactions(session.user.id);
+    const userTxs = financialDataService.getTransactions(session.user.id).map((t) => ({
+      ...t,
+      category: normalizeTransactionCategory(t) as CategoryName,
+    }));
     const userGoals = financialDataService.getGoals(session.user.id);
     const userCats = financialDataService.getCategories(session.user.id);
     setTransactions(userTxs);

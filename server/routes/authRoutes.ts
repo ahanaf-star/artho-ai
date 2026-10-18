@@ -16,7 +16,15 @@ router.post('/signup', signup);
 router.post('/login', login);
 router.post('/verify-email', verifyEmail);
 router.post('/resend-verification', resendVerification);
-router.get('/test-verification-code', getTestVerificationCodeEndpoint);
+
+// Strictly restrict test verification code retrieval to test environments
+router.get('/test-verification-code', (req, res) => {
+  if (process.env.NODE_ENV !== 'test' && process.env.ENABLE_TEST_AUTH_ENDPOINTS !== 'true') {
+    return res.status(404).json({ error: 'Not Found' });
+  }
+  return getTestVerificationCodeEndpoint(req, res);
+});
+
 router.post('/logout', logout);
 router.get('/me', requireAuth, getMe);
 
