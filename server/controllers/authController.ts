@@ -5,11 +5,21 @@ import { UserModel } from '../models/User';
 import { isDbConnected } from '../config/database';
 import { INITIAL_USER } from '../../src/data/mockUser';
 import { AuthenticatedRequest } from '../middleware/authMiddleware';
-import { validateSignupEmail, normalizeEmail } from '../utils/emailValidation';
+import {
+  validateSignupEmailAsync,
+  validateEmailFormat,
+  validateEmailDomainDns,
+  normalizeEmail,
+} from '../utils/emailValidation';
 import { emailService } from '../services/emailService';
 import { googleAuthService } from '../services/googleAuthService';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'arthobachao_secure_jwt_secret_key_2026_dev';
+
+/**
+ * Maximum incorrect verification attempts before code is invalidated
+ */
+export const MAX_VERIFICATION_ATTEMPTS = 5;
 
 /**
  * In-memory fallback user registry for standalone/offline development and testing
@@ -52,30 +62,15 @@ function sanitizeUser(user: any): any {
   delete plain.emailVerificationOtp;
   delete plain.emailVerificationToken;
   delete plain.emailVerificationExpires;
+  delete plain.emailVerificationAttempts;
   delete plain.__v;
   return plain;
 }
 
 /**
- * Helper to find user in MongoDB or in-memory fallback
- */
-async function findUserByEmailOrId(identifier: string): Promise<any | null> {
-  const clean = identifier.trim().toLowerCase();
-  if (isDbConnected()) {
-    return await UserModel.findOne({
-      $or: [
-        { email: clean },
-        { customId: identifier },
-      ],
-    });
-  }
-  return fallbackUsers.get(clean) || Array.from(fallbackUsers.values()).find((u) => u.id === identifier || u.customId === identifier) || null;
-}
-
-/**
  * POST /api/auth/signup
  * Register a new user with secure email validation, disposable domain blocking,
- * and email verification initiation.
+ * DNS mail exchanger verification, and email verification initiation.
  */
 export async function signup(req: Request, res: Response) {
   const { name, email, password, preferredLanguage, monthlyIncome } = req.body;
@@ -88,8 +83,8 @@ export async function signup(req: Request, res: Response) {
     });
   }
 
-  // 2. Comprehensive Email Validation: Format, Normalization, & Disposable Email Blocking
-  const emailValidation = validateSignupEmail(email, isBangla);
+  // 2. Comprehensive Email Validation: Format, Disposable Blocking, and DNS MX/A Record Validation
+  const emailValidation = await validateSignupEmailAsync(email, isBangla);
   if (!emailValidation.isValid) {
     return res.status(400).json({ error: emailValidation.error });
   }
@@ -123,12 +118,24 @@ export async function signup(req: Request, res: Response) {
         });
       }
 
-      // If user exists but is unverified, refresh verification code and resend
+      // Check resend rate limit (60s cooldown) for unverified existing user
+      const rateCheck = emailService.canResendVerification(existingUser.emailVerificationSentAt);
+      if (!rateCheck.allowed) {
+        return res.status(429).json({
+          error: `Please wait ${rateCheck.waitSeconds} seconds before requesting a new code.`,
+          retryAfter: rateCheck.waitSeconds,
+          requiresVerification: true,
+          email: cleanEmail,
+        });
+      }
+
+      // Refresh verification credentials and reset attempt counter
       const { code, token, expiresAt } = emailService.generateVerificationCredentials();
       existingUser.emailVerificationOtp = code;
       existingUser.emailVerificationToken = token;
       existingUser.emailVerificationExpires = expiresAt;
       existingUser.emailVerificationSentAt = new Date();
+      existingUser.emailVerificationAttempts = 0;
 
       if (isDbConnected()) {
         await existingUser.save();
@@ -136,7 +143,7 @@ export async function signup(req: Request, res: Response) {
         fallbackUsers.set(cleanEmail, existingUser);
       }
 
-      const emailResult = await emailService.sendVerificationEmail({
+      await emailService.sendVerificationEmail({
         to: cleanEmail,
         name: existingUser.name,
         code,
@@ -149,7 +156,6 @@ export async function signup(req: Request, res: Response) {
           : 'An unverified account with this email already exists. A new verification code has been sent.',
         requiresVerification: true,
         email: cleanEmail,
-        devOtp: emailResult.devCode,
       });
     }
 
@@ -180,6 +186,7 @@ export async function signup(req: Request, res: Response) {
       emailVerificationToken: token,
       emailVerificationExpires: expiresAt,
       emailVerificationSentAt: new Date(),
+      emailVerificationAttempts: 0,
       authProvider: 'local',
       city: 'Dhaka',
       tagline: 'Standard Member',
@@ -205,8 +212,8 @@ export async function signup(req: Request, res: Response) {
       createdUser = userData;
     }
 
-    // 7. Dispatch verification email
-    const emailResult = await emailService.sendVerificationEmail({
+    // 7. Dispatch verification email (never expose code in client response)
+    await emailService.sendVerificationEmail({
       to: cleanEmail,
       name: name.trim(),
       code,
@@ -219,7 +226,6 @@ export async function signup(req: Request, res: Response) {
         : 'Registration successful! Please check your email for the 6-digit verification code.',
       requiresVerification: true,
       email: cleanEmail,
-      devOtp: emailResult.devCode,
     });
   } catch (error: any) {
     console.error('Error during signup:', error.message);
@@ -231,6 +237,7 @@ export async function signup(req: Request, res: Response) {
  * POST /api/auth/verify-email
  * Verifies email address using 6-digit OTP code or direct URL token.
  * Grants authenticated session upon successful verification.
+ * Enforces rate limiting on incorrect attempts and expiration.
  */
 export async function verifyEmail(req: Request, res: Response) {
   const { email, code, token } = req.body;
@@ -274,13 +281,56 @@ export async function verifyEmail(req: Request, res: Response) {
       });
     }
 
+    // Check attempt limits
+    if ((user.emailVerificationAttempts || 0) >= MAX_VERIFICATION_ATTEMPTS) {
+      user.emailVerificationOtp = undefined;
+      user.emailVerificationToken = undefined;
+      user.emailVerificationExpires = undefined;
+      if (isDbConnected()) {
+        await user.save();
+      } else {
+        fallbackUsers.set(cleanEmail, user);
+      }
+      return res.status(429).json({
+        error: 'Too many incorrect verification attempts. For your security, this verification code has been invalidated. Please request a new code.',
+        tooManyAttempts: true,
+      });
+    }
+
     // Verify OTP code or token
-    const isCodeMatch = code && typeof code === 'string' && user.emailVerificationOtp && code.trim() === user.emailVerificationOtp.trim();
-    const isTokenMatch = token && typeof token === 'string' && user.emailVerificationToken && token.trim() === user.emailVerificationToken.trim();
+    const isCodeMatch =
+      code && typeof code === 'string' && user.emailVerificationOtp && code.trim() === user.emailVerificationOtp.trim();
+    const isTokenMatch =
+      token && typeof token === 'string' && user.emailVerificationToken && token.trim() === user.emailVerificationToken.trim();
 
     if (!isCodeMatch && !isTokenMatch) {
+      user.emailVerificationAttempts = (user.emailVerificationAttempts || 0) + 1;
+      const remaining = MAX_VERIFICATION_ATTEMPTS - user.emailVerificationAttempts;
+
+      if (remaining <= 0) {
+        user.emailVerificationOtp = undefined;
+        user.emailVerificationToken = undefined;
+        user.emailVerificationExpires = undefined;
+        if (isDbConnected()) {
+          await user.save();
+        } else {
+          fallbackUsers.set(cleanEmail, user);
+        }
+        return res.status(429).json({
+          error: 'Too many incorrect verification attempts. For your security, this verification code has been invalidated. Please request a new code.',
+          tooManyAttempts: true,
+        });
+      }
+
+      if (isDbConnected()) {
+        await user.save();
+      } else {
+        fallbackUsers.set(cleanEmail, user);
+      }
+
       return res.status(400).json({
-        error: 'Invalid verification code. Please check and try again.',
+        error: `Invalid verification code. You have ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`,
+        remainingAttempts: remaining,
       });
     }
 
@@ -289,6 +339,7 @@ export async function verifyEmail(req: Request, res: Response) {
     user.emailVerificationOtp = undefined;
     user.emailVerificationToken = undefined;
     user.emailVerificationExpires = undefined;
+    user.emailVerificationAttempts = 0;
     user.updatedAt = new Date();
 
     if (isDbConnected()) {
@@ -321,7 +372,18 @@ export async function resendVerification(req: Request, res: Response) {
     return res.status(400).json({ error: 'Email address is required.' });
   }
 
+  const formatCheck = validateEmailFormat(email);
+  if (!formatCheck.isValid) {
+    return res.status(400).json({ error: formatCheck.error });
+  }
+
   const cleanEmail = normalizeEmail(email).email;
+
+  // Domain DNS validation
+  const domainValidation = await validateEmailDomainDns(normalizeEmail(email).domain);
+  if (!domainValidation.isValid) {
+    return res.status(400).json({ error: domainValidation.error });
+  }
 
   try {
     let user: any = null;
@@ -353,6 +415,7 @@ export async function resendVerification(req: Request, res: Response) {
     user.emailVerificationToken = token;
     user.emailVerificationExpires = expiresAt;
     user.emailVerificationSentAt = new Date();
+    user.emailVerificationAttempts = 0; // Reset attempts upon fresh code generation
 
     if (isDbConnected()) {
       await user.save();
@@ -360,7 +423,7 @@ export async function resendVerification(req: Request, res: Response) {
       fallbackUsers.set(cleanEmail, user);
     }
 
-    const emailResult = await emailService.sendVerificationEmail({
+    await emailService.sendVerificationEmail({
       to: cleanEmail,
       name: user.name,
       code,
@@ -370,7 +433,6 @@ export async function resendVerification(req: Request, res: Response) {
     return res.json({
       message: 'A fresh verification code has been sent to your email.',
       email: cleanEmail,
-      devOtp: emailResult.devCode,
     });
   } catch (error: any) {
     console.error('Error resending verification code:', error.message);
@@ -597,4 +659,32 @@ export async function getMe(req: AuthenticatedRequest, res: Response) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
   return res.json({ user: sanitizeUser(req.user) });
+}
+
+/**
+ * GET /api/auth/test-verification-code?email=...
+ * Strictly internal helper endpoint for local test runners (blocked in production and external IPs)
+ */
+export async function getTestVerificationCode(req: Request, res: Response) {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ error: 'Endpoint not found.' });
+  }
+
+  const ip = req.ip || req.socket.remoteAddress;
+  const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+  if (!isLocal) {
+    return res.status(403).json({ error: 'Access denied: local tests only.' });
+  }
+
+  const email = req.query.email as string;
+  if (!email) {
+    return res.status(400).json({ error: 'Email parameter required.' });
+  }
+
+  const code = emailService.getTestVerificationCode(email);
+  if (!code) {
+    return res.status(404).json({ error: 'No test code found for specified email.' });
+  }
+
+  return res.json({ code });
 }

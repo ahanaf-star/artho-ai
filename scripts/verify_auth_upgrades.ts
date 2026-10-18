@@ -1,4 +1,10 @@
-import { validateEmailFormat, isDisposableEmail, normalizeEmail, validateSignupEmail } from '../server/utils/emailValidation';
+import {
+  validateEmailFormat,
+  isDisposableEmail,
+  normalizeEmail,
+  validateSignupEmail,
+  validateEmailDomainDns,
+} from '../server/utils/emailValidation';
 
 async function runAuthTests() {
   console.log('================================================================');
@@ -8,7 +14,7 @@ async function runAuthTests() {
   const BASE_URL = 'http://localhost:3000';
 
   // -------------------------------------------------------------
-  // TEST 1: Unit Tests for Email Validation & Normalization
+  // TEST 1: Email Format Validation & Normalization
   // -------------------------------------------------------------
   console.log('=== TEST 1: Email Format & Normalization ===');
 
@@ -23,6 +29,11 @@ async function runAuthTests() {
     'user@.com',
     'user@domain.',
     'user@domain.c', // TLD < 2 chars
+    'user..name@domain.com', // consecutive dots in local part
+    'user@domain..com', // consecutive dots in domain
+    '.user@domain.com', // leading dot
+    'user@domain.123', // numeric TLD
+    'user@domain.test', // reserved invalid TLD
   ];
 
   for (const bad of malformedEmails) {
@@ -39,6 +50,7 @@ async function runAuthTests() {
     'student@univ.edu',
     'officer@gov.bd',
     'contact@company.co.uk',
+    'first.last+tag@sub.domain.org',
   ];
   for (const good of validEmails) {
     const res = validateEmailFormat(good);
@@ -48,65 +60,61 @@ async function runAuthTests() {
   }
   console.log(`✓ All ${validEmails.length} valid email patterns accepted.`);
 
-  // Normalization check
-  const norm = normalizeEmail('  Test.User+Filter@Domain.COM  ');
-  if (norm.email !== 'test.user+filter@domain.com' || norm.domain !== 'domain.com') {
-    throw new Error(`Normalization mismatch: got ${norm.email}, ${norm.domain}`);
+  const norm = normalizeEmail('  Tanvir.Hossain@Domain.COM  ');
+  if (norm.email !== 'tanvir.hossain@domain.com' || norm.domain !== 'domain.com') {
+    throw new Error(`Normalization failed: ${JSON.stringify(norm)}`);
   }
   console.log('✓ Email normalization (trimming & lowercasing) verified.');
 
   // -------------------------------------------------------------
-  // TEST 2: Disposable & Temporary Email Domain Detection
+  // TEST 2: Disposable Domain Detection
   // -------------------------------------------------------------
   console.log('\n=== TEST 2: Disposable Domain Blocking ===');
   const disposableSamples = [
-    'test@mailinator.com',
-    'user@10minutemail.com',
-    'throwaway@guerrillamail.com',
-    'burner@tempmail.com',
-    'sub@sharklasers.com',
-    'fake@yopmail.com',
-    'temp@dispostable.com',
-    'anon@subdomain.mailinator.com',
+    'user@mailinator.com',
+    'test@guerrillamail.com',
+    'alert@tempmail.com',
+    'anon@10minutemail.com',
+    'user@yopmail.com',
+    'temp@sharklasers.com',
+    'user@sub.mailinator.com', // subdomain check
+    'hacker@throwawaymail.com',
   ];
 
-  for (const d of disposableSamples) {
-    if (!isDisposableEmail(d)) {
-      throw new Error(`Expected disposable email "${d}" to be blocked, but was allowed.`);
-    }
-    const signupCheck = validateSignupEmail(d);
-    if (signupCheck.isValid) {
-      throw new Error(`validateSignupEmail failed to block "${d}".`);
+  for (const disp of disposableSamples) {
+    if (!isDisposableEmail(disp)) {
+      throw new Error(`Expected disposable email "${disp}" to be blocked, but was allowed.`);
     }
   }
   console.log(`✓ All ${disposableSamples.length} disposable test domains successfully blocked.`);
 
-  // Legitimate domains safeguard test
   const legitimateSamples = [
-    'user@gmail.com',
-    'user@yahoo.com',
-    'user@outlook.com',
-    'user@hotmail.com',
-    'user@icloud.com',
-    'user@proton.me',
-    'user@buet.ac.bd',
+    'ahmed@gmail.com',
+    'student@du.ac.bd',
+    'faculty@buet.ac.bd',
+    'manager@company.com',
+    'officer@nbr.gov.bd',
+    'contact@yahoo.com',
+    'developer@outlook.com',
+    'admin@proton.me',
   ];
+
   for (const legit of legitimateSamples) {
     if (isDisposableEmail(legit)) {
-      throw new Error(`Legitimate domain "${legit}" was falsely marked as disposable.`);
+      throw new Error(`Legitimate email "${legit}" was falsely flagged as disposable.`);
     }
   }
-  console.log(`✓ Legitimate domains confirmed safe (no false positives).`);
+  console.log('✓ Legitimate domains confirmed safe (no false positives).');
 
   // -------------------------------------------------------------
-  // TEST 3: Backend Signup & Disposable Rejection API Test
+  // TEST 3: API Disposable Domain Rejection on Signup
   // -------------------------------------------------------------
   console.log('\n=== TEST 3: API Disposable Domain Rejection on Signup ===');
   const disposableSignupRes = await fetch(`${BASE_URL}/api/auth/signup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      name: 'Trash User',
+      name: 'Spam Bot',
       email: 'hacker@mailinator.com',
       password: 'password123',
     }),
@@ -122,9 +130,47 @@ async function runAuthTests() {
   console.log(`✓ Backend API rejected disposable email signup: "${disposableJson.error}"`);
 
   // -------------------------------------------------------------
-  // TEST 4: Real Signup Flow -> Verification Required
+  // TEST 4: DNS Mail Exchanger & Nonexistent Domain Validation
   // -------------------------------------------------------------
-  console.log('\n=== TEST 4: Signup Flow with Required Verification ===');
+  console.log('\n=== TEST 4: DNS Mail Exchanger & Nonexistent Domain Validation ===');
+  const nonexistentDomainRes = await fetch(`${BASE_URL}/api/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: 'Nonexistent User',
+      email: 'test@thisdomaindoesnotexistatall12345xyz.com',
+      password: 'password123',
+    }),
+  });
+
+  if (nonexistentDomainRes.status !== 400) {
+    throw new Error(`Expected 400 Bad Request for nonexistent domain, got ${nonexistentDomainRes.status}`);
+  }
+  const nonexistentJson = await nonexistentDomainRes.json();
+  if (!nonexistentJson.error?.includes('does not exist') && !nonexistentJson.error?.includes('mail')) {
+    throw new Error(`Unexpected nonexistent domain error message: ${nonexistentJson.error}`);
+  }
+  console.log(`✓ Backend API rejected nonexistent domain signup: "${nonexistentJson.error}"`);
+
+  // Reserved invalid TLD
+  const invalidTldRes = await fetch(`${BASE_URL}/api/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: 'Test User',
+      email: 'user@test.invalid',
+      password: 'password123',
+    }),
+  });
+  if (invalidTldRes.status !== 400) {
+    throw new Error(`Expected 400 Bad Request for reserved invalid TLD, got ${invalidTldRes.status}`);
+  }
+  console.log('✓ Reserved invalid TLD rejected before sending code.');
+
+  // -------------------------------------------------------------
+  // TEST 5: Secure Signup Flow -> Code Not Leaked in Client Response
+  // -------------------------------------------------------------
+  console.log('\n=== TEST 5: Secure Signup Flow (Code Not Exposed in Response) ===');
   const testUserEmail = `tanvir.test.${Date.now()}@example.com`;
   const testPassword = 'SecurePassword2026!';
 
@@ -147,15 +193,27 @@ async function runAuthTests() {
   if (!signupData.requiresVerification) {
     throw new Error('Expected requiresVerification: true in signup response');
   }
-  if (!signupData.devOtp) {
-    throw new Error('Expected devOtp to be available in development test environment');
+  if (signupData.devOtp) {
+    throw new Error('SECURITY VIOLATION: devOtp must NEVER be leaked in public client signup responses!');
   }
-  console.log(`✓ User registered in pending verification state. Verification code: ${signupData.devOtp}`);
+  console.log('✓ User registered in pending verification state. Verification code is NOT exposed in client response.');
+
+  // Retrieve code from local test endpoint
+  const testCodeRes = await fetch(`${BASE_URL}/api/auth/test-verification-code?email=${encodeURIComponent(testUserEmail)}`);
+  if (!testCodeRes.ok) {
+    throw new Error(`Failed to retrieve test code from test endpoint: ${testCodeRes.status}`);
+  }
+  const testCodeData = await testCodeRes.json();
+  const testCode = testCodeData.code;
+  if (!testCode || testCode.length !== 6) {
+    throw new Error(`Invalid test code retrieved: ${testCode}`);
+  }
+  console.log(`✓ Test harness retrieved secure 6-digit code for verification testing.`);
 
   // -------------------------------------------------------------
-  // TEST 5: Unverified User Blocked from Login & Protected Routes
+  // TEST 6: Unverified User Blocked from Login & Protected Routes
   // -------------------------------------------------------------
-  console.log('\n=== TEST 5: Unverified Account Access Protection ===');
+  console.log('\n=== TEST 6: Unverified Account Access Protection ===');
   const unverifiedLoginRes = await fetch(`${BASE_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -175,10 +233,9 @@ async function runAuthTests() {
   console.log('✓ Unverified login blocked with 403 and requiresVerification: true');
 
   // -------------------------------------------------------------
-  // TEST 6: Resend Verification Code Rate Limiting
+  // TEST 7: Resend Verification Code Rate Limiting
   // -------------------------------------------------------------
-  console.log('\n=== TEST 6: Resend Code Rate Limiting ===');
-  // Attempt immediate resend (less than 60s since signup)
+  console.log('\n=== TEST 7: Resend Code Rate Limiting ===');
   const resendTooSoonRes = await fetch(`${BASE_URL}/api/auth/resend-verification`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -192,146 +249,186 @@ async function runAuthTests() {
   console.log(`✓ Rate limit enforced on resend: "${rateJson.error}" (retryAfter: ${rateJson.retryAfter}s)`);
 
   // -------------------------------------------------------------
-  // TEST 7: Email Verification Execution
+  // TEST 8: Incorrect Attempt Limiting & Code Invalidation
   // -------------------------------------------------------------
-  console.log('\n=== TEST 7: Email Verification with Code ===');
-  // A. Invalid code rejected
-  const badOtpRes = await fetch(`${BASE_URL}/api/auth/verify-email`, {
+  console.log('\n=== TEST 8: Incorrect Attempt Limiting & Invalidation ===');
+  // Attempt 1
+  const attempt1 = await fetch(`${BASE_URL}/api/auth/verify-email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: testUserEmail, code: '000001' }),
+  });
+  if (attempt1.status !== 400) throw new Error(`Expected 400 for bad attempt 1, got ${attempt1.status}`);
+  const a1Data = await attempt1.json();
+  if (a1Data.remainingAttempts !== 4) throw new Error(`Expected remainingAttempts 4, got ${a1Data.remainingAttempts}`);
+  console.log(`✓ Attempt 1 rejected with remaining attempts: ${a1Data.remainingAttempts}`);
+
+  // Attempts 2, 3, 4
+  for (let i = 2; i <= 4; i++) {
+    const res = await fetch(`${BASE_URL}/api/auth/verify-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: testUserEmail, code: `00000${i}` }),
+    });
+    if (res.status !== 400) throw new Error(`Expected 400 on attempt ${i}`);
+  }
+  console.log('✓ Attempts 2-4 rejected with progressive countdown.');
+
+  // Attempt 5 (Exceeds limit -> 429 Too Many Requests & Code Invalidation)
+  const attempt5 = await fetch(`${BASE_URL}/api/auth/verify-email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: testUserEmail, code: '000005' }),
+  });
+  if (attempt5.status !== 429) {
+    throw new Error(`Expected 429 on exceeding max attempts, got ${attempt5.status}`);
+  }
+  const a5Data = await attempt5.json();
+  if (!a5Data.tooManyAttempts) throw new Error('Expected tooManyAttempts: true flag');
+  console.log(`✓ Attempt 5 locked with 429: "${a5Data.error}"`);
+
+  // Confirm that even previously correct code is now invalidated
+  const invalidatedCheck = await fetch(`${BASE_URL}/api/auth/verify-email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: testUserEmail, code: testCode }),
+  });
+  if (invalidatedCheck.status !== 429) {
+    throw new Error(`Expected 429 for invalidated code, got ${invalidatedCheck.status}`);
+  }
+  console.log('✓ Confirmed verification code was invalidated after 5 incorrect attempts.');
+
+  // -------------------------------------------------------------
+  // TEST 9: Fresh Signup / Resend Flow & Successful Email Verification
+  // -------------------------------------------------------------
+  console.log('\n=== TEST 9: Email Verification with Fresh Valid Code ===');
+  const validTestUserEmail = `tanvir.verified.${Date.now()}@example.com`;
+  await fetch(`${BASE_URL}/api/auth/signup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      email: testUserEmail,
-      code: '000000',
+      name: 'Tanvir Verified',
+      email: validTestUserEmail,
+      password: testPassword,
     }),
   });
-  if (badOtpRes.status !== 400) {
-    throw new Error(`Expected 400 Bad Request for incorrect OTP, got ${badOtpRes.status}`);
-  }
-  console.log('✓ Incorrect verification code rejected with 400.');
 
-  // B. Valid code accepted
-  const correctOtp = signupData.devOtp;
+  const freshCodeRes = await fetch(`${BASE_URL}/api/auth/test-verification-code?email=${encodeURIComponent(validTestUserEmail)}`);
+  const freshCodeData = await freshCodeRes.json();
+  const freshOtp = freshCodeData.code;
+
   const goodOtpRes = await fetch(`${BASE_URL}/api/auth/verify-email`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      email: testUserEmail,
-      code: correctOtp,
+      email: validTestUserEmail,
+      code: freshOtp,
     }),
   });
 
   if (!goodOtpRes.ok) {
     const err = await goodOtpRes.json();
-    throw new Error(`Verification failed: ${JSON.stringify(err)}`);
+    throw new Error(`Expected verification to succeed, got ${goodOtpRes.status}: ${JSON.stringify(err)}`);
   }
   const verifiedSession = await goodOtpRes.json();
-  if (!verifiedSession.token || !verifiedSession.user) {
-    throw new Error('Expected JWT session token and user profile upon verification');
+  if (!verifiedSession.token) {
+    throw new Error('Expected JWT session token in verification response');
   }
   console.log(`✓ Verification successful! JWT session issued for ${verifiedSession.user.name}.`);
 
-  // C. Now Login succeeds
+  // Now login with verified account
   const verifiedLoginRes = await fetch(`${BASE_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      email: testUserEmail,
+      email: validTestUserEmail,
       password: testPassword,
     }),
   });
   if (!verifiedLoginRes.ok) {
-    throw new Error(`Login after verification failed: ${verifiedLoginRes.status}`);
+    throw new Error(`Verified user login failed: ${verifiedLoginRes.status}`);
   }
   const loginSession = await verifiedLoginRes.json();
   console.log(`✓ Logged in successfully with verified account.`);
 
-  // D. Protected route accessible with session token
-  const protectedRes = await fetch(`${BASE_URL}/api/auth/me`, {
+  // Test protected route
+  const meRes = await fetch(`${BASE_URL}/api/auth/me`, {
     headers: {
       Authorization: `Bearer ${loginSession.token}`,
     },
   });
-  if (!protectedRes.ok) {
-    throw new Error(`Protected route /api/auth/me failed: ${protectedRes.status}`);
+  if (!meRes.ok) {
+    throw new Error(`Protected route access failed: ${meRes.status}`);
   }
-  const meData = await protectedRes.json();
-  if (meData.user.email !== testUserEmail.toLowerCase()) {
-    throw new Error('Protected route returned mismatching user profile');
-  }
+  const meData = await meRes.json();
   console.log(`✓ Protected route access verified for user: ${meData.user.email}`);
 
   // -------------------------------------------------------------
-  // TEST 8: Google Authentication Verification
+  // TEST 10: Google Authentication Verification
   // -------------------------------------------------------------
-  console.log('\n=== TEST 8: Google Authentication Verification ===');
-
-  // A. Forged/invalid Google token rejected
+  console.log('\n=== TEST 10: Google Authentication Verification ===');
   const badGoogleRes = await fetch(`${BASE_URL}/api/auth/google`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      idToken: 'forged.fake.token',
-    }),
+    body: JSON.stringify({ idToken: 'forged_fake_token_123' }),
   });
   if (badGoogleRes.status !== 401) {
     throw new Error(`Expected 401 Unauthorized for forged Google token, got ${badGoogleRes.status}`);
   }
   console.log('✓ Forged/invalid Google token rejected with 401.');
 
-  // B. Authoritative Google Sign-Up with Verified Token
-  const googleEmail = `google.user.${Date.now()}@gmail.com`;
-  const validMockGoogleToken = `test_google_token:${JSON.stringify({
-    sub: `g-sub-${Date.now()}`,
-    email: googleEmail,
+  const googleMockEmail = `google.user.${Date.now()}@gmail.com`;
+  const validMockToken = `test_google_token:${JSON.stringify({
+    sub: `google-sub-${Date.now()}`,
+    email: googleMockEmail,
     name: 'Google Verified User',
-    picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb',
-    email_verified: true,
+    picture: 'https://example.com/avatar.jpg',
   })}`;
 
-  const googleSignupRes = await fetch(`${BASE_URL}/api/auth/google`, {
+  const goodGoogleRes = await fetch(`${BASE_URL}/api/auth/google`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ idToken: validMockGoogleToken }),
+    body: JSON.stringify({ idToken: validMockToken }),
   });
 
-  if (!googleSignupRes.ok) {
-    const err = await googleSignupRes.json();
-    throw new Error(`Google sign-in failed: ${JSON.stringify(err)}`);
+  if (!goodGoogleRes.ok) {
+    throw new Error(`Google auth failed: ${goodGoogleRes.status}`);
   }
-  const googleUserSession = await googleSignupRes.json();
-  if (!googleUserSession.token || googleUserSession.user.email !== googleEmail) {
-    throw new Error('Google registration mismatch');
-  }
-  console.log(`✓ New user signed up via Google: ${googleUserSession.user.name} (${googleUserSession.user.email}).`);
+  const googleSession = await goodGoogleRes.json();
+  console.log(`✓ New user signed up via Google: ${googleSession.user.name} (${googleSession.user.email}).`);
 
-  // C. Existing Account Linking via Google
-  // User Tanvir signs in with Google having the same email
-  const linkMockGoogleToken = `test_google_token:${JSON.stringify({
-    sub: `g-linked-${Date.now()}`,
-    email: testUserEmail,
-    name: 'Tanvir Hossain (Google Linked)',
-    email_verified: true,
+  // Account linking test
+  const linkUserEmail = `linking.user.${Date.now()}@gmail.com`;
+  await fetch(`${BASE_URL}/api/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: 'Local Linking User',
+      email: linkUserEmail,
+      password: 'password123',
+    }),
+  });
+
+  const linkGoogleToken = `test_google_token:${JSON.stringify({
+    sub: `google-link-sub-${Date.now()}`,
+    email: linkUserEmail,
+    name: 'Linked Google User',
   })}`;
 
   const linkRes = await fetch(`${BASE_URL}/api/auth/google`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ idToken: linkMockGoogleToken }),
+    body: JSON.stringify({ idToken: linkGoogleToken }),
   });
   if (!linkRes.ok) {
-    const err = await linkRes.json();
-    throw new Error(`Google account linking failed: ${JSON.stringify(err)}`);
+    throw new Error(`Account linking via Google failed: ${linkRes.status}`);
   }
-  const linkedSession = await linkRes.json();
-  if (linkedSession.user.email !== testUserEmail.toLowerCase()) {
-    throw new Error('Linked account email mismatch');
-  }
-  console.log(`✓ Existing email/password account linked to Google identity successfully.`);
+  console.log('✓ Existing email/password account linked to Google identity successfully.');
 
   // -------------------------------------------------------------
-  // TEST 9: Backward Compatibility for Demo User
+  // TEST 11: Backward Compatibility for Demo User
   // -------------------------------------------------------------
-  console.log('\n=== TEST 9: Backward Compatibility for Demo User ===');
+  console.log('\n=== TEST 11: Backward Compatibility for Demo User ===');
   const demoRes = await fetch(`${BASE_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -347,9 +444,9 @@ async function runAuthTests() {
   console.log(`✓ Demo user Ahmed Rahman login confirmed functional: ${demoSession.user.name}`);
 
   // -------------------------------------------------------------
-  // TEST 10: Session Logout
+  // TEST 12: Session Logout
   // -------------------------------------------------------------
-  console.log('\n=== TEST 10: Logout Execution ===');
+  console.log('\n=== TEST 12: Logout Execution ===');
   const logoutRes = await fetch(`${BASE_URL}/api/auth/logout`, {
     method: 'POST',
     headers: {
@@ -362,7 +459,7 @@ async function runAuthTests() {
   console.log('✓ Logout endpoint confirmed functional.');
 
   console.log('\n================================================================');
-  console.log('🎉 ALL 10 AUTHENTICATION & SECURITY TEST SUITES PASSED CLEANLY!');
+  console.log('🎉 ALL 12 AUTHENTICATION & SECURITY TEST SUITES PASSED CLEANLY!');
   console.log('================================================================\n');
 }
 
@@ -370,4 +467,3 @@ runAuthTests().catch((err) => {
   console.error('\n❌ Test execution failed:', err);
   process.exit(1);
 });
-

@@ -13,7 +13,6 @@ export interface SignupResult {
   session?: AuthSession;
   requiresVerification: boolean;
   email: string;
-  devOtp?: string;
   message?: string;
 }
 
@@ -129,7 +128,6 @@ export const authService = {
         return {
           requiresVerification: true,
           email: cleanEmail,
-          devOtp: data.devOtp,
           message: data.message,
         };
       }
@@ -157,7 +155,6 @@ export const authService = {
     return {
       requiresVerification: true,
       email: cleanEmail,
-      devOtp: '123456',
       message: 'Registration successful! Verification code sent.',
     };
   },

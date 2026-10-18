@@ -52,6 +52,7 @@ export interface IUser extends Document {
   emailVerificationOtp?: string;
   emailVerificationExpires?: Date;
   emailVerificationSentAt?: Date;
+  emailVerificationAttempts?: number;
   googleId?: string;
   authProvider?: 'local' | 'google';
   createdAt: Date;
@@ -160,6 +161,10 @@ const UserSchema = new Schema<IUser>(
     emailVerificationSentAt: {
       type: Date,
       required: false,
+    },
+    emailVerificationAttempts: {
+      type: Number,
+      default: 0,
     },
     googleId: {
       type: String,

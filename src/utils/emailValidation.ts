@@ -1,6 +1,6 @@
 /**
  * Client-side email validation and disposable domain detection utilities.
- * Mirrors server validation rules to provide instant feedback to users.
+ * Mirrors server validation rules to provide instant inline feedback to users.
  */
 
 const DISPOSABLE_DOMAINS = new Set<string>([
@@ -15,6 +15,7 @@ const DISPOSABLE_DOMAINS = new Set<string>([
   'discardmail.com',
   'disposablemail.com',
   'dispostable.com',
+  'emailfake.com',
   'emailondeck.com',
   'fakemailgenerator.com',
   'fakeinbox.com',
@@ -96,6 +97,15 @@ const TRUSTED_DOMAINS = new Set<string>([
   'hey.com',
 ]);
 
+const INVALID_TLDS = new Set<string>([
+  'invalid',
+  'test',
+  'localhost',
+  'local',
+  'onion',
+  'internal',
+]);
+
 export function normalizeEmail(email: string): { email: string; localPart: string; domain: string } {
   const trimmed = (email || '').trim().toLowerCase();
   const atIdx = trimmed.lastIndexOf('@');
@@ -114,41 +124,77 @@ export function validateEmailFormat(email: string): { isValid: boolean; error?: 
     return { isValid: false, error: 'Email address is required.' };
   }
 
-  const { email: cleanEmail, localPart, domain } = normalizeEmail(email);
-
-  if (!cleanEmail) {
-    return { isValid: false, error: 'Email address cannot be empty.' };
+  const trimmed = email.trim();
+  if (!trimmed) {
+    return { isValid: false, error: 'Email address cannot be empty or contain only whitespace.' };
   }
 
-  if (cleanEmail.length > 254) {
-    return { isValid: false, error: 'Email address exceeds maximum length of 254 characters.' };
+  if (trimmed.length > 254) {
+    return { isValid: false, error: 'Email address exceeds maximum allowed length of 254 characters.' };
   }
 
-  if (!cleanEmail.includes('@')) {
+  const atCount = (trimmed.match(/@/g) || []).length;
+  if (atCount === 0) {
     return { isValid: false, error: 'Email address must include an "@" symbol.' };
   }
+  if (atCount > 1) {
+    return { isValid: false, error: 'Email address cannot contain multiple "@" symbols.' };
+  }
+
+  const { email: cleanEmail, localPart, domain } = normalizeEmail(trimmed);
 
   if (!localPart) {
-    return { isValid: false, error: 'Email username part before "@" cannot be empty.' };
+    return { isValid: false, error: 'Email username before "@" cannot be empty.' };
   }
 
   if (localPart.length > 64) {
-    return { isValid: false, error: 'Email username part before "@" cannot exceed 64 characters.' };
+    return { isValid: false, error: 'Email username before "@" cannot exceed 64 characters.' };
+  }
+
+  if (localPart.startsWith('.') || localPart.endsWith('.') || localPart.includes('..')) {
+    return { isValid: false, error: 'Email username cannot start, end, or contain consecutive dots.' };
   }
 
   if (!domain) {
-    return { isValid: false, error: 'Email domain part after "@" cannot be empty.' };
+    return { isValid: false, error: 'Email domain after "@" cannot be empty.' };
+  }
+
+  if (domain.length > 253) {
+    return { isValid: false, error: 'Email domain exceeds maximum allowed length of 253 characters.' };
   }
 
   if (!domain.includes('.')) {
-    return { isValid: false, error: 'Email domain must contain a valid top-level domain extension (e.g. .com, .edu).' };
+    return { isValid: false, error: 'Email domain must contain a valid domain extension (e.g. .com, .edu).' };
   }
 
-  const parts = domain.split('.');
-  const tld = parts[parts.length - 1];
+  if (domain.startsWith('.') || domain.endsWith('.') || domain.includes('..')) {
+    return { isValid: false, error: 'Email domain cannot start, end, or contain consecutive dots.' };
+  }
 
+  const domainParts = domain.split('.');
+  for (const part of domainParts) {
+    if (!part || part.length > 63) {
+      return { isValid: false, error: 'Email domain labels must be between 1 and 63 characters.' };
+    }
+    if (part.startsWith('-') || part.endsWith('-')) {
+      return { isValid: false, error: 'Email domain labels cannot start or end with a hyphen.' };
+    }
+    if (!/^[a-z0-9-]+$/.test(part)) {
+      return { isValid: false, error: 'Email domain contains invalid characters.' };
+    }
+  }
+
+  const tld = domainParts[domainParts.length - 1];
   if (!tld || tld.length < 2) {
     return { isValid: false, error: 'Email domain has an invalid top-level domain extension.' };
+  }
+
+  if (!/^[a-z]+$/.test(tld)) {
+    return { isValid: false, error: 'Top-level domain extension must contain only letters.' };
+  }
+
+  if (INVALID_TLDS.has(tld)) {
+    return { isValid: false, error: `Domains ending in ".${tld}" are reserved and cannot receive public email.` };
   }
 
   const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
@@ -197,23 +243,26 @@ export function isDisposableEmail(emailOrDomain: string): boolean {
 export function validateSignupEmail(email: string, isBangla: boolean = false): {
   isValid: boolean;
   normalizedEmail: string;
+  domain: string;
   error?: string;
 } {
   const formatResult = validateEmailFormat(email);
+  const normalized = normalizeEmail(email);
+
   if (!formatResult.isValid) {
     return {
       isValid: false,
-      normalizedEmail: normalizeEmail(email).email,
-      error: isBangla ? 'অনুগ্রহ করে একটি সঠিক ইমেইল ঠিকানা লিখুন।' : formatResult.error,
+      normalizedEmail: normalized.email,
+      domain: normalized.domain,
+      error: formatResult.error,
     };
   }
 
-  const { email: cleanEmail, domain } = normalizeEmail(email);
-
-  if (isDisposableEmail(domain)) {
+  if (isDisposableEmail(normalized.domain)) {
     return {
       isValid: false,
-      normalizedEmail: cleanEmail,
+      normalizedEmail: normalized.email,
+      domain: normalized.domain,
       error: isBangla
         ? 'সাময়িক বা ডিসপোজেবল ইমেইল দিয়ে অ্যাকাউন্ট তৈরি করা যাবে না। অনুগ্রহ করে স্থায়ী ব্যক্তিগত বা অফিশিয়াল ইমেইল ব্যবহার করুন।'
         : 'Disposable and temporary email addresses are not permitted. Please use a permanent personal or work email address.',
@@ -222,7 +271,7 @@ export function validateSignupEmail(email: string, isBangla: boolean = false): {
 
   return {
     isValid: true,
-    normalizedEmail: cleanEmail,
+    normalizedEmail: normalized.email,
+    domain: normalized.domain,
   };
 }
-

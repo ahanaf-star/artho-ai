@@ -36,12 +36,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   // Email Verification State
   const [verificationEmail, setVerificationEmail] = useState('');
   const [otpCode, setOtpCode] = useState('');
-  const [devOtp, setDevOtp] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resendSuccessMsg, setResendSuccessMsg] = useState<string | null>(null);
 
   // UI & Loading States
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showGoogleConfigModal, setShowGoogleConfigModal] = useState(false);
 
@@ -94,12 +94,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     }
   }, [onAuthenticated]);
 
-  // Live pre-flight disposable domain warning on typing
+  // Live validation on email change
   const handleEmailChange = (val: string) => {
     setEmail(val);
+    setEmailError(null);
     setErrorMsg(null);
-    if (mode === 'signup' && val.includes('@')) {
-      const parts = val.split('@');
+
+    const trimmed = val.trim();
+    if (mode === 'signup' && trimmed.includes('@')) {
+      const parts = trimmed.split('@');
       if (parts[1] && isDisposableEmail(parts[1])) {
         setDisposableWarning('Notice: Disposable or temporary email domains are not allowed.');
       } else {
@@ -110,23 +113,50 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     }
   };
 
+  // Validate email field format inline
+  const validateEmailInput = (val: string): boolean => {
+    const trimmed = (val || '').trim();
+    if (!trimmed) {
+      setEmailError('Email address cannot be empty or contain only whitespace.');
+      return false;
+    }
+
+    const validation = validateSignupEmail(trimmed, false);
+    if (!validation.isValid) {
+      setEmailError(validation.error || 'Please enter a valid email address.');
+      return false;
+    }
+
+    setEmailError(null);
+    return true;
+  };
+
   // Handle Form Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
 
     setErrorMsg(null);
+    setEmailError(null);
+
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setEmailError('Email address cannot be empty or contain only whitespace.');
+      return;
+    }
+
+    // Strict inline format validation before sending any code or backend request
+    const isEmailValid = validateEmailInput(trimmedEmail);
+    if (!isEmailValid) {
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       if (mode === 'signup') {
         if (!name.trim()) {
           throw new Error('Please enter your full name.');
-        }
-
-        const emailValidation = validateSignupEmail(email, false);
-        if (!emailValidation.isValid) {
-          throw new Error(emailValidation.error);
         }
 
         if (password !== confirmPassword) {
@@ -136,11 +166,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           throw new Error('Password must be at least 6 characters long.');
         }
 
-        const result = await authService.signup(name, email, password, 'en');
+        const result = await authService.signup(name, trimmedEmail, password, 'en');
 
         if (result.requiresVerification) {
           setVerificationEmail(result.email);
-          setDevOtp(result.devOtp || null);
           setResendCooldown(60);
           setMode('verify');
           return;
@@ -150,12 +179,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           onAuthenticated(result.session);
         }
       } else if (mode === 'login') {
-        const session = await authService.login(email, password);
+        const session = await authService.login(trimmedEmail, password);
         onAuthenticated(session);
       }
     } catch (err: any) {
       if (err?.requiresVerification) {
-        setVerificationEmail(err.email || email);
+        setVerificationEmail(err.email || trimmedEmail);
         setResendCooldown(60);
         setMode('verify');
         setErrorMsg(err.message || 'Please verify your email address to log in.');
@@ -199,9 +228,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setIsLoading(true);
 
     try {
-      const result = await authService.resendVerification(verificationEmail);
+      await authService.resendVerification(verificationEmail);
       setResendCooldown(60);
-      if (result.devOtp) setDevOtp(result.devOtp);
       setResendSuccessMsg('A fresh verification code has been sent to your email.');
       setTimeout(() => setResendSuccessMsg(null), 5000);
     } catch (err: any) {
@@ -244,7 +272,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       return;
     }
 
-    // If Google Identity Services SDK is ready, trigger prompt
     if (window.google?.accounts?.id) {
       try {
         window.google.accounts.id.initialize({
@@ -281,7 +308,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     try {
       const mockPayload = {
         sub: `google-user-${Date.now()}`,
-        email: email && !isDisposableEmail(email) ? email : 'google.user@example.com',
+        email: email && !isDisposableEmail(email) ? email.trim().toLowerCase() : 'google.user@example.com',
         name: name || 'Google Verified User',
         picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
       };
@@ -349,19 +376,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   {verificationEmail}
                 </span>
               </div>
-
-              {/* Development Test Code Hint */}
-              {devOtp && (
-                <div className="p-2.5 rounded-xl bg-secondary-container/50 border border-secondary/30 text-on-secondary-container text-xs flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[16px]">info</span>
-                    <span className="font-medium">Testing Code:</span>
-                  </div>
-                  <span className="font-mono font-bold tracking-widest text-sm bg-surface-container-lowest px-2 py-0.5 rounded border border-secondary/30">
-                    {devOtp}
-                  </span>
-                </div>
-              )}
 
               {/* Error Banner */}
               {errorMsg && (
@@ -451,6 +465,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   onClick={() => {
                     setMode('login');
                     setErrorMsg(null);
+                    setEmailError(null);
                     setDisposableWarning(null);
                     onModeChange?.('login');
                   }}
@@ -467,6 +482,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   onClick={() => {
                     setMode('signup');
                     setErrorMsg(null);
+                    setEmailError(null);
                     setDisposableWarning(null);
                     onModeChange?.('signup');
                   }}
@@ -553,10 +569,20 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                       disabled={isLoading}
                       value={email}
                       onChange={(e) => handleEmailChange(e.target.value)}
+                      onBlur={() => validateEmailInput(email)}
                       placeholder="name@example.com"
-                      className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface font-body-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-container disabled:opacity-50"
+                      className={`w-full pl-10 pr-3 py-2.5 rounded-xl border ${
+                        emailError ? 'border-error ring-1 ring-error' : 'border-outline-variant/30'
+                      } bg-surface-container-low text-on-surface font-body-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-container disabled:opacity-50`}
                     />
                   </div>
+                  {/* Inline Email Error Message */}
+                  {emailError && (
+                    <span className="text-xs text-error font-medium flex items-center gap-1 mt-0.5 animate-in fade-in">
+                      <span className="material-symbols-outlined text-[14px]">error</span>
+                      <span>{emailError}</span>
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-1">
