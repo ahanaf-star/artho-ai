@@ -158,6 +158,96 @@ export function filterTransactionsByMonth(
   return transactions.filter((t) => t.date && t.date.startsWith(target));
 }
 
+/**
+ * Normalizes and validates transaction category according to its type.
+ * Ensures expenses are never categorized as income (e.g. Salary & Inflow) and vice-versa,
+ * while mapping common abbreviations and merchant keywords to appropriate standard categories.
+ */
+export function normalizeTransactionCategory(tx: {
+  type?: string;
+  category?: string;
+  merchant?: string;
+  description?: string;
+}): string {
+  const cat = (tx.category || '').trim();
+  const type = tx.type || 'expense';
+
+  if (type === 'expense') {
+    // If an expense is accidentally categorized under an income category
+    if (cat === 'Salary & Inflow' || cat === 'Savings & Investment') {
+      const m = (tx.merchant || '').toLowerCase();
+      const d = (tx.description || '').toLowerCase();
+      if (
+        m.includes('food') || m.includes('grocer') || m.includes('dine') || m.includes('restaurant') ||
+        d.includes('food') || d.includes('grocer') || d.includes('dine')
+      ) {
+        return 'Food & Groceries';
+      }
+      if (m.includes('shop') || d.includes('shop') || m.includes('gadget') || d.includes('gadget')) {
+        return 'Shopping & Gadgets';
+      }
+      if (m.includes('cng') || m.includes('uber') || m.includes('pathao') || m.includes('transport') || m.includes('bus')) {
+        return 'Transportation';
+      }
+      if (m.includes('fee') || m.includes('charge') || m.includes('bkash') || m.includes('cash-out') || m.includes('cashout')) {
+        return 'Cash-out & Bank Fees';
+      }
+      if (m.includes('util') || m.includes('electric') || m.includes('bill') || m.includes('wifi')) {
+        return 'Utility & Fixed Costs';
+      }
+      return 'Food & Groceries';
+    }
+
+    const lower = cat.toLowerCase();
+    if (lower === 'food' || lower === 'groceries' || lower === 'food & grocery') {
+      return 'Food & Groceries';
+    }
+    if (lower === 'shopping' || lower === 'gadgets') {
+      return 'Shopping & Gadgets';
+    }
+    if (lower === 'utilities' || lower === 'utility' || lower === 'bills') {
+      return 'Utility & Fixed Costs';
+    }
+    if (lower === 'transport' || lower === 'commute') {
+      return 'Transportation';
+    }
+    if (lower === 'fees' || lower === 'cashout' || lower === 'cash-out' || lower === 'bank fees') {
+      return 'Cash-out & Bank Fees';
+    }
+    if (lower === 'entertainment' || lower === 'others') {
+      return 'Entertainment & Others';
+    }
+
+    return cat || 'Food & Groceries';
+  }
+
+  if (type === 'income') {
+    const standardExpenses = [
+      'Food & Groceries',
+      'Shopping & Gadgets',
+      'Utility & Fixed Costs',
+      'Transportation',
+      'Cash-out & Bank Fees',
+      'Entertainment & Others',
+    ];
+    if (standardExpenses.includes(cat)) {
+      return 'Salary & Inflow';
+    }
+
+    const lower = cat.toLowerCase();
+    if (lower === 'salary' || lower === 'inflow' || lower === 'income' || lower === 'paycheck' || lower === 'remittance') {
+      return 'Salary & Inflow';
+    }
+    if (lower === 'savings' || lower === 'investment' || lower === 'dividend' || lower === 'interest' || lower === 'yield') {
+      return 'Savings & Investment';
+    }
+
+    return cat || 'Salary & Inflow';
+  }
+
+  return cat;
+}
+
 // Compute dynamic monthly overview
 export function calculateMonthlyOverview(
   transactions: Transaction[],
@@ -181,29 +271,31 @@ export function calculateMonthlyOverview(
   const prevCatMap: Record<string, number> = {};
 
   // Accumulate previous month category totals
-  for (const t of prevMonthTxs) {
-    if (t.type === 'expense') {
-      prevCatMap[t.category] = (prevCatMap[t.category] || 0) + t.amount;
+  for (const rawT of prevMonthTxs) {
+    if (rawT.type === 'expense') {
+      const normCat = normalizeTransactionCategory(rawT);
+      prevCatMap[normCat] = (prevCatMap[normCat] || 0) + rawT.amount;
     }
   }
 
-  for (const t of currentMonthTxs) {
-    if (t.type === 'income') {
-      totalIncome += t.amount;
-    } else if (t.type === 'expense') {
-      totalExpenses += t.amount;
-      if (t.classification === 'essential') {
-        essentialExpenses += t.amount;
+  for (const rawT of currentMonthTxs) {
+    if (rawT.type === 'income') {
+      totalIncome += rawT.amount;
+    } else if (rawT.type === 'expense') {
+      const normCat = normalizeTransactionCategory(rawT);
+      totalExpenses += rawT.amount;
+      if (rawT.classification === 'essential') {
+        essentialExpenses += rawT.amount;
       } else {
-        discretionaryExpenses += t.amount;
+        discretionaryExpenses += rawT.amount;
       }
 
-      if (!catMap[t.category]) {
-        catMap[t.category] = { amount: 0, count: 0, merchants: new Set() };
+      if (!catMap[normCat]) {
+        catMap[normCat] = { amount: 0, count: 0, merchants: new Set() };
       }
-      catMap[t.category].amount += t.amount;
-      catMap[t.category].count += 1;
-      if (t.merchant) catMap[t.category].merchants.add(t.merchant);
+      catMap[normCat].amount += rawT.amount;
+      catMap[normCat].count += 1;
+      if (rawT.merchant) catMap[normCat].merchants.add(rawT.merchant);
     }
   }
 
@@ -221,12 +313,22 @@ export function calculateMonthlyOverview(
     'Entertainment & Others',
   ];
 
+  // Exclude income categories from expense breakdown cards
+  const validExpenseCatKeys = Object.keys(catMap).filter(
+    (c) => c !== 'Salary & Inflow' && c !== 'Savings & Investment'
+  );
+  const validPrevCatKeys = Object.keys(prevCatMap).filter(
+    (c) => c !== 'Salary & Inflow' && c !== 'Savings & Investment'
+  );
+
   const allCategoryNames: CategoryName[] = Array.from(
     new Set([
       ...standardCategoryOrder,
-      ...(extraCategories || []).filter(Boolean),
-      ...Object.keys(catMap),
-      ...Object.keys(prevCatMap),
+      ...(extraCategories || []).filter(
+        (c) => c && c !== 'Salary & Inflow' && c !== 'Savings & Investment'
+      ),
+      ...validExpenseCatKeys,
+      ...validPrevCatKeys,
     ])
   ) as CategoryName[];
 
@@ -381,7 +483,7 @@ export function interpolatePiecewiseLinear(
   return anchors[anchors.length - 1].y;
 }
 
-// Calculate the ArthoBachao AI Financial Health Score with explainability
+// Calculate the Artho AI Financial Health Score with explainability
 export function calculateFinancialHealthScore(
   input: FinancialHealthInput
 ): FinancialHealthResult;

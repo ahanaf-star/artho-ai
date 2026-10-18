@@ -1,5 +1,5 @@
 import { Transaction } from '../types/financial';
-import { getPreviousMonth } from './financialCalculations';
+import { getPreviousMonth, normalizeTransactionCategory } from './financialCalculations';
 
 export interface CategorySummaryDetails {
   categoryName: string;
@@ -361,8 +361,14 @@ export function computeCategoryDetails(
 ): CategorySummaryDetails {
   const normCategory = categoryName.trim().toLowerCase();
 
+  // Normalize transactions across dataset to ensure category consistency
+  const normalizedTransactions = allTransactions.map((t) => ({
+    ...t,
+    category: normalizeTransactionCategory(t),
+  }));
+
   // 1. All transactions belonging to this category across all time
-  const allCategoryTransactions = allTransactions
+  const allCategoryTransactions = normalizedTransactions
     .filter((t) => t.category && t.category.trim().toLowerCase() === normCategory)
     .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 

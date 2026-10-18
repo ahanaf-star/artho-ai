@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Transaction, CategoryName, TransactionType, CustomCategory } from '../../types/financial';
-import { getLocalDateString } from '../../services/financialCalculations';
+import { getLocalDateString, normalizeTransactionCategory } from '../../services/financialCalculations';
 
 interface EditTransactionModalProps {
   isOpen: boolean;
@@ -40,7 +40,8 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
       setAmount(String(transaction.amount));
       setMerchant(transaction.merchant || '');
       setDescription(transaction.description || '');
-      setCategory(transaction.category);
+      const normalized = normalizeTransactionCategory(transaction) as CategoryName;
+      setCategory(normalized);
       setAccount((transaction.account as any) || 'bKash');
       setDate(transaction.date || getLocalDateString());
       setShowDeleteConfirm(false);
@@ -50,6 +51,11 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
   }, [transaction, isOpen]);
 
   if (!isOpen || !transaction) return null;
+
+  const isIncome = type === 'income';
+  const effectiveCategory: CategoryName = isIncome
+    ? (category === 'Savings & Investment' ? 'Savings & Investment' : 'Salary & Inflow')
+    : (category === 'Salary & Inflow' || category === 'Savings & Investment' ? 'Food & Groceries' : category);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,23 +73,30 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
       return;
     }
 
+    const resolvedCategory = normalizeTransactionCategory({
+      type,
+      category: effectiveCategory,
+      merchant: trimmedMerchant,
+      description: description.trim(),
+    }) as CategoryName;
+
     const updatedTx: Transaction = {
       ...transaction,
       date: date || transaction.date || getLocalDateString(),
       type,
-      category,
+      category: resolvedCategory,
       amount: parsedAmount,
       merchant: trimmedMerchant,
-      description: description.trim() || `${category} transaction`,
+      description: description.trim() || `${resolvedCategory} transaction`,
       account,
       paymentMethod: `${account} Direct`,
       classification:
-        category === 'Food & Groceries' || category === 'Shopping & Gadgets'
+        resolvedCategory === 'Food & Groceries' || resolvedCategory === 'Shopping & Gadgets'
           ? 'discretionary'
-          : category === 'Cash-out & Bank Fees'
+          : resolvedCategory === 'Cash-out & Bank Fees'
             ? 'anomalies'
             : 'essential',
-      isAnomaly: category === 'Cash-out & Bank Fees',
+      isAnomaly: resolvedCategory === 'Cash-out & Bank Fees',
     };
 
     setIsSubmitting(true);
@@ -177,6 +190,9 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
                 type="button"
                 onClick={() => {
                   setType('expense');
+                  if (category === 'Salary & Inflow' || category === 'Savings & Investment') {
+                    setCategory('Food & Groceries');
+                  }
                   if (!merchant.trim()) {
                     setMerchantError('Merchant / Counterparty name is required');
                   } else {
@@ -290,7 +306,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
                 Category
               </label>
               <select
-                value={category}
+                value={effectiveCategory}
                 onChange={(e) => setCategory(e.target.value as CategoryName)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant/40 bg-surface-container-lowest text-on-surface font-body-md focus:outline-none focus:ring-2 focus:ring-primary-container"
               >
@@ -313,6 +329,8 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
                           'Transportation',
                           'Cash-out & Bank Fees',
                           'Entertainment & Others',
+                          'Salary & Inflow',
+                          'Savings & Investment',
                         ].includes(category))) && (
                       <optgroup label="Custom Categories">
                         {customCategories.map((c) => (
@@ -328,6 +346,8 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
                             'Transportation',
                             'Cash-out & Bank Fees',
                             'Entertainment & Others',
+                            'Salary & Inflow',
+                            'Savings & Investment',
                           ].includes(category) &&
                           !customCategories.some(
                             (c) => c.name.toLowerCase() === category.toLowerCase()

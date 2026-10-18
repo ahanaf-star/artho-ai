@@ -5,6 +5,7 @@ import {
   FinancialSummary,
   SavingsGoal,
 } from '../types/financial';
+import { normalizeTransactionCategory } from './financialCalculations';
 
 // Standard Category Ordering
 export const STANDARD_CATEGORIES: CategoryName[] = [
@@ -105,7 +106,8 @@ export function calculateCategorySpending(
 
   const prevTotals: Record<string, number> = {};
   for (const t of prevTxs) {
-    prevTotals[t.category] = (prevTotals[t.category] || 0) + t.amount;
+    const cat = normalizeTransactionCategory(t);
+    prevTotals[cat] = (prevTotals[cat] || 0) + t.amount;
   }
 
   const catMap: Record<string, { amount: number; count: number; merchants: Set<string> }> = {};
@@ -114,20 +116,25 @@ export function calculateCategorySpending(
   }
 
   for (const t of currentTxs) {
-    if (!catMap[t.category]) {
-      catMap[t.category] = { amount: 0, count: 0, merchants: new Set() };
+    const cat = normalizeTransactionCategory(t);
+    if (!catMap[cat]) {
+      catMap[cat] = { amount: 0, count: 0, merchants: new Set() };
     }
-    catMap[t.category].amount += t.amount;
-    catMap[t.category].count += 1;
-    if (t.merchant) catMap[t.category].merchants.add(t.merchant);
+    catMap[cat].amount += t.amount;
+    catMap[cat].count += 1;
+    if (t.merchant) catMap[cat].merchants.add(t.merchant);
   }
+
+  const validExpenseCategories = Object.keys(catMap).filter(
+    (c) => c !== 'Salary & Inflow' && c !== 'Savings & Investment'
+  );
 
   const allCategories = Array.from(
     new Set([
       ...STANDARD_CATEGORIES,
-      ...Object.keys(catMap),
+      ...validExpenseCategories,
     ])
-  );
+  ) as CategoryName[];
 
   return allCategories.map((category) => {
     const entry = catMap[category] || { amount: 0, count: 0, merchants: new Set() };

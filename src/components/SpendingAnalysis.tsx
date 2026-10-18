@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Transaction, TransactionClassification, UserProfile, CustomCategory } from '../types/financial';
+import { Transaction, TransactionClassification, UserProfile, CustomCategory, CategoryName } from '../types/financial';
 import {
   calculateMonthlyOverview,
   getLatestTransactionMonth,
   getPreviousMonth,
+  normalizeTransactionCategory,
 } from '../services/financialCalculations';
 import {
   formatCurrency,
@@ -154,13 +155,18 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
 
   // Filter transactions for table
   const filteredTransactions = useMemo(() => {
-    return transactions.filter((t) => {
-      const matchMonth = t.date.startsWith(selectedMonth);
-      if (!matchMonth) return false;
-      if (filterType === 'all') return true;
-      if (filterType === 'anomalies') return t.isAnomaly || t.classification === 'anomalies';
-      return t.classification === filterType;
-    });
+    return transactions
+      .map((t) => ({
+        ...t,
+        category: normalizeTransactionCategory(t) as CategoryName,
+      }))
+      .filter((t) => {
+        const matchMonth = t.date.startsWith(selectedMonth);
+        if (!matchMonth) return false;
+        if (filterType === 'all') return true;
+        if (filterType === 'anomalies') return t.isAnomaly || t.classification === 'anomalies';
+        return t.classification === filterType;
+      });
   }, [transactions, selectedMonth, filterType]);
 
   const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / pageSize));
@@ -1102,7 +1108,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
               </button>
             </div>
             <p className="font-body-sm text-body-sm text-on-surface-variant">
-              ArthoBachao AI's tagger automatically categorizes entries using Dhaka merchant signatures.
+              Artho AI's tagger automatically categorizes entries using Dhaka merchant signatures.
               You can adjust categorization rules for recurring expenses.
             </p>
             <div className="space-y-2">
