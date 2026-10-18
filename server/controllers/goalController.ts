@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { SavingsGoalModel } from '../models/SavingsGoal';
+import { UserModel } from '../models/User';
 import { isDbConnected } from '../config/database';
 import { INITIAL_SAVINGS_GOALS } from '../../src/data/mockGoals';
 
@@ -45,28 +46,42 @@ export async function getGoals(req: Request, res: Response) {
   try {
     let goals = await SavingsGoalModel.find({ userId }).sort({ createdAt: -1 });
 
-    // Auto-seed initial goals if demo user has no records in MongoDB
+    // Auto-seed initial goals if demo user has no records in MongoDB and has not previously seeded/deleted
     if (goals.length === 0 && userId === 'usr-ahmed-01') {
-      const seedData = INITIAL_SAVINGS_GOALS.map((g) => ({
-        customId: g.id,
-        userId: 'usr-ahmed-01',
-        name: g.title,
-        title: g.title,
-        category: g.category,
-        icon: g.icon,
-        targetAmount: g.targetAmount,
-        currentAmount: g.currentAmount,
-        deadline: g.deadline,
-        monthlyPace: g.monthlyPace,
-        accountVault: g.accountVault,
-        status: g.status,
-        color: g.color || '#006c49',
-        notes: g.notes || '',
-        milestones: g.milestones || [],
-      }));
+      const isObjectId = mongoose.Types.ObjectId.isValid(userId);
+      const user = await UserModel.findOne({
+        $or: [
+          ...(isObjectId ? [{ _id: userId }] : []),
+          { customId: userId },
+        ],
+      });
 
-      await SavingsGoalModel.insertMany(seedData);
-      goals = await SavingsGoalModel.find({ userId }).sort({ createdAt: -1 });
+      if (!user?.hasSeededGoals) {
+        const seedData = INITIAL_SAVINGS_GOALS.map((g) => ({
+          customId: g.id,
+          userId: 'usr-ahmed-01',
+          name: g.title,
+          title: g.title,
+          category: g.category,
+          icon: g.icon,
+          targetAmount: g.targetAmount,
+          currentAmount: g.currentAmount,
+          deadline: g.deadline,
+          monthlyPace: g.monthlyPace,
+          accountVault: g.accountVault,
+          status: g.status,
+          color: g.color || '#006c49',
+          notes: g.notes || '',
+          milestones: g.milestones || [],
+        }));
+
+        await SavingsGoalModel.insertMany(seedData);
+        if (user) {
+          user.hasSeededGoals = true;
+          await user.save().catch(() => {});
+        }
+        goals = await SavingsGoalModel.find({ userId }).sort({ createdAt: -1 });
+      }
     }
 
     return res.json(goals);
@@ -259,17 +274,33 @@ export async function updateGoal(req: Request, res: Response) {
 }
 
 /**
- * DELETE /api/goals/:id
+ * DELETE /api/goals/:id or DELETE /api/users/:userId/goals/:id
  * Delete a savings goal
  */
 export async function deleteGoal(req: Request, res: Response) {
   const { id } = req.params;
+  const urlUserId = req.params.userId;
+  const authUser = (req as any).user;
 
   if (!id || typeof id !== 'string') {
     return res.status(400).json({ error: 'Valid goal ID is required' });
   }
 
+  if (urlUserId && authUser) {
+    const isOwnerOfUrl =
+      authUser.customId === urlUserId ||
+      authUser.id === urlUserId ||
+      authUser._id?.toString() === urlUserId;
+    if (!isOwnerOfUrl) {
+      return res.status(403).json({ error: "Access forbidden: You cannot delete another user's goal" });
+    }
+  }
+
   if (!isDbConnected()) {
+    const idx = INITIAL_SAVINGS_GOALS.findIndex((g) => g.id === id);
+    if (idx !== -1) {
+      INITIAL_SAVINGS_GOALS.splice(idx, 1);
+    }
     return res.json({ message: 'Goal removed successfully (in-memory mode)', id });
   }
 
@@ -287,7 +318,6 @@ export async function deleteGoal(req: Request, res: Response) {
       return res.status(404).json({ error: 'Savings goal not found' });
     }
 
-    const authUser = (req as any).user;
     if (authUser) {
       const isOwner =
         authUser.customId === existingGoal.userId ||
@@ -300,10 +330,37 @@ export async function deleteGoal(req: Request, res: Response) {
       return res.status(401).json({ error: 'Authentication required to delete this goal' });
     }
 
+    const targetUserId = existingGoal.userId;
     await existingGoal.deleteOne();
+
+    // Prevent demo user initial goals from resurrecting if all goals are deleted
+    if (targetUserId === 'usr-ahmed-01') {
+      await UserModel.updateOne(
+        { customId: 'usr-ahmed-01' },
+        { $set: { hasSeededGoals: true } }
+      ).catch(() => {});
+    }
+
+    // Clean up primaryGoalId reference on UserModel if it pointed to this goal
+    try {
+      const isUserObjId = mongoose.Types.ObjectId.isValid(targetUserId);
+      await UserModel.updateOne(
+        {
+          $or: [
+            ...(isUserObjId ? [{ _id: targetUserId }] : []),
+            { customId: targetUserId },
+          ],
+          primaryGoalId: { $in: [id, existingGoal.customId, existingGoal._id.toString()] },
+        },
+        { $unset: { primaryGoalId: 1 } }
+      );
+    } catch (e) {
+      // Non-fatal
+    }
+
     return res.json({ message: 'Goal deleted successfully', id });
   } catch (error: any) {
     console.error('Error deleting savings goal:', error.message);
-    return res.status(500).json({ error: 'Internal server error deleting savings goal' });
+    return res.status(500).json({ error: error.message || 'Internal server error deleting savings goal' });
   }
 }

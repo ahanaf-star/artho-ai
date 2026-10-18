@@ -488,15 +488,31 @@ export default function App() {
   };
 
   // Delete Goal Handler - persists to MongoDB and revalidates
-  const handleDeleteGoal = async (goalId: string) => {
-    setGoals((prev) => prev.filter((g) => g.id !== goalId));
-    if (currentUser) {
-      try {
-        await apiService.deleteGoal(goalId);
-        await refreshFinancialData(currentUser.id);
-      } catch (err) {
-        console.error('Failed to delete goal in backend:', err);
-      }
+  const handleDeleteGoal = async (goalId: string): Promise<void> => {
+    if (!currentUser) return;
+    const previousGoals = goals;
+
+    // Optimistically update local goals
+    const updatedGoals = goals.filter((g) => g.id !== goalId);
+    setGoals(updatedGoals);
+    financialDataService.saveGoals(currentUser.id, updatedGoals);
+
+    // If primary goal was deleted, clear it locally
+    if (currentUser.primaryGoalId === goalId) {
+      const updatedUser = { ...currentUser, primaryGoalId: undefined };
+      setCurrentUser(updatedUser);
+      authService.updateProfile({ primaryGoalId: undefined }).catch(() => {});
+    }
+
+    try {
+      await apiService.deleteGoal(goalId, currentUser.id);
+      await refreshFinancialData(currentUser.id);
+    } catch (err) {
+      console.error('Failed to delete goal in backend:', err);
+      // Rollback optimistic update on failure
+      setGoals(previousGoals);
+      financialDataService.saveGoals(currentUser.id, previousGoals);
+      throw err;
     }
   };
 

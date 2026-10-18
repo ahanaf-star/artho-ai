@@ -16,7 +16,7 @@ import { NavScreen } from './Sidebar';
 interface SavingsGoalsProps {
   goals: SavingsGoal[];
   onUpdateGoal: (updatedGoal: SavingsGoal) => void;
-  onDeleteGoal?: (goalId: string) => void;
+  onDeleteGoal?: (goalId: string) => Promise<void> | void;
   onDepositToGoal?: (goalId: string, amount: number) => void;
   onOpenCreateGoal: () => void;
   onNavigate: (screen: NavScreen) => void;
@@ -45,6 +45,10 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
   const [adjustModalGoal, setAdjustModalGoal] = useState<SavingsGoal | null>(null);
   const [newPaceInput, setNewPaceInput] = useState<string>('5000');
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
+  const [goalToDelete, setGoalToDelete] = useState<SavingsGoal | null>(null);
+  const [isDeletingGoal, setIsDeletingGoal] = useState<boolean>(false);
+  const [deleteGoalError, setDeleteGoalError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [editForm, setEditForm] = useState<{
     title: string;
     targetAmount: number;
@@ -145,13 +149,34 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
     setTimeout(() => setDepositSuccessMsg(null), 4000);
   };
 
-  const handleDeleteClick = (goalId: string, title: string) => {
-    if (window.confirm(`Are you sure you want to delete the goal "${title}"?`)) {
+  const openDeleteModal = (goal: SavingsGoal) => {
+    setDeleteGoalError(null);
+    setGoalToDelete(goal);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!goalToDelete || isDeletingGoal) return;
+    setIsDeletingGoal(true);
+    setDeleteGoalError(null);
+
+    const targetId = goalToDelete.id;
+    const targetTitle = goalToDelete.title;
+
+    try {
       if (onDeleteGoal) {
-        onDeleteGoal(goalId);
-        setDepositSuccessMsg(`Goal "${title}" has been deleted.`);
-        setTimeout(() => setDepositSuccessMsg(null), 4000);
+        await onDeleteGoal(targetId);
       }
+      setGoalToDelete(null);
+      setToastMessage({
+        type: 'success',
+        text: `Savings goal "${targetTitle}" was deleted successfully.`,
+      });
+      setTimeout(() => setToastMessage(null), 4500);
+    } catch (err: any) {
+      console.error('Failed deleting savings goal:', err);
+      setDeleteGoalError(err?.message || 'Failed to delete savings goal. Please try again.');
+    } finally {
+      setIsDeletingGoal(false);
     }
   };
 
@@ -262,6 +287,36 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
   if (!heroGoal) {
     return (
       <div className="flex flex-col w-full gap-space-lg pb-space-xl">
+        {/* Toast Alert */}
+        {(toastMessage || depositSuccessMsg) && (
+          <div
+            className={`p-3.5 rounded-xl flex items-center justify-between shadow-lg animate-in fade-in duration-300 ${
+              toastMessage?.type === 'error'
+                ? 'bg-error text-on-error'
+                : 'bg-secondary text-on-secondary'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[20px]">
+                {toastMessage?.type === 'error' ? 'error' : 'check_circle'}
+              </span>
+              <span className="font-title-md text-sm sm:text-title-md">
+                {toastMessage?.text || depositSuccessMsg}
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                setToastMessage(null);
+                setDepositSuccessMsg(null);
+              }}
+              className="p-1 rounded hover:bg-white/20"
+              aria-label="Close notification"
+            >
+              <span className="material-symbols-outlined text-[16px]">close</span>
+            </button>
+          </div>
+        )}
+
         {/* Savings Goals Introduction Box */}
         {renderIntroBox()}
 
@@ -293,15 +348,29 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
   return (
     <div className="flex flex-col w-full gap-space-lg pb-space-xl">
       {/* Toast Alert */}
-      {depositSuccessMsg && (
-        <div className="p-3.5 rounded-xl bg-secondary text-on-secondary flex items-center justify-between shadow-lg animate-in fade-in duration-300">
+      {(toastMessage || depositSuccessMsg) && (
+        <div
+          className={`p-3.5 rounded-xl flex items-center justify-between shadow-lg animate-in fade-in duration-300 ${
+            toastMessage?.type === 'error'
+              ? 'bg-error text-on-error'
+              : 'bg-secondary text-on-secondary'
+          }`}
+        >
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[20px]">check_circle</span>
-            <span className="font-title-md text-sm sm:text-title-md">{depositSuccessMsg}</span>
+            <span className="material-symbols-outlined text-[20px]">
+              {toastMessage?.type === 'error' ? 'error' : 'check_circle'}
+            </span>
+            <span className="font-title-md text-sm sm:text-title-md">
+              {toastMessage?.text || depositSuccessMsg}
+            </span>
           </div>
           <button
-            onClick={() => setDepositSuccessMsg(null)}
+            onClick={() => {
+              setToastMessage(null);
+              setDepositSuccessMsg(null);
+            }}
             className="p-1 rounded hover:bg-white/20"
+            aria-label="Close notification"
           >
             <span className="material-symbols-outlined text-[16px]">close</span>
           </button>
@@ -499,6 +568,14 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                   <span>Edit Goal</span>
                 </button>
                 <button
+                  onClick={() => openDeleteModal(heroGoal)}
+                  className="px-space-md py-2 rounded-lg bg-surface-container-lowest text-error font-title-md text-title-md hover:bg-error-container/20 transition-colors shadow-sm w-full sm:w-auto border border-outline-variant/30 flex items-center justify-center gap-1"
+                  title="Delete Goal"
+                >
+                  <span className="material-symbols-outlined text-[16px]">delete</span>
+                  <span>Delete Goal</span>
+                </button>
+                <button
                   onClick={() => {
                     setAdjustModalGoal(heroGoal);
                     setNewPaceInput(heroGoal.monthlyPace.toString());
@@ -545,9 +622,10 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                           <span className="material-symbols-outlined text-[16px]">edit</span>
                         </button>
                         <button
-                          onClick={() => handleDeleteClick(g.id, g.title)}
+                          onClick={() => openDeleteModal(g)}
                           className="p-1 rounded-lg text-outline hover:text-error hover:bg-error-container/20 transition-colors"
                           title="Delete Goal"
+                          aria-label={`Delete goal ${g.title}`}
                         >
                           <span className="material-symbols-outlined text-[16px]">delete</span>
                         </button>
@@ -950,6 +1028,19 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
               <div className="flex items-center gap-2 pt-3">
                 <button
                   type="button"
+                  onClick={() => {
+                    const g = editingGoal;
+                    setEditingGoal(null);
+                    openDeleteModal(g);
+                  }}
+                  className="py-2.5 px-3 rounded-xl text-error bg-error-container/20 hover:bg-error-container/40 font-title-md flex items-center justify-center gap-1 transition-colors"
+                  title="Delete Goal"
+                >
+                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                  <span>Delete Goal</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => setEditingGoal(null)}
                   className="flex-1 py-2.5 rounded-xl bg-surface-container text-on-surface font-title-md hover:bg-surface-container-high transition-colors"
                 >
@@ -963,6 +1054,108 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Goal Confirmation Modal */}
+      {goalToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-scrim/40 backdrop-blur-sm animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-goal-title"
+        >
+          <div className="bg-surface-container-lowest rounded-2xl p-6 w-full max-w-md shadow-xl border border-outline-variant/30 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-error">
+                <span className="material-symbols-outlined text-[24px]">warning</span>
+                <h3 id="delete-goal-title" className="font-headline-md text-headline-md font-bold text-on-surface">
+                  Delete Savings Goal
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isDeletingGoal) setGoalToDelete(null);
+                }}
+                disabled={isDeletingGoal}
+                className="p-1 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container transition-colors disabled:opacity-50"
+                aria-label="Close dialog"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            {/* Target Goal Summary Card */}
+            <div className="p-3 rounded-xl bg-surface-container-low border border-outline-variant/20 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-xl shrink-0">
+                {goalToDelete.icon || '🎯'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-title-md text-title-md font-bold text-on-surface truncate">
+                  {goalToDelete.title}
+                </h4>
+                <p className="font-body-sm text-body-sm text-on-surface-variant truncate">
+                  Saved: {formatMoney(goalToDelete.currentAmount)} / Target: {formatMoney(goalToDelete.targetAmount)}
+                </p>
+              </div>
+            </div>
+
+            {/* Prompt sentence */}
+            <p className="font-body-md text-body-md text-on-surface leading-relaxed">
+              Are you sure you want to delete this savings goal? This action cannot be undone.
+            </p>
+
+            {/* Financial Data Retention Notice / Warning */}
+            {goalToDelete.currentAmount > 0 && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs leading-relaxed flex items-start gap-2">
+                <span className="material-symbols-outlined text-[18px] text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+                  history_edu
+                </span>
+                <span>
+                  <strong>Past deposits preserved:</strong> Your past deposit transactions ({formatMoney(goalToDelete.currentAmount)}) will remain safely recorded in your transaction history and account balance. Only the goal tracking container is deleted.
+                </span>
+              </div>
+            )}
+
+            {/* Error Message banner */}
+            {deleteGoalError && (
+              <div className="p-3 rounded-xl bg-error-container/20 border border-error/30 text-error text-xs leading-relaxed flex items-start gap-2">
+                <span className="material-symbols-outlined text-[18px] shrink-0 mt-0.5">error</span>
+                <span>{deleteGoalError}</span>
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setGoalToDelete(null)}
+                disabled={isDeletingGoal}
+                className="flex-1 py-2.5 rounded-xl bg-surface-container text-on-surface font-title-md hover:bg-surface-container-high transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeletingGoal}
+                className="flex-1 py-2.5 rounded-xl bg-error text-on-error font-title-md hover:opacity-95 transition-opacity flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50 active:scale-95"
+              >
+                {isDeletingGoal ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-on-error border-t-transparent rounded-full animate-spin"></span>
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                    <span>Delete Goal</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

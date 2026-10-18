@@ -20,6 +20,7 @@ export interface IUser extends Document {
   city?: string;
   memberStatus?: string;
   primaryGoalId?: string;
+  hasSeededGoals?: boolean;
   linkedAccounts?: Array<{
     name: string;
     balance: number;
@@ -137,6 +138,10 @@ const UserSchema = new Schema<IUser>(
     primaryGoalId: {
       type: String,
       required: false,
+    },
+    hasSeededGoals: {
+      type: Boolean,
+      default: false,
     },
     passwordHash: {
       type: String,

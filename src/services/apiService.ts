@@ -302,19 +302,24 @@ export const apiService = {
   },
 
   /**
-   * DELETE /api/goals/:id
+   * DELETE /api/goals/:id or DELETE /api/users/:userId/goals/:id
    */
-  async deleteGoal(goalId: string): Promise<boolean> {
-    try {
-      const res = await fetch(`${BASE_URL}/api/goals/${encodeURIComponent(goalId)}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      });
-      return res.ok;
-    } catch (err) {
-      console.warn(`[apiService] deleteGoal(${goalId}) failed, deleted locally:`, err);
-      return false;
+  async deleteGoal(goalId: string, userId?: string): Promise<boolean> {
+    const url = userId
+      ? `${BASE_URL}/api/users/${encodeURIComponent(userId)}/goals/${encodeURIComponent(goalId)}`
+      : `${BASE_URL}/api/goals/${encodeURIComponent(goalId)}`;
+
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Failed to delete savings goal (${res.status})`);
     }
+
+    return true;
   },
 
   /**
