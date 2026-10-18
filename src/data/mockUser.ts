@@ -17,8 +17,6 @@ export const INITIAL_USER: User = {
   riskTolerance: 'Moderate',
   primaryGoalId: 'goal-emergency-fund',
   privacyStatus: 'E2E Encrypted',
-  isEmailVerified: true,
-  authProvider: 'local',
   linkedAccounts: [
     {
       name: 'bKash',

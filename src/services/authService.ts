@@ -1,19 +1,11 @@
 import { User } from '../types/financial';
 import { INITIAL_USER } from '../data/mockUser';
 import { apiService } from './apiService';
-import { validateSignupEmail, normalizeEmail } from '../utils/emailValidation';
 
 export interface AuthSession {
   user: User;
   token: string;
   expiresAt: number;
-}
-
-export interface SignupResult {
-  session?: AuthSession;
-  requiresVerification: boolean;
-  email: string;
-  message?: string;
 }
 
 const STORAGE_SESSION_KEY = 'finmate_auth_session';
@@ -58,7 +50,7 @@ export const authService = {
    * Authenticate user with email and password via backend API
    */
   async login(emailInput: string, passwordInput: string): Promise<AuthSession> {
-    const email = normalizeEmail(emailInput).email;
+    const email = emailInput.trim().toLowerCase();
 
     try {
       const data = await apiService.login(email, passwordInput);
@@ -72,10 +64,7 @@ export const authService = {
         return session;
       }
     } catch (apiErr: any) {
-      // Re-throw verification errors or credential errors with properties preserved
-      if (apiErr?.requiresVerification) {
-        throw apiErr;
-      }
+      // Re-throw validation or credential errors
       if (apiErr?.message && !apiErr.message.includes('fetch') && !apiErr.message.includes('Failed to fetch')) {
         throw apiErr;
       }
@@ -97,40 +86,29 @@ export const authService = {
   },
 
   /**
-   * Register a new user via backend API with email validation & verification flow
+   * Register a new user via backend API
    */
   async signup(
     nameInput: string,
     emailInput: string,
     passwordInput: string,
     preferredLanguage: 'en' | 'bn' = 'en'
-  ): Promise<SignupResult> {
+  ): Promise<AuthSession> {
     const name = nameInput.trim();
+    const email = emailInput.trim().toLowerCase();
+
     if (!name) {
-      throw new Error(preferredLanguage === 'bn' ? 'অনুগ্রহ করে আপনার পুরো নাম লিখুন।' : 'Name is required.');
+      throw new Error('Name is required.');
     }
-
-    // Client-side pre-flight email validation & disposable domain check
-    const validation = validateSignupEmail(emailInput, preferredLanguage === 'bn');
-    if (!validation.isValid) {
-      throw new Error(validation.error || 'Please enter a valid email address.');
+    if (!email || !email.includes('@') || !email.includes('.')) {
+      throw new Error('Please enter a valid email address.');
     }
-
-    const cleanEmail = validation.normalizedEmail;
-
     if (!passwordInput || passwordInput.length < 6) {
-      throw new Error(preferredLanguage === 'bn' ? 'পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে।' : 'Password must be at least 6 characters long.');
+      throw new Error('Password must be at least 6 characters long.');
     }
 
     try {
-      const data = await apiService.signup(name, cleanEmail, passwordInput, preferredLanguage);
-      if (data?.requiresVerification) {
-        return {
-          requiresVerification: true,
-          email: cleanEmail,
-          message: data.message,
-        };
-      }
+      const data = await apiService.signup(name, email, passwordInput, preferredLanguage);
       if (data?.token && data?.user) {
         const session: AuthSession = {
           user: data.user,
@@ -138,11 +116,7 @@ export const authService = {
           expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7,
         };
         localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(session));
-        return {
-          session,
-          requiresVerification: false,
-          email: cleanEmail,
-        };
+        return session;
       }
     } catch (apiErr: any) {
       if (apiErr?.message && !apiErr.message.includes('fetch') && !apiErr.message.includes('Failed to fetch')) {
@@ -152,50 +126,33 @@ export const authService = {
     }
 
     // Local fallback for offline mode
-    return {
-      requiresVerification: true,
-      email: cleanEmail,
-      message: 'Registration successful! Verification code sent.',
+    const newUser: User = {
+      id: `usr-${Date.now()}`,
+      name,
+      email,
+      preferredLanguage,
+      currency: 'BDT',
+      createdAt: new Date().toISOString(),
+      tagline: 'Standard Member',
+      memberStatus: 'Standard Member',
+      city: 'Dhaka',
+      monthlyIncome: 0,
+      riskTolerance: 'Moderate',
+      primaryGoalId: 'goal-emergency-fund',
+      privacyStatus: 'E2E Encrypted',
+      linkedAccounts: [
+        { name: 'bKash', balance: 0, accountNumber: '', type: 'MFS' },
+        { name: 'City Bank', balance: 0, accountNumber: '', type: 'Bank Account' },
+        { name: 'Nagad', balance: 0, accountNumber: '', type: 'MFS' },
+      ],
     };
-  },
 
-  /**
-   * Verify email address using 6-digit OTP code or URL token
-   */
-  async verifyEmail(email: string, code?: string, token?: string): Promise<AuthSession> {
-    const data = await apiService.verifyEmail(email, code, token);
-    if (!data?.token || !data?.user) {
-      throw new Error('Invalid verification response from server');
-    }
     const session: AuthSession = {
-      user: data.user,
-      token: data.token,
+      user: newUser,
+      token: `fmt_offline_${Date.now()}`,
       expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7,
     };
-    localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(session));
-    return session;
-  },
 
-  /**
-   * Resend verification email with rate limiting
-   */
-  async resendVerification(email: string): Promise<{ message: string; devOtp?: string }> {
-    return await apiService.resendVerification(email);
-  },
-
-  /**
-   * Authenticate or register with Google Identity Services ID Token
-   */
-  async loginWithGoogle(idToken: string): Promise<AuthSession> {
-    const data = await apiService.googleAuth(idToken);
-    if (!data?.token || !data?.user) {
-      throw new Error('Invalid Google authentication response from server');
-    }
-    const session: AuthSession = {
-      user: data.user,
-      token: data.token,
-      expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7,
-    };
     localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(session));
     return session;
   },
