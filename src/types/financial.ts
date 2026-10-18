@@ -95,7 +95,9 @@ export interface User {
 export interface WalletAccount {
   id: string;
   userId?: string;
-  accountType: 'Mobile Financial Service (MFS)' | 'Bank Account' | 'Other Financial Account' | string;
+  countryCode?: string; // ISO 3166-1 alpha-2 e.g. 'BD', 'US', 'GB'
+  country?: string; // e.g. 'Bangladesh', 'United States'
+  accountType: 'Bank Account' | 'Mobile Money / Digital Wallet' | 'Cash' | 'Other Financial Account' | 'Mobile Financial Service (MFS)' | string;
   provider: string;
   displayName?: string;
   accountNumber?: string;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { WalletAccount } from '../types/financial';
 import {
   formatCurrency,
@@ -6,9 +6,19 @@ import {
   normalizeCurrencyCode,
   SUPPORTED_CURRENCIES,
   getCurrencyConfig,
+  canConvertCurrency,
 } from '../services/currencyService';
 import { apiService } from '../services/apiService';
+import {
+  COUNTRIES,
+  CountryInfo,
+  getCountryByCode,
+  getProvidersForCountryAndType,
+  INTERNATIONAL_ACCOUNT_TYPES,
+  AccountTypeName,
+} from '../data/internationalProviders';
 
+// Retain legacy export for backward-compatibility with existing tests and imports
 export const COMMON_PROVIDERS = [
   'bKash',
   'Nagad',
@@ -22,9 +32,11 @@ export const COMMON_PROVIDERS = [
 ] as const;
 
 export const ACCOUNT_TYPES = [
-  'Mobile Financial Service (MFS)',
   'Bank Account',
+  'Mobile Money / Digital Wallet',
+  'Cash',
   'Other Financial Account',
+  'Mobile Financial Service (MFS)',
 ] as const;
 
 /**
@@ -52,7 +64,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
   walletAccounts = [],
   onUpdateWalletAccounts,
   userId,
-  isBangla,
+  isBangla: _isBangla,
   currency,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -62,8 +74,9 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
   const displayCurrency = normalizeCurrencyCode(currency);
 
   // Form State
-  const [accountType, setAccountType] = useState<string>('Mobile Financial Service (MFS)');
-  const [providerSelect, setProviderSelect] = useState<string>('bKash');
+  const [selectedCountryCode, setSelectedCountryCode] = useState<string>('BD');
+  const [accountType, setAccountType] = useState<AccountTypeName>('Bank Account');
+  const [providerSelect, setProviderSelect] = useState<string>('City Bank');
   const [customProvider, setCustomProvider] = useState<string>('');
   const [displayName, setDisplayName] = useState<string>('');
   const [accountNumber, setAccountNumber] = useState<string>('');
@@ -72,61 +85,214 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
   const [notes, setNotes] = useState<string>('');
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Dropdown UI states
+  const [isCountryOpen, setIsCountryOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
+  const [isProviderOpen, setIsProviderOpen] = useState(false);
+  const [providerSearch, setProviderSearch] = useState('');
+  const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
+  const [currencySearch, setCurrencySearch] = useState('');
+
+  const countryRef = useRef<HTMLDivElement>(null);
+  const providerRef = useRef<HTMLDivElement>(null);
+  const currencyRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns on click outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (countryRef.current && !countryRef.current.contains(e.target as Node)) {
+        setIsCountryOpen(false);
+      }
+      if (providerRef.current && !providerRef.current.contains(e.target as Node)) {
+        setIsProviderOpen(false);
+      }
+      if (currencyRef.current && !currencyRef.current.contains(e.target as Node)) {
+        setIsCurrencyOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedCountryInfo = getCountryByCode(selectedCountryCode);
+
+  // Dynamic providers for currently selected country and account type
+  const availableProviders = getProvidersForCountryAndType(selectedCountryCode, accountType);
+
   // Compute total of accounts converted to active display currency
   const accountsWithBalance = walletAccounts.filter(
     (a) => a.balance !== undefined && a.balance !== null && !isNaN(a.balance)
   );
-  const totalManualBalance = accountsWithBalance.reduce((sum, a) => {
+
+  const convertibleAccounts = accountsWithBalance.filter((a) => {
+    const accCurr = normalizeCurrencyCode(a.currency || 'BDT');
+    return canConvertCurrency(accCurr, displayCurrency);
+  });
+
+  const unconvertibleCount = accountsWithBalance.length - convertibleAccounts.length;
+
+  const totalManualBalance = convertibleAccounts.reduce((sum, a) => {
     const accCurr = normalizeCurrencyCode(a.currency || 'BDT');
     return sum + convertAmount(a.balance || 0, accCurr, displayCurrency);
   }, 0);
 
+  // Infer sensible initial country based on reporting currency
+  const getContextualDefaultCountry = (): string => {
+    if (displayCurrency === 'USD') return 'US';
+    if (displayCurrency === 'GBP') return 'GB';
+    if (displayCurrency === 'EUR') return 'DE';
+    if (displayCurrency === 'INR') return 'IN';
+    if (displayCurrency === 'CAD') return 'CA';
+    if (displayCurrency === 'AUD') return 'AU';
+    if (displayCurrency === 'SAR') return 'SA';
+    if (displayCurrency === 'JPY') return 'JP';
+    if (displayCurrency === 'CNY') return 'CN';
+    if (displayCurrency === 'CHF') return 'CH';
+    return 'BD';
+  };
+
   const openAddModal = () => {
+    const initialCountry = getContextualDefaultCountry();
+    const countryInfo = getCountryByCode(initialCountry);
+
     setEditingAccount(null);
-    setAccountType('Mobile Financial Service (MFS)');
-    setProviderSelect('bKash');
+    setSelectedCountryCode(initialCountry);
+    setCountrySearch('');
+
+    const initialType: AccountTypeName = initialCountry === 'BD' ? 'Mobile Money / Digital Wallet' : 'Bank Account';
+    setAccountType(initialType);
+
+    const providers = getProvidersForCountryAndType(initialCountry, initialType);
+    const initialProvider = providers[0] || '__custom__';
+    setProviderSelect(initialProvider);
     setCustomProvider('');
+    setProviderSearch('');
+
     setDisplayName('');
     setAccountNumber('');
-    setAccountCurrency(displayCurrency);
+    setAccountCurrency(countryInfo.defaultCurrency || displayCurrency);
+    setCurrencySearch('');
     setBalance('');
     setNotes('');
     setFormError(null);
+
+    setIsCountryOpen(false);
+    setIsProviderOpen(false);
+    setIsCurrencyOpen(false);
     setIsModalOpen(true);
   };
 
   const openEditModal = (account: WalletAccount) => {
     setEditingAccount(account);
-    setAccountType(account.accountType || 'Mobile Financial Service (MFS)');
 
-    const isKnownProvider = COMMON_PROVIDERS.includes(account.provider as any);
-    if (isKnownProvider) {
-      setProviderSelect(account.provider);
+    // Identify country
+    let targetCountryCode = account.countryCode?.toUpperCase();
+    if (!targetCountryCode) {
+      // Infer based on provider or currency
+      const normCurr = normalizeCurrencyCode(account.currency);
+      if (normCurr === 'USD') targetCountryCode = 'US';
+      else if (normCurr === 'GBP') targetCountryCode = 'GB';
+      else if (normCurr === 'EUR') targetCountryCode = 'DE';
+      else if (normCurr === 'INR') targetCountryCode = 'IN';
+      else if (normCurr === 'CAD') targetCountryCode = 'CA';
+      else if (normCurr === 'AUD') targetCountryCode = 'AU';
+      else if (normCurr === 'SAR') targetCountryCode = 'SA';
+      else if (normCurr === 'JPY') targetCountryCode = 'JP';
+      else if (normCurr === 'CNY') targetCountryCode = 'CN';
+      else if (normCurr === 'CHF') targetCountryCode = 'CH';
+      else targetCountryCode = 'BD';
+    }
+    setSelectedCountryCode(targetCountryCode);
+    setCountrySearch('');
+
+    // Normalize account type
+    let normalizedType: AccountTypeName = 'Bank Account';
+    if (
+      account.accountType === 'Mobile Financial Service (MFS)' ||
+      account.accountType === 'Mobile Money / Digital Wallet'
+    ) {
+      normalizedType = 'Mobile Money / Digital Wallet';
+    } else if (account.accountType === 'Cash') {
+      normalizedType = 'Cash';
+    } else if (account.accountType === 'Other Financial Account') {
+      normalizedType = 'Other Financial Account';
+    }
+    setAccountType(normalizedType);
+
+    // Match provider
+    const providers = getProvidersForCountryAndType(targetCountryCode, normalizedType);
+    const match = providers.find((p) => p.toLowerCase() === (account.provider || '').toLowerCase());
+    if (match) {
+      setProviderSelect(match);
       setCustomProvider('');
     } else {
-      setProviderSelect('Other');
+      setProviderSelect('__custom__');
       setCustomProvider(account.provider || '');
     }
+    setProviderSearch('');
 
     setDisplayName(account.displayName || '');
     setAccountNumber(account.accountNumber || '');
-    // For older accounts without a stored currency, default safely to BDT
+
+    // Strictly preserve stored currency when editing - do NOT overwrite!
     setAccountCurrency(account.currency ? normalizeCurrencyCode(account.currency) : 'BDT');
+    setCurrencySearch('');
+
     setBalance(account.balance !== undefined && account.balance !== null ? account.balance.toString() : '');
     setNotes(account.notes || '');
     setFormError(null);
+
+    setIsCountryOpen(false);
+    setIsProviderOpen(false);
+    setIsCurrencyOpen(false);
     setIsModalOpen(true);
+  };
+
+  // Handle Country Selection
+  const handleSelectCountry = (country: CountryInfo) => {
+    setSelectedCountryCode(country.code);
+    setIsCountryOpen(false);
+    setCountrySearch('');
+
+    // In Add mode: update default currency based on selected country
+    if (!editingAccount) {
+      setAccountCurrency(country.defaultCurrency);
+    }
+
+    // Update provider suggestions
+    const newProviders = getProvidersForCountryAndType(country.code, accountType);
+    if (newProviders.length > 0) {
+      setProviderSelect(newProviders[0]);
+      setCustomProvider('');
+    } else {
+      setProviderSelect('__custom__');
+    }
+  };
+
+  // Handle Account Type Selection
+  const handleSelectAccountType = (newType: AccountTypeName) => {
+    setAccountType(newType);
+    const newProviders = getProvidersForCountryAndType(selectedCountryCode, newType);
+    if (newProviders.length > 0) {
+      setProviderSelect(newProviders[0]);
+      setCustomProvider('');
+    } else {
+      setProviderSelect('__custom__');
+    }
   };
 
   const handleModalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
 
-    // Validate provider
+    // Resolve provider name
     const effectiveProvider =
-      providerSelect === 'Other' ? customProvider.trim() : providerSelect.trim();
+      providerSelect === '__custom__' || providerSelect === 'Other'
+        ? customProvider.trim()
+        : providerSelect.trim();
+
     if (!effectiveProvider) {
-      setFormError('Please enter a provider or institution name.');
+      setFormError('Please enter or select a provider or institution name.');
       return;
     }
 
@@ -141,10 +307,14 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
       parsedBalance = num;
     }
 
+    const countryObj = getCountryByCode(selectedCountryCode);
+
     if (editingAccount) {
       // Edit existing account
       const updatedAccount: WalletAccount = {
         ...editingAccount,
+        countryCode: countryObj.code,
+        country: countryObj.name,
         accountType,
         provider: effectiveProvider,
         displayName: displayName.trim() || undefined,
@@ -170,6 +340,8 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
       const newAccount: WalletAccount = {
         id: `wlt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         userId: userId,
+        countryCode: countryObj.code,
+        country: countryObj.name,
         accountType,
         provider: effectiveProvider,
         displayName: displayName.trim() || undefined,
@@ -209,7 +381,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
     setDeletingAccount(null);
   };
 
-  // Helper for provider icon/badge
+  // Helper for provider badge
   const getProviderBadge = (provider: string, type: string) => {
     const p = provider.toLowerCase();
     if (p.includes('bkash')) {
@@ -240,6 +412,55 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
         </div>
       );
     }
+    if (p.includes('paypal')) {
+      return (
+        <div className="w-10 h-10 rounded-xl bg-blue-600/10 text-blue-600 dark:text-blue-400 font-bold text-xs flex items-center justify-center shrink-0 border border-blue-600/20">
+          PP
+        </div>
+      );
+    }
+    if (p.includes('venmo')) {
+      return (
+        <div className="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold text-xs flex items-center justify-center shrink-0 border border-sky-500/20">
+          V
+        </div>
+      );
+    }
+    if (p.includes('cash app')) {
+      return (
+        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center justify-center shrink-0 border border-emerald-500/20">
+          $
+        </div>
+      );
+    }
+    if (p.includes('revolut')) {
+      return (
+        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-xs flex items-center justify-center shrink-0 border border-indigo-500/20">
+          R
+        </div>
+      );
+    }
+    if (p.includes('wise')) {
+      return (
+        <div className="w-10 h-10 rounded-xl bg-lime-500/10 text-lime-600 dark:text-lime-400 font-bold text-xs flex items-center justify-center shrink-0 border border-lime-500/20">
+          W
+        </div>
+      );
+    }
+    if (p.includes('m-pesa')) {
+      return (
+        <div className="w-10 h-10 rounded-xl bg-green-500/10 text-green-600 dark:text-green-400 font-bold text-xs flex items-center justify-center shrink-0 border border-green-500/20">
+          MP
+        </div>
+      );
+    }
+    if (type.includes('Cash')) {
+      return (
+        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-500/20">
+          <span className="material-symbols-outlined text-[20px]">payments</span>
+        </div>
+      );
+    }
     if (type.includes('Bank')) {
       return (
         <div className="w-10 h-10 rounded-xl bg-primary-container text-on-primary flex items-center justify-center shrink-0">
@@ -247,12 +468,38 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
         </div>
       );
     }
+    if (type.includes('Mobile') || type.includes('MFS')) {
+      return (
+        <div className="w-10 h-10 rounded-xl bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
+          <span className="material-symbols-outlined text-[20px]">smartphone</span>
+        </div>
+      );
+    }
     return (
-      <div className="w-10 h-10 rounded-xl bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
+      <div className="w-10 h-10 rounded-xl bg-surface-container-high text-on-surface flex items-center justify-center shrink-0">
         <span className="material-symbols-outlined text-[20px]">account_balance_wallet</span>
       </div>
     );
   };
+
+  // Filtered lists for dropdown search
+  const filteredCountries = COUNTRIES.filter(
+    (c) =>
+      c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+      c.code.toLowerCase().includes(countrySearch.toLowerCase()) ||
+      c.defaultCurrency.toLowerCase().includes(countrySearch.toLowerCase())
+  );
+
+  const filteredProviders = availableProviders.filter((p) =>
+    p.toLowerCase().includes(providerSearch.toLowerCase())
+  );
+
+  const filteredCurrencies = SUPPORTED_CURRENCIES.filter(
+    (c) =>
+      c.name.toLowerCase().includes(currencySearch.toLowerCase()) ||
+      c.code.toLowerCase().includes(currencySearch.toLowerCase()) ||
+      c.symbol.toLowerCase().includes(currencySearch.toLowerCase())
+  );
 
   return (
     <div className="p-space-lg rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/20 flex flex-col gap-space-md">
@@ -269,7 +516,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
             </span>
           </div>
           <p className="text-xs text-on-surface-variant mt-0.5">
-            Manually managed wallets, bank accounts, and mobile financial services.
+            Country-independent tracking for global banks, mobile wallets, cash, and financial accounts.
           </p>
         </div>
 
@@ -277,7 +524,11 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
           {accountsWithBalance.length > 0 && (
             <div
               className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-low border border-outline-variant/20 text-xs"
-              title="Combined balance of all manually entered accounts (indicative, user-provided)"
+              title={
+                unconvertibleCount > 0
+                  ? `Combined balance of convertible accounts. (${unconvertibleCount} account(s) have unconvertible rates)`
+                  : 'Combined balance of all manually entered accounts in active display currency'
+              }
             >
               <span className="text-outline text-[11px] uppercase tracking-wider font-semibold">
                 Manual Total:
@@ -285,6 +536,11 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
               <span className="font-bold text-secondary font-mono">
                 {formatCurrency(totalManualBalance, displayCurrency)}
               </span>
+              {unconvertibleCount > 0 && (
+                <span className="text-[10px] text-outline italic">
+                  ({unconvertibleCount} excluded)
+                </span>
+              )}
             </div>
           )}
 
@@ -310,7 +566,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
               No Wallets or Bank Accounts Added Yet
             </h3>
             <p className="text-xs text-on-surface-variant max-w-md mt-1 leading-relaxed">
-              Track your personal bKash, Nagad, Rocket, or bank accounts here to manage your finances in one place.
+              Track accounts from Bangladesh (bKash, Nagad, City Bank) or any country worldwide (Chase, Barclays, PayPal, Cash) with multi-currency support.
             </p>
           </div>
           <button
@@ -328,11 +584,15 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
             const maskedId = maskAccountIdentifier(acc.accountNumber);
             const accCurrency = normalizeCurrencyCode(acc.currency || 'BDT');
             const isDifferentFromDisplay = accCurrency !== displayCurrency;
+            const canConvert = canConvertCurrency(accCurrency, displayCurrency);
             const convertedToDisplay =
-              acc.balance !== undefined && acc.balance !== null
+              canConvert && acc.balance !== undefined && acc.balance !== null
                 ? convertAmount(acc.balance, accCurrency, displayCurrency)
                 : null;
             const currConfig = getCurrencyConfig(accCurrency);
+            const countryInfo = getCountryByCode(
+              acc.countryCode || (acc.currency === 'BDT' ? 'BD' : undefined)
+            );
 
             return (
               <div
@@ -341,7 +601,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
               >
                 {/* Account info */}
                 <div className="flex items-center gap-3 min-w-0">
-                  {getProviderBadge(acc.provider, acc.accountType)}
+                  {getProviderBadge(acc.provider, acc.accountType || '')}
                   <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-title-md text-sm text-on-surface font-bold truncate">
@@ -352,6 +612,12 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
                           ({acc.displayName})
                         </span>
                       )}
+                      <span
+                        className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-mono"
+                        title={countryInfo.name}
+                      >
+                        {countryInfo.flag} {countryInfo.code}
+                      </span>
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">
                         {acc.accountType}
                       </span>
@@ -379,13 +645,22 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
                         <span className="font-title-md text-sm text-on-surface font-bold font-mono">
                           {formatCurrency(acc.balance, accCurrency)}
                         </span>
-                        {isDifferentFromDisplay && convertedToDisplay !== null && (
-                          <span
-                            className="text-[11px] text-secondary font-medium font-mono"
-                            title={`${accCurrency} converted to ${displayCurrency}`}
-                          >
-                            ≈ {formatCurrency(convertedToDisplay, displayCurrency)}
-                          </span>
+                        {isDifferentFromDisplay && (
+                          canConvert && convertedToDisplay !== null ? (
+                            <span
+                              className="text-[11px] text-secondary font-medium font-mono"
+                              title={`${accCurrency} converted to ${displayCurrency}`}
+                            >
+                              ≈ {formatCurrency(convertedToDisplay, displayCurrency)}
+                            </span>
+                          ) : (
+                            <span
+                              className="text-[11px] text-outline italic"
+                              title="Exchange rate conversion is unavailable for this currency pair"
+                            >
+                              Conversion unavailable
+                            </span>
+                          )
                         )}
                         <span className="text-[10px] text-outline">
                           Manual Balance
@@ -428,16 +703,14 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
       {/* Add / Edit Account Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-primary/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-space-lg shadow-2xl border border-outline-variant/30 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+          <div className="bg-surface-container-lowest rounded-2xl max-w-lg w-full p-space-lg shadow-2xl border border-outline-variant/30 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-2 border-b border-outline-variant/15">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-secondary text-[22px]">
                   {editingAccount ? 'edit' : 'add_card'}
                 </span>
                 <h3 className="font-title-lg text-title-lg text-on-surface font-bold">
-                  {editingAccount
-                    ? 'Edit Account'
-                    : 'Add Wallet or Bank Account'}
+                  {editingAccount ? 'Edit Account' : 'Add Wallet or Bank Account'}
                 </h3>
               </div>
               <button
@@ -458,103 +731,314 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
                 </div>
               )}
 
-              {/* Account Type */}
+              {/* 1. Country / Region (Searchable Selector) */}
+              <div className="flex flex-col gap-1 relative" ref={countryRef}>
+                <label className="text-xs font-semibold text-outline uppercase tracking-wider">
+                  Country / Region *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCountryOpen(!isCountryOpen);
+                    setIsProviderOpen(false);
+                    setIsCurrencyOpen(false);
+                  }}
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm hover:border-secondary transition-all text-left"
+                >
+                  <span className="flex items-center gap-2 font-medium">
+                    <span className="text-lg">{selectedCountryInfo.flag}</span>
+                    <span>{selectedCountryInfo.name}</span>
+                    <span className="text-xs text-outline font-mono">({selectedCountryInfo.code})</span>
+                  </span>
+                  <span className="material-symbols-outlined text-[18px] text-outline">
+                    {isCountryOpen ? 'arrow_drop_up' : 'arrow_drop_down'}
+                  </span>
+                </button>
+
+                {isCountryOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1 z-30 bg-surface-container-lowest rounded-xl shadow-xl border border-outline-variant/30 p-2 flex flex-col gap-1.5 max-h-60 overflow-hidden">
+                    <div className="relative">
+                      <span className="material-symbols-outlined text-[18px] text-outline absolute left-2.5 top-1/2 -translate-y-1/2">
+                        search
+                      </span>
+                      <input
+                        type="text"
+                        autoFocus
+                        value={countrySearch}
+                        onChange={(e) => setCountrySearch(e.target.value)}
+                        placeholder="Search country name or code..."
+                        className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-outline-variant/30 bg-surface-container-low text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-secondary"
+                      />
+                    </div>
+                    <div className="overflow-y-auto max-h-44 flex flex-col divide-y divide-outline-variant/10">
+                      {filteredCountries.map((c) => (
+                        <button
+                          key={c.code}
+                          type="button"
+                          onClick={() => handleSelectCountry(c)}
+                          className={`flex items-center justify-between px-2.5 py-2 text-xs rounded-lg transition-colors text-left ${
+                            c.code === selectedCountryCode
+                              ? 'bg-secondary-container text-on-secondary-container font-semibold'
+                              : 'hover:bg-surface-container-low text-on-surface'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2">
+                            <span>{c.flag}</span>
+                            <span>{c.name}</span>
+                            <span className="text-[11px] text-outline font-mono">({c.code})</span>
+                          </span>
+                          <span className="text-[11px] text-outline font-mono font-bold">
+                            {c.defaultCurrency}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Account Type (Bank Account, Mobile Money / Digital Wallet, Cash, Other Financial Account) */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-outline uppercase tracking-wider">
                   Account Type *
                 </label>
-                <select
-                  value={accountType}
-                  onChange={(e) => setAccountType(e.target.value)}
-                  className="p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary cursor-pointer"
-                >
-                  {ACCOUNT_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {INTERNATIONAL_ACCOUNT_TYPES.map((type) => {
+                    const isSelected = accountType === type;
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => handleSelectAccountType(type)}
+                        className={`p-2 rounded-xl border text-xs font-medium text-left flex items-center gap-2 transition-all ${
+                          isSelected
+                            ? 'bg-secondary text-on-secondary border-secondary shadow-xs'
+                            : 'bg-surface-container-low text-on-surface border-outline-variant/30 hover:border-outline'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[16px] shrink-0">
+                          {type === 'Bank Account'
+                            ? 'account_balance'
+                            : type === 'Mobile Money / Digital Wallet'
+                            ? 'smartphone'
+                            : type === 'Cash'
+                            ? 'payments'
+                            : 'savings'}
+                        </span>
+                        <span className="truncate">{type}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* Provider / Institution */}
-              <div className="flex flex-col gap-1">
+              {/* 3. Provider / Institution (Searchable Dropdown + Custom Entry) */}
+              <div className="flex flex-col gap-1 relative" ref={providerRef}>
                 <label className="text-xs font-semibold text-outline uppercase tracking-wider">
                   Provider / Institution *
                 </label>
-                <select
-                  value={providerSelect}
-                  onChange={(e) => setProviderSelect(e.target.value)}
-                  className="p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary cursor-pointer"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProviderOpen(!isProviderOpen);
+                    setIsCountryOpen(false);
+                    setIsCurrencyOpen(false);
+                  }}
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm hover:border-secondary transition-all text-left"
                 >
-                  {COMMON_PROVIDERS.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
+                  <span className="truncate">
+                    {providerSelect === '__custom__' || providerSelect === 'Other'
+                      ? customProvider.trim() || 'Custom Provider / Manual Entry...'
+                      : providerSelect}
+                  </span>
+                  <span className="material-symbols-outlined text-[18px] text-outline shrink-0">
+                    {isProviderOpen ? 'arrow_drop_up' : 'arrow_drop_down'}
+                  </span>
+                </button>
 
-                {providerSelect === 'Other' && (
-                  <input
-                    type="text"
-                    required
-                    value={customProvider}
-                    onChange={(e) => setCustomProvider(e.target.value)}
-                    placeholder="Enter custom provider / bank name"
-                    className="mt-1 p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
-                  />
+                {isProviderOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1 z-30 bg-surface-container-lowest rounded-xl shadow-xl border border-outline-variant/30 p-2 flex flex-col gap-1.5 max-h-60 overflow-hidden">
+                    <div className="relative">
+                      <span className="material-symbols-outlined text-[18px] text-outline absolute left-2.5 top-1/2 -translate-y-1/2">
+                        search
+                      </span>
+                      <input
+                        type="text"
+                        autoFocus
+                        value={providerSearch}
+                        onChange={(e) => setProviderSearch(e.target.value)}
+                        placeholder="Search provider or type custom..."
+                        className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-outline-variant/30 bg-surface-container-low text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-secondary"
+                      />
+                    </div>
+                    <div className="overflow-y-auto max-h-44 flex flex-col divide-y divide-outline-variant/10">
+                      {filteredProviders.map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => {
+                            setProviderSelect(p);
+                            setCustomProvider('');
+                            setIsProviderOpen(false);
+                            setProviderSearch('');
+                          }}
+                          className={`flex items-center justify-between px-2.5 py-2 text-xs rounded-lg transition-colors text-left ${
+                            providerSelect === p
+                              ? 'bg-secondary-container text-on-secondary-container font-semibold'
+                              : 'hover:bg-surface-container-low text-on-surface'
+                          }`}
+                        >
+                          <span className="truncate">{p}</span>
+                        </button>
+                      ))}
+
+                      {/* Option to manually enter custom provider */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProviderSelect('__custom__');
+                          if (providerSearch.trim()) {
+                            setCustomProvider(providerSearch.trim());
+                          }
+                          setIsProviderOpen(false);
+                          setProviderSearch('');
+                        }}
+                        className={`flex items-center gap-1.5 px-2.5 py-2 text-xs rounded-lg transition-colors text-left font-semibold ${
+                          providerSelect === '__custom__' || providerSelect === 'Other'
+                            ? 'bg-secondary-container text-on-secondary-container'
+                            : 'hover:bg-surface-container-low text-secondary'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">edit</span>
+                        <span>
+                          {providerSearch.trim()
+                            ? `Use "${providerSearch.trim()}" as Custom Provider`
+                            : '+ Enter Custom Provider / Bank Name...'}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Custom Provider Name Input Field */}
+                {(providerSelect === '__custom__' || providerSelect === 'Other') && (
+                  <div className="mt-1 flex flex-col gap-1">
+                    <input
+                      type="text"
+                      required
+                      value={customProvider}
+                      onChange={(e) => setCustomProvider(e.target.value)}
+                      placeholder="Enter custom provider / institution name"
+                      className="p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
+                    />
+                    <p className="text-[11px] text-outline italic">
+                      You can enter any local bank, SACCO, credit union, or private wallet.
+                    </p>
+                  </div>
                 )}
               </div>
 
-              {/* Display Name */}
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                  Account Display Name (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="e.g. Salary Account, Primary Wallet"
-                  className="p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
-                />
+              {/* 4. Display Name & Account Identifier */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-outline uppercase tracking-wider">
+                    Display Name (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="e.g. Salary, Daily Wallet"
+                    className="p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-outline uppercase tracking-wider">
+                    Account No. / ID (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={accountNumber}
+                    onChange={(e) => setAccountNumber(e.target.value)}
+                    placeholder="e.g. 01712345678 or AC-9876"
+                    className="p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary font-mono"
+                  />
+                </div>
               </div>
 
-              {/* Account Number / Identifier */}
+              {/* 5. Currency & Current Balance */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                  Account Number / Identifier (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={accountNumber}
-                  onChange={(e) => setAccountNumber(e.target.value)}
-                  placeholder="e.g. 01712345678 or AC-98765432"
-                  className="p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary font-mono"
-                />
-                <p className="text-[11px] text-outline italic">
-                  * Stored for your reference; will be masked as ****1234 in the interface.
-                </p>
-              </div>
-
-              {/* Current Balance & Currency */}
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-outline uppercase tracking-wider">
-                  CURRENT BALANCE (OPTIONAL)
+                  Currency & Current Balance (Optional)
                 </label>
                 <div className="flex items-center gap-2">
-                  {/* Currency Selector alongside input */}
-                  <select
-                    value={accountCurrency}
-                    onChange={(e) => setAccountCurrency(normalizeCurrencyCode(e.target.value))}
-                    className="w-32 sm:w-36 p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary cursor-pointer shrink-0 font-medium"
-                    title="Account Currency"
-                  >
-                    {SUPPORTED_CURRENCIES.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.flag} {c.code} ({c.displaySymbol})
-                      </option>
-                    ))}
-                  </select>
+                  {/* Searchable Currency Selector */}
+                  <div className="relative w-36 sm:w-44 shrink-0" ref={currencyRef}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCurrencyOpen(!isCurrencyOpen);
+                        setIsCountryOpen(false);
+                        setIsProviderOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-xs sm:text-sm font-semibold hover:border-secondary transition-all"
+                      title="Account Currency"
+                    >
+                      <span className="flex items-center gap-1.5 truncate font-mono">
+                        <span>{getCurrencyConfig(accountCurrency).flag}</span>
+                        <span>{accountCurrency}</span>
+                      </span>
+                      <span className="material-symbols-outlined text-[16px] text-outline shrink-0">
+                        {isCurrencyOpen ? 'arrow_drop_up' : 'arrow_drop_down'}
+                      </span>
+                    </button>
+
+                    {isCurrencyOpen && (
+                      <div className="absolute top-full left-0 right-0 sm:w-64 mt-1 z-30 bg-surface-container-lowest rounded-xl shadow-xl border border-outline-variant/30 p-2 flex flex-col gap-1.5 max-h-56 overflow-hidden">
+                        <div className="relative">
+                          <span className="material-symbols-outlined text-[16px] text-outline absolute left-2 top-1/2 -translate-y-1/2">
+                            search
+                          </span>
+                          <input
+                            type="text"
+                            autoFocus
+                            value={currencySearch}
+                            onChange={(e) => setCurrencySearch(e.target.value)}
+                            placeholder="Search currency..."
+                            className="w-full pl-7 pr-2 py-1 rounded-lg border border-outline-variant/30 bg-surface-container-low text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-secondary"
+                          />
+                        </div>
+                        <div className="overflow-y-auto max-h-40 flex flex-col divide-y divide-outline-variant/10">
+                          {filteredCurrencies.map((c) => (
+                            <button
+                              key={c.code}
+                              type="button"
+                              onClick={() => {
+                                setAccountCurrency(c.code);
+                                setIsCurrencyOpen(false);
+                                setCurrencySearch('');
+                              }}
+                              className={`flex items-center justify-between px-2 py-1.5 text-xs rounded-lg transition-colors text-left ${
+                                c.code === accountCurrency
+                                  ? 'bg-secondary-container text-on-secondary-container font-semibold'
+                                  : 'hover:bg-surface-container-low text-on-surface'
+                              }`}
+                            >
+                              <span className="flex items-center gap-1.5 font-mono">
+                                <span>{c.flag}</span>
+                                <span>{c.code}</span>
+                                <span className="text-[11px] text-outline">({c.displaySymbol})</span>
+                              </span>
+                              <span className="text-[11px] text-outline truncate max-w-[90px]">
+                                {c.name}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Numeric Balance Input */}
                   <div className="relative flex-1">
@@ -567,23 +1051,17 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
                       step="any"
                       value={balance}
                       onChange={(e) => setBalance(e.target.value)}
-                      placeholder={
-                        accountCurrency === 'JPY'
-                          ? '50000'
-                          : accountCurrency === 'USD' || accountCurrency === 'EUR' || accountCurrency === 'GBP' || accountCurrency === 'CAD' || accountCurrency === 'AUD'
-                          ? '1500'
-                          : '15000'
-                      }
+                      placeholder="0.00"
                       className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary font-mono"
                     />
                   </div>
                 </div>
-                <p className="text-[11px] text-outline">
-                  Balance is stored in {accountCurrency} and converted to reporting currency in summary totals.
+                <p className="text-[11px] text-outline mt-0.5">
+                  Stored in {accountCurrency} and converted to {displayCurrency} in summary totals.
                 </p>
               </div>
 
-              {/* Notes */}
+              {/* 6. Notes */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-outline uppercase tracking-wider">
                   Notes (Optional)
@@ -592,7 +1070,7 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
                   type="text"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="e.g. Emergency reserve, daily utility wallet"
+                  placeholder="e.g. Emergency savings, international freelance income"
                   className="p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
                 />
               </div>
@@ -656,4 +1134,3 @@ export const WalletsManagementSection: React.FC<WalletsManagementSectionProps> =
     </div>
   );
 };
-

@@ -335,6 +335,28 @@ export function convertAmount(
   return result;
 }
 
+/**
+ * Check whether exchange rate data is available to convert between two currencies.
+ * Returns true if both currencies have valid positive rates in the active exchange rate table.
+ */
+export function canConvertCurrency(
+  fromCode?: string,
+  toCode?: string,
+  customRates?: Record<string, number>
+): boolean {
+  if (!fromCode || !toCode) return false;
+  if (!isValidCurrencyCode(fromCode) || !isValidCurrencyCode(toCode)) {
+    return false;
+  }
+  const from = normalizeCurrencyCode(fromCode);
+  const to = normalizeCurrencyCode(toCode);
+  if (from === to) return true;
+  const rates = customRates || activeRates.rates || DEFAULT_EXCHANGE_RATES;
+  const rateFrom = rates[from];
+  const rateTo = rates[to];
+  return Boolean(rateFrom && rateTo && rateFrom > 0 && rateTo > 0);
+}
+
 export interface FormatCurrencyOptions {
   decimals?: number;
   maximumFractionDigits?: number;

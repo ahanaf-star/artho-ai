@@ -342,7 +342,17 @@ export async function getWalletAccounts(req: Request, res: Response) {
  */
 export async function addWalletAccount(req: Request, res: Response) {
   const { id } = req.params;
-  const { accountType, provider, displayName, accountNumber, currency, balance, notes } = req.body;
+  const {
+    accountType,
+    provider,
+    displayName,
+    accountNumber,
+    currency,
+    balance,
+    notes,
+    countryCode,
+    country,
+  } = req.body;
 
   const authUser = (req as any).user;
   if (authUser) {
@@ -372,11 +382,15 @@ export async function addWalletAccount(req: Request, res: Response) {
   }
 
   const accountCurrency = currency && typeof currency === 'string' ? normalizeCurrency(currency) : 'BDT';
+  const cleanCountryCode = countryCode && typeof countryCode === 'string' ? countryCode.trim().toUpperCase() : 'BD';
+  const cleanCountry = country && typeof country === 'string' ? country.trim() : (cleanCountryCode === 'BD' ? 'Bangladesh' : cleanCountryCode);
 
   const newAccount = {
     id: `wlt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     userId: id,
-    accountType: accountType || 'Mobile Financial Service (MFS)',
+    countryCode: cleanCountryCode,
+    country: cleanCountry,
+    accountType: accountType || 'Bank Account',
     provider: provider.trim(),
     displayName: displayName ? String(displayName).trim() : '',
     accountNumber: accountNumber ? String(accountNumber).trim() : '',
@@ -496,6 +510,8 @@ export async function updateWalletAccount(req: Request, res: Response) {
       return res.status(404).json({ error: 'Account not found' });
     }
 
+    if (updates.countryCode !== undefined) account.countryCode = String(updates.countryCode).trim().toUpperCase();
+    if (updates.country !== undefined) account.country = String(updates.country).trim();
     if (updates.accountType !== undefined) account.accountType = updates.accountType;
     if (updates.provider !== undefined) account.provider = String(updates.provider).trim();
     if (updates.displayName !== undefined) account.displayName = String(updates.displayName).trim();

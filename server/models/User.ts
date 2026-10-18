@@ -30,6 +30,8 @@ export interface IUser extends Document {
   walletAccounts?: Array<{
     id: string;
     userId?: string;
+    countryCode?: string;
+    country?: string;
     accountType: string;
     provider: string;
     displayName?: string;
@@ -183,7 +185,9 @@ const UserSchema = new Schema<IUser>(
       {
         id: { type: String, required: true },
         userId: { type: String, required: false },
-        accountType: { type: String, required: true, default: 'Mobile Financial Service (MFS)' },
+        countryCode: { type: String, default: 'BD' },
+        country: { type: String, default: 'Bangladesh' },
+        accountType: { type: String, required: true, default: 'Bank Account' },
         provider: { type: String, required: true },
         displayName: { type: String, default: '' },
         accountNumber: { type: String, default: '' },
