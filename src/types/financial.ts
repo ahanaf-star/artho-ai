@@ -87,6 +87,9 @@ export interface User {
   }>;
   walletAccounts?: WalletAccount[];
   recurringObligations?: RecurringObligation[];
+  isEmailVerified?: boolean;
+  googleId?: string;
+  authProvider?: 'local' | 'google';
 }
 
 export interface WalletAccount {

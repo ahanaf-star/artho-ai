@@ -58,6 +58,56 @@ export const apiService = {
   },
 
   /**
+   * POST /api/auth/verify-email
+   */
+  async verifyEmail(email: string, code?: string, token?: string) {
+    const res = await fetch(`${BASE_URL}/api/auth/verify-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code, token }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Verification failed');
+    }
+    return data;
+  },
+
+  /**
+   * POST /api/auth/resend-verification
+   */
+  async resendVerification(email: string) {
+    const res = await fetch(`${BASE_URL}/api/auth/resend-verification`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      const err: any = new Error(data.error || 'Failed to resend code');
+      err.retryAfter = data.retryAfter;
+      throw err;
+    }
+    return data;
+  },
+
+  /**
+   * POST /api/auth/google
+   */
+  async googleAuth(idToken: string) {
+    const res = await fetch(`${BASE_URL}/api/auth/google`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Google authentication failed');
+    }
+    return data;
+  },
+
+  /**
    * POST /api/auth/logout
    */
   async logout() {

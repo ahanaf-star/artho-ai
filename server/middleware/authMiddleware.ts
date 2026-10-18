@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import { UserModel, IUser } from '../models/User';
 import { isDbConnected } from '../config/database';
 import { INITIAL_USER } from '../../src/data/mockUser';
+import { fallbackUsers } from '../controllers/authController';
 
 export interface AuthenticatedRequest extends Request {
   user?: any;
@@ -14,6 +15,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'arthobachao_secure_jwt_secret_key_
 
 /**
  * Middleware that strictly requires a valid JWT authentication token
+ * and verified email status.
  */
 export async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
@@ -24,16 +26,39 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; customId?: string; email: string; name?: string };
+    const decoded = jwt.verify(token, JWT_SECRET) as {
+      id: string;
+      customId?: string;
+      email: string;
+      name?: string;
+      isEmailVerified?: boolean;
+    };
+
+    if (decoded.isEmailVerified === false) {
+      return res.status(403).json({
+        error: 'Email address not verified. Please verify your email to access protected features.',
+        requiresVerification: true,
+        email: decoded.email,
+      });
+    }
 
     if (!isDbConnected()) {
-      // In offline fallback mode, mock authenticated user
-      req.user = {
+      // In offline fallback mode, check fallbackUsers
+      const fallbackUser = fallbackUsers.get(decoded.email?.toLowerCase());
+      if (fallbackUser && fallbackUser.isEmailVerified === false) {
+        return res.status(403).json({
+          error: 'Email address not verified. Please verify your email to access protected features.',
+          requiresVerification: true,
+          email: decoded.email,
+        });
+      }
+
+      req.user = fallbackUser || {
         ...INITIAL_USER,
         id: decoded.customId || decoded.id || INITIAL_USER.id,
         name: decoded.name || INITIAL_USER.name,
       };
-      req.userId = req.user.id;
+      req.userId = req.user.id || req.user.customId;
       return next();
     }
 
@@ -56,6 +81,14 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid authentication session. User not found.' });
+    }
+
+    if (user.isEmailVerified === false) {
+      return res.status(403).json({
+        error: 'Email address not verified. Please verify your email to access protected features.',
+        requiresVerification: true,
+        email: user.email,
+      });
     }
 
     req.user = user;
