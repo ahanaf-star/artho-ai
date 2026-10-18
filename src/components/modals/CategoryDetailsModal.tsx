@@ -696,7 +696,7 @@ export const CategoryDetailsModal: React.FC<CategoryDetailsModalProps> = ({
         {/* Modal Action Footer */}
         <div className="p-3 sm:p-space-md border-t border-outline-variant/20 flex items-center justify-between bg-surface-container-low/40">
           <span className="text-xs text-outline hidden sm:inline">
-            Bank-grade encrypted • ArthoBachao AI Ledger
+            Bank-grade encrypted • Artho AI Ledger
           </span>
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <button

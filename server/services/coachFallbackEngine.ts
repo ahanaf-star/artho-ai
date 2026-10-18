@@ -855,7 +855,7 @@ export function generateDeterministicCoachResponse(
         if (isBn) {
           answer = `আপনার লেজারে **${ctx.spending.anomaliesCount}টি** অস্বাভাবিক লেনদেন পাওয়া গেছে। এর মধ্যে উল্লেখযোগ্য হলো **${a1.category}** খাতে ৳${a1.amount.toLocaleString()} এর লেনদেন। বড় আকারের একক খরচ এবং অতিরিক্ত ট্রানজেকশন ফি এড়িয়ে চললে মাসিক বাজেটের ভারসাম্য ঠিক থাকবে।`;
         } else {
-          answer = `ArthoBachao AI detected **${ctx.spending.anomaliesCount} unusual spending pattern(s)** in your ledger. Notably in **${a1.category}** (৳${a1.amount.toLocaleString()}). Keeping tabs on unscheduled surges and fee leaks prevents sudden month-end cash flow pressure.`;
+          answer = `Artho AI detected **${ctx.spending.anomaliesCount} unusual spending pattern(s)** in your ledger. Notably in **${a1.category}** (৳${a1.amount.toLocaleString()}). Keeping tabs on unscheduled surges and fee leaks prevents sudden month-end cash flow pressure.`;
         }
       } else {
         if (topCat) {
@@ -911,7 +911,7 @@ export function generateDeterministicCoachResponse(
         if (isBn) {
           answer = `চলতি মাসে আপনার রেকর্ডকৃত মোট আয় **৳${income.toLocaleString()}** এবং মোট ব্যয় **৳${spending.toLocaleString()}** (নিট উদ্বৃত্ত: **৳${netSavings.toLocaleString()}**)।\n\nআপনার সামগ্রিক আর্থিক স্বাস্থ্য স্কোর (Financial Health Score) নির্ণয়ের জন্য **পর্যাপ্ত লেনদেনের তথ্য নেই (Insufficient Data)**।\n\nনির্ভরযোগ্য হেলথ স্কোর পেতে:\n১. প্রতিদিনের নিয়মিত খরচ (বাজার, বাসা ভাড়া, ইউটিলিটি ইত্যাদি) লেজারে যুক্ত করুন।\n২. অন্তত ১টি সক্রিয় সঞ্চয় লক্ষ্য (যেমন জরুরি তহবিল) তৈরি করুন।\n৩. নিয়মিত লেনদেনের ইতিহাস তৈরি হলে এআই স্বয়ংক্রিয়ভাবে আপনার সামগ্রিক হেলথ স্কোর ও ৪টি পিলার মূল্যায়ন করবে।`;
         } else {
-          answer = `Based on your recorded monthly income of **৳${income.toLocaleString()}** and total expenses of **৳${spending.toLocaleString()}** (net savings: **৳${netSavings.toLocaleString()}**), there is **insufficient transaction data** to calculate a reliable Financial Health Score.\n\nTo unlock a reliable score:\n1. Log your routine living expenses (housing, groceries, utilities, transit) regularly.\n2. Create at least one active savings goal (such as an Emergency Fund).\n3. Once regular transaction history is established, ArthoBachao AI will automatically calculate your composite score across all 4 diagnostic pillars.`;
+          answer = `Based on your recorded monthly income of **৳${income.toLocaleString()}** and total expenses of **৳${spending.toLocaleString()}** (net savings: **৳${netSavings.toLocaleString()}**), there is **insufficient transaction data** to calculate a reliable Financial Health Score.\n\nTo unlock a reliable score:\n1. Log your routine living expenses (housing, groceries, utilities, transit) regularly.\n2. Create at least one active savings goal (such as an Emergency Fund).\n3. Once regular transaction history is established, Artho AI will automatically calculate your composite score across all 4 diagnostic pillars.`;
         }
         followUps.push(
           isBn ? 'কীভাবে খরচ যোগ করব?' : 'How do I add transactions?',
@@ -942,8 +942,8 @@ export function generateDeterministicCoachResponse(
           ? `\n\n• **প্রধান দুর্বলতা ও ঝুঁকি**: আপনার মাসিক ব্যয় আয়ের চেয়ে বেশি হওয়ায় **৳${deficitAmt.toLocaleString()}** এর বাজেট ঘাটতি রয়েছে, যা আর্থিক স্থিতিশীলতার জন্য প্রধান ঝুঁকি।`
           : '';
         const scoreBlock = isConfidenceLow
-          ? `আপনার অর্থবাঁচাও এআই আর্থিক স্বাস্থ্য ও হেলথ স্কোর (Health Score) **${healthScore} / ১০০** (অবস্থা: **${healthBand}** — সীমিত তথ্যের কারণে প্রাথমিক)।\n\n*প্রাথমিক স্কোরের কারণ*: লেজারে সীমিত সংখ্যক লেনদেন (${totalTx}টি) থাকায় এটি একটি প্রাথমিক মূল্যায়ন। সকল নিয়মিত খরচ অন্তর্ভুক্ত হলে এটি আরও নির্ভুল হবে।`
-          : `আপনার অর্থবাঁচাও এআই আর্থিক স্বাস্থ্য ও হেলথ স্কোর (Health Score) **${healthScore} / ১০০** (অবস্থা: **${healthBand}**)।`;
+          ? `আপনার Artho AI আর্থিক স্বাস্থ্য ও হেলথ স্কোর (Health Score) **${healthScore} / ১০০** (অবস্থা: **${healthBand}** — সীমিত তথ্যের কারণে প্রাথমিক)।\n\n*প্রাথমিক স্কোরের কারণ*: লেজারে সীমিত সংখ্যক লেনদেন (${totalTx}টি) থাকায় এটি একটি প্রাথমিক মূল্যায়ন। সকল নিয়মিত খরচ অন্তর্ভুক্ত হলে এটি আরও নির্ভুল হবে।`
+          : `আপনার Artho AI আর্থিক স্বাস্থ্য ও হেলথ স্কোর (Health Score) **${healthScore} / ১০০** (অবস্থা: **${healthBand}**)।`;
 
         answer = `চলতি মাসে আপনার রেকর্ডকৃত মোট আয় **৳${income.toLocaleString()}** এবং মোট ব্যয় **৳${spending.toLocaleString()}** (নিট উদ্বৃত্ত: **৳${netSavings.toLocaleString()}**)।\n\n${scoreBlock}${riskNote}\n\nপিলার বিশ্লেষণ:\n• সঞ্চয়ের ধারাবাহিকতা: ${savingConsistencyStr}\n• ব্যয় নিয়ন্ত্রণ: ${spendingControlStr}\n• ক্যাশ-ফ্লো স্থায়িত্ব: ${cashFlowStabilityStr}\n• সঞ্চয় লক্ষ্যের অগ্রগতি: ${goalProgressStr}`;
       } else {
@@ -951,8 +951,8 @@ export function generateDeterministicCoachResponse(
           ? `\n\n• **Core Stability Risk**: Outflows exceed inflows by **৳${deficitAmt.toLocaleString()}**, creating a monthly cash deficit that represents the primary liquidity risk to your financial profile.`
           : '';
         const scoreBlock = isConfidenceLow
-          ? `your ArthoBachao AI Financial Health Score is **${healthScore} / 100** (Rating: **${healthBand}** — Preliminary due to limited history).\n\n*Note on Preliminary Status*: Because your ledger contains limited transaction history (${totalTx} transaction(s)), this score is an initial baseline. Recurring living costs or pending bills may not yet be reflected.`
-          : `your ArthoBachao AI Financial Health Score is **${healthScore} / 100** (Rating: **${healthBand}**).`;
+          ? `your Artho AI Financial Health Score is **${healthScore} / 100** (Rating: **${healthBand}** — Preliminary due to limited history).\n\n*Note on Preliminary Status*: Because your ledger contains limited transaction history (${totalTx} transaction(s)), this score is an initial baseline. Recurring living costs or pending bills may not yet be reflected.`
+          : `your Artho AI Financial Health Score is **${healthScore} / 100** (Rating: **${healthBand}**).`;
 
         answer = `Based on your recorded monthly income of **৳${income.toLocaleString()}** and total expenses of **৳${spending.toLocaleString()}** (net savings: **৳${netSavings.toLocaleString()}**), ${scoreBlock}${riskNote}\n\nDiagnostic Pillars:\n• Saving Consistency: ${savingConsistencyStr}\n• Spending Control: ${spendingControlStr}\n• Cash Flow Stability: ${cashFlowStabilityStr}\n• Goal Progress: ${goalProgressStr}`;
       }
@@ -1373,8 +1373,8 @@ export function generateDeterministicCoachResponse(
 
     case 'out_of_scope': {
       answer = isBn
-        ? 'আমি অর্থবাঁচাও এআই পার্সোনাল ফাইন্যান্সিয়াল কোচ। আমি শুধুমাত্র আপনার ব্যক্তিগত আয়, ব্যয় ও সঞ্চয় পরিকল্পনায় সহায়তা করতে পারি। বিনিয়োগের পরামর্শ, স্টক টিপস, ক্রিপ্টো বা ঋণ সংক্রান্ত সিদ্ধান্ত আমার আওতাভুক্ত নয়।'
-        : 'I am ArthoBachao AI, focused exclusively on personal budgeting, expense optimization, and savings goals. I do not provide stock picking, crypto recommendations, loan approvals, or regulated investment advice.';
+        ? 'আমি Artho AI পার্সোনাল ফাইন্যান্সিয়াল কোচ। আমি শুধুমাত্র আপনার ব্যক্তিগত আয়, ব্যয় ও সঞ্চয় পরিকল্পনায় সহায়তা করতে পারি। বিনিয়োগের পরামর্শ, স্টক টিপস, ক্রিপ্টো বা ঋণ সংক্রান্ত সিদ্ধান্ত আমার আওতাভুক্ত নয়।'
+        : 'I am Artho AI, focused exclusively on personal budgeting, expense optimization, and savings goals. I do not provide stock picking, crypto recommendations, loan approvals, or regulated investment advice.';
       break;
     }
 

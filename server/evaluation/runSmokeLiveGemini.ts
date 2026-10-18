@@ -43,7 +43,7 @@ export interface SmokeResult {
 
 export async function runLiveGeminiSmokeTest() {
   console.log('================================================================');
-  console.log(' ArthoBachao AI Coach — Live Gemini Opt-In Smoke Test');
+  console.log(' Artho AI Coach — Live Gemini Opt-In Smoke Test');
   console.log('================================================================');
 
   const apiKey = process.env.GEMINI_API_KEY;

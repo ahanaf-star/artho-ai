@@ -57,7 +57,7 @@ function runVerification() {
   // TEST 3: Confirm all Financial Health Score elements are preserved
   console.log('[TEST 3] Verifying all Financial Health Score elements are preserved...');
   const expectedElements = [
-    'ArthoBachao AI Financial Health Score',
+    'Artho AI Financial Health Score',
     'healthMetrics.status',
     'Saving Consistency',
     'Spending Control',

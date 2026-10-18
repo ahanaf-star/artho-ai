@@ -43,7 +43,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'arthobachao_secure_jwt_secret_key_
 
 async function runTestSuite() {
   console.log('===============================================================');
-  console.log('ARTHOBACHAO AI: AUTHENTICATION & EMAIL SECURITY TEST SUITE');
+  console.log('ARTHO AI: AUTHENTICATION & EMAIL SECURITY TEST SUITE');
   console.log('===============================================================\n');
 
   // Intercept all outgoing transactional emails to prevent real email dispatches during test runs

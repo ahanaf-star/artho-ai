@@ -1,4 +1,4 @@
-# ArthoBachao AI — Database Architecture & Data Pipeline Guide
+# Artho AI — Database Architecture & Data Pipeline Guide
 
 ## 1. Executive Summary & Database Identity
 - **Database Engine:** MongoDB Atlas (Cloud-hosted Replica Set)
@@ -7,7 +7,7 @@
 - **Primary Connection Config File:** `server/config/database.ts`
 - **Application Architecture:** Unified Node.js Express server + React TypeScript Vite frontend with REST APIs.
 
-The ArthoBachao AI database is dedicated strictly to personal financial health management, budgeting, savings goal tracking, and deterministic financial intelligence for users in Bangladesh.
+The Artho AI database is dedicated strictly to personal financial health management, budgeting, savings goal tracking, and deterministic financial intelligence for users in Bangladesh.
 
 ---
 

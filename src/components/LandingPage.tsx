@@ -30,8 +30,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   const faqs = [
     {
-      qEn: 'How does ArthoBachao AI connect to bKash, Nagad, and City Bank?',
-      aEn: 'ArthoBachao AI aggregates read-only transaction alerts and statements with end-to-end local encryption. It never asks for your transactional PINs or OTPs, providing clean classification and anomaly detection without compromising account custody.',
+      qEn: 'How does Artho AI connect to bKash, Nagad, and City Bank?',
+      aEn: 'Artho AI aggregates read-only transaction alerts and statements with end-to-end local encryption. It never asks for your transactional PINs or OTPs, providing clean classification and anomaly detection without compromising account custody.',
     },
     {
       qEn: 'Does the AI Financial Coach support conversational financial coaching?',
@@ -39,7 +39,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     },
     {
       qEn: 'What makes the Financial Health Score different from a credit score?',
-      aEn: 'Unlike opaque credit scoring models, ArthoBachao AI gives you a 100% transparent, explainable 0–100 score based on Saving Consistency, Spending Control, Cash Flow Stability, and Liquidity Buffer Readiness. Every point gained is tied to actionable habits.',
+      aEn: 'Unlike opaque credit scoring models, Artho AI gives you a 100% transparent, explainable 0–100 score based on Saving Consistency, Spending Control, Cash Flow Stability, and Liquidity Buffer Readiness. Every point gained is tied to actionable habits.',
     },
     {
       qEn: 'Can I simulate cash flow to avoid running out of money before month-end?',
@@ -62,7 +62,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
           <div className="flex flex-col">
             <span className="font-title-lg text-base sm:text-lg font-bold text-on-surface tracking-tight leading-tight">
-              ArthoBachao AI
+              Artho AI
             </span>
             <span className="text-[10px] sm:text-[11px] text-outline font-medium">
               Dhaka Metro • AI Wealth Engine
@@ -558,7 +558,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           onClick={() => onNavigate('dashboard')}
           className="mt-2 px-8 py-3.5 rounded-xl bg-secondary-container text-on-secondary-container font-title-lg font-bold hover:opacity-95 active:scale-95 transition-all shadow-md flex items-center gap-2"
         >
-          <span>Launch ArthoBachao AI Dashboard</span>
+          <span>Launch Artho AI Dashboard</span>
           <span className="material-symbols-outlined text-[20px]">rocket_launch</span>
         </button>
       </section>

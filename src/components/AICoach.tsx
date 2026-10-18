@@ -176,7 +176,7 @@ export const AICoach: React.FC<AICoachProps> = ({
             </span>
           </div>
           <h1 className="font-headline-lg text-headline-lg text-on-surface tracking-tight font-bold">
-            ArthoBachao AI Personal Financial Coach
+            Artho AI Personal Financial Coach
           </h1>
           <p className="font-body-md text-body-md text-on-surface-variant">
             Conversational intelligence backed by your actual transactional data &amp; behavioral models
@@ -353,7 +353,7 @@ export const AICoach: React.FC<AICoachProps> = ({
                       <div className="flex items-center justify-between pb-2 border-b border-outline-variant/15">
                         <div className="flex items-center gap-space-xs">
                           <span className="font-title-md text-title-md text-on-surface font-bold">
-                            ArthoBachao AI Coach
+                            Artho AI Coach
                           </span>
                           <span className="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface font-label-sm text-label-sm">
                             {msg.isDeterministic ? 'Deterministic Math' : 'Gemini AI Coach'}
@@ -527,7 +527,7 @@ export const AICoach: React.FC<AICoachProps> = ({
                               <div className="absolute right-0 top-0 w-24 h-24 bg-secondary-container/20 rounded-full blur-2xl"></div>
                               <div className="flex justify-between items-center">
                                 <span className="font-label-md text-label-md text-secondary font-semibold">
-                                  With ArthoBachao AI Optimization
+                                  With Artho AI Optimization
                                 </span>
                                 <span className="material-symbols-outlined text-secondary text-[18px]">
                                   rocket_launch
@@ -619,7 +619,7 @@ export const AICoach: React.FC<AICoachProps> = ({
                 <span className="material-symbols-outlined text-[18px] text-secondary animate-spin">
                   sync
                 </span>
-                <span>ArthoBachao AI Coach is analyzing transactional patterns...</span>
+                <span>Artho AI Coach is analyzing transactional patterns...</span>
               </div>
             )}
             <div ref={streamEndRef} />
@@ -650,7 +650,7 @@ export const AICoach: React.FC<AICoachProps> = ({
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Ask ArthoBachao AI anything about your money in English..."
+                placeholder="Ask Artho AI anything about your money in English..."
                 className="flex-1 bg-transparent py-2.5 px-space-xs text-on-surface placeholder:text-outline font-body-md text-body-md focus:outline-none"
               />
 

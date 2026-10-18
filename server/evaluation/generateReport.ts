@@ -40,7 +40,7 @@ export function generateMarkdownReport(summary: EvaluationSuiteSummary): string 
     results,
   } = summary;
 
-  let md = `# ArthoBachao AI Coach — 100-Case Automated Bilingual Evaluation Report\n\n`;
+  let md = `# Artho AI Coach — 100-Case Automated Bilingual Evaluation Report\n\n`;
   md += `**Execution Date**: ${new Date().toISOString()}  \n`;
   md += `**Execution Duration**: ${(durationMs / 1000).toFixed(2)}s  \n`;
   md += `**Total Test Cases Evaluated**: ${total} (Bilingual: ${englishCount} English + ${banglaCount} Bangla)  \n`;

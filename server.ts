@@ -391,7 +391,7 @@ async function startServer() {
           ? `Saving Consistency: ${hp.savingConsistency !== null ? `${hp.savingConsistency}%` : 'Insufficient Data'}, Spending Control: ${hp.spendingControl !== null ? `${hp.spendingControl}%` : 'Insufficient Data'}, Cash Flow Stability: ${hp.cashFlowStability !== null ? `${hp.cashFlowStability}%` : 'Insufficient Data'}, Goal Progress: ${hp.goalProgress !== null ? `${hp.goalProgress}%` : 'Insufficient Data'}`
           : 'Saving Consistency: Insufficient Data, Spending Control: Insufficient Data, Cash Flow Stability: Insufficient Data, Goal Progress: Insufficient Data';
 
-        const systemInstruction = `You are ArthoBachao AI Personal Financial Coach, an expert digital wealth engine built specifically for Bangladesh (Dhaka lifestyle, bKash, Nagad, City Bank, Dhaka Metro MRT, Pathao, Shwapno). You provide explainable, empathetic, non-judgmental, and mathematically sound coaching grounded strictly in the user's authentic ledger data.
+        const systemInstruction = `You are Artho AI Personal Financial Coach, an expert digital wealth engine built specifically for Bangladesh (Dhaka lifestyle, bKash, Nagad, City Bank, Dhaka Metro MRT, Pathao, Shwapno). You provide explainable, empathetic, non-judgmental, and mathematically sound coaching grounded strictly in the user's authentic ledger data.
 
 CURRENCY CONVENTION: Always use Bangladeshi Taka (BDT / ৳), for example ৳5,000 or ৳29,200. Never use USD ($) or any other foreign currency.
 
@@ -424,7 +424,7 @@ ${categoriesList}
 SAVINGS GOALS STATUS:
 ${goalsList}
 
-ARTHOBACHAO AI FINANCIAL HEALTH SCORE:
+ARTHO AI FINANCIAL HEALTH SCORE:
 • Score: ${effectiveContext.healthScore?.score ?? 0} / 100 (${effectiveContext.healthScore?.status ?? 'Insufficient Data'})
 • Diagnostic Factors: ${healthPillars}
 
@@ -484,11 +484,11 @@ COACHING & FACTUAL RULES:
   }
 
   app.listen(port, () => {
-    console.log(`ArthoBachao AI server listening on http://localhost:${port} and http://127.0.0.1:${port}`);
+    console.log(`Artho AI server listening on http://localhost:${port} and http://127.0.0.1:${port}`);
   });
 }
 
 startServer().catch((err) => {
-  console.error('Fatal error launching ArthoBachao AI server:', err);
+  console.error('Fatal error launching Artho AI server:', err);
   process.exit(1);
 });

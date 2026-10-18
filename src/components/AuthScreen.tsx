@@ -216,7 +216,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           </div>
           <div className="flex flex-col mt-1">
             <h1 className="font-headline-lg text-headline-lg text-on-surface tracking-tight font-bold">
-              ArthoBachao AI
+              Artho AI
             </h1>
             <p className="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
               Intelligent Personal Wealth &amp; Savings Engine

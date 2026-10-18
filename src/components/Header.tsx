@@ -377,7 +377,7 @@ export const Header: React.FC<HeaderProps> = ({
           <span>Home</span>
         </button>
 
-        {/* Ask ArthoBachao AI Action Button */}
+        {/* Ask Artho AI Action Button */}
         <button
           onClick={() => onNavigate('ai-coach')}
           className="flex items-center gap-1.5 px-2.5 sm:px-space-md py-2 rounded-full bg-primary-container text-on-primary hover:opacity-90 transition-opacity active:scale-95 shadow-xs"

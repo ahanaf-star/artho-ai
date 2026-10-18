@@ -1,5 +1,5 @@
 /**
- * Exchange Rate Service for ArthoBachao AI
+ * Exchange Rate Service for Artho AI
  * 
  * Provides live, reliable exchange rates using reputable open exchange rate provider (ExchangeRate-API).
  * Base currency is always BDT (Bangladeshi Taka).
@@ -75,7 +75,7 @@ export async function getExchangeRates(forceRefresh = false): Promise<ExchangeRa
       signal: controller.signal,
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'ArthoBachao-AI-ExchangeRate-Client/1.0',
+        'User-Agent': 'Artho-AI-ExchangeRate-Client/1.0',
       },
     });
 

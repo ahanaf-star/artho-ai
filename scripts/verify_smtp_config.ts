@@ -1,5 +1,5 @@
 /**
- * Verification script for SMTP configuration in ArthoBachao AI
+ * Verification script for SMTP configuration in Artho AI
  * Usage: npx tsx scripts/verify_smtp_config.ts
  */
 import dotenv from 'dotenv';
@@ -14,7 +14,7 @@ import {
 
 async function main() {
   console.log('====================================================');
-  console.log('  ArthoBachao AI — SMTP & Email Provider Verification');
+  console.log('  Artho AI — SMTP & Email Provider Verification');
   console.log('====================================================\n');
 
   const status = getEmailServiceStatus();
@@ -34,7 +34,7 @@ async function main() {
     console.log('   SMTP_PORT=465');
     console.log('   SMTP_USER=your_dedicated_account@gmail.com');
     console.log('   SMTP_PASS=xxxx xxxx xxxx xxxx  (16-char Google App Password)');
-    console.log('   EMAIL_FROM="ArthoBachao AI" <your_dedicated_account@gmail.com>');
+    console.log('   EMAIL_FROM="Artho AI" <your_dedicated_account@gmail.com>');
     return;
   }
 

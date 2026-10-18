@@ -40,7 +40,7 @@ export const AICoachModal: React.FC<AICoachModalProps> = ({
               <span className="material-symbols-outlined text-secondary text-[20px]">smart_toy</span>
             </div>
             <h2 className="font-headline-md text-headline-md text-on-surface font-bold">
-              ArthoBachao AI Coach
+              Artho AI Coach
             </h2>
           </div>
           <button

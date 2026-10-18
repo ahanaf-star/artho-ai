@@ -34,7 +34,7 @@ console.log('✓ Side-by-side grid "grid grid-cols-1 lg:grid-cols-2" properly co
 
 // 3. Financial Health Score elements preserved
 const requiredHealthScoreItems = [
-  'ArthoBachao AI Financial Health Score',
+  'Artho AI Financial Health Score',
   'healthMetrics.status',
   'healthMetrics.score',
   'Saving Consistency',

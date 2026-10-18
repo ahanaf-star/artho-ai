@@ -75,11 +75,11 @@ export const MonthlyReportModal: React.FC<MonthlyReportModalProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-outline-variant/20 print:border-b-2 print:border-[#0b1c30] print:pb-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-primary-container text-on-primary flex items-center justify-center font-bold text-xs print:bg-black print:text-white print:w-9 print:h-9 print:rounded-md">
-              AB
+              AI
             </div>
             <div>
               <h2 className="font-headline-md text-headline-md text-on-surface font-bold print:text-xl print:text-[#0b1c30]">
-                ArthoBachao AI Monthly Financial Statement
+                Artho AI Monthly Financial Statement
               </h2>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-xs text-outline print:text-xs print:text-[#334155] print:font-semibold">
@@ -132,7 +132,7 @@ export const MonthlyReportModal: React.FC<MonthlyReportModalProps> = ({
               </p>
             </div>
             <div className="text-right">
-              <span className="text-xs text-outline print:text-[#475569] print:font-medium">ArthoBachao AI Health Score</span>
+              <span className="text-xs text-outline print:text-[#475569] print:font-medium">Artho AI Health Score</span>
               <p className="font-bold text-secondary text-lg print:text-[#006c49] print:text-xl">{health.score !== null ? `${health.score} / 100` : '-- / 100'} ({health.status})</p>
             </div>
           </div>
@@ -182,7 +182,7 @@ export const MonthlyReportModal: React.FC<MonthlyReportModalProps> = ({
           <div className="p-3.5 rounded-xl bg-surface-container-high/40 text-xs flex flex-col gap-1.5 border border-outline-variant/20 print:bg-[#f8f9ff] print:border-[#cbd5e1] print:rounded-lg print:p-3 print:break-inside-avoid">
             <span className="font-bold text-secondary flex items-center gap-1 print:text-[#006c49]">
               <span className="material-symbols-outlined text-[16px] print:hidden">verified</span>
-              ArthoBachao AI Algorithmic Audit Notes
+              Artho AI Algorithmic Audit Notes
             </span>
             <div className="text-on-surface-variant leading-relaxed flex flex-col gap-1 print:text-[#334155]">
               <p>
@@ -207,7 +207,7 @@ export const MonthlyReportModal: React.FC<MonthlyReportModalProps> = ({
 
           {/* Official Print-Only Footer */}
           <div className="hidden print:flex items-center justify-between pt-3 mt-1 border-t border-[#cbd5e1] text-[10px] text-[#64748b]">
-            <span>ArthoBachao AI • Bank-grade encrypted statement • Authentic digital ledger verification</span>
+            <span>Artho AI • Bank-grade encrypted statement • Authentic digital ledger verification</span>
             <span>Confidential Financial Document</span>
           </div>
         </div>

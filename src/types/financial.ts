@@ -1,4 +1,4 @@
-// Domain Types for ArthoBachao AI
+// Domain Types for Artho AI
 export type TransactionType = 'expense' | 'income' | 'transfer';
 
 export type BuiltinExpenseCategory =

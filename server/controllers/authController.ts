@@ -658,7 +658,7 @@ export async function verifyEmail(req: Request, res: Response) {
     const jwtToken = generateToken(user);
 
     return res.json({
-      message: 'Email verified successfully! Welcome to ArthoBachao AI.',
+      message: 'Email verified successfully! Welcome to Artho AI.',
       user,
       token: jwtToken,
     });

@@ -373,7 +373,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-secondary text-[22px]">vital_signs</span>
                 <h2 className="font-title-lg text-title-lg text-on-surface font-bold">
-                  ArthoBachao AI Financial Health Score
+                  Artho AI Financial Health Score
                 </h2>
               </div>
               <span className="px-2.5 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-semibold">

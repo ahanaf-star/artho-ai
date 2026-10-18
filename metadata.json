@@ -1,6 +1,6 @@
 {
-  "name": "ArthoBachao AI",
-  "description": "ArthoBachao AI - Understand your money. Plan smarter. Reach your goals. AI-powered personal financial health and savings assistant.",
+  "name": "Artho AI",
+  "description": "Artho AI - Understand your money. Plan smarter. Reach your goals. AI-powered personal financial health and savings assistant.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

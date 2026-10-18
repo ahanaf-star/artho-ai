@@ -226,7 +226,7 @@ describe('AI Coach Cross-Response Consistency & Financial Grounding', () => {
   // 5. APPLICATION FEATURE INTEGRITY
   // =========================================================================
   describe('5. Application Feature Integrity (No Vault Claims)', () => {
-    it('5.1: Does not claim ArthoBachao AI has built-in savings vaults or automated payday transfers', async () => {
+    it('5.1: Does not claim Artho AI has built-in savings vaults or automated payday transfers', async () => {
       const q = 'What are the 3 most important actions I should take to improve my financial health?';
       const res = await executeCoachInquiry({ query: q, fullContext: eduContext, language: 'en' });
 

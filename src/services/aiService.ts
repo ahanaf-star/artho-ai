@@ -218,7 +218,7 @@ export async function askFinancialCoach(
   }
 
   // Service failure / connection error without fabricating data
-  const errorText = 'Unable to connect to the ArthoBachao AI Coach service. Please check your internet connection or try again in a moment.';
+  const errorText = 'Unable to connect to the Artho AI Coach service. Please check your internet connection or try again in a moment.';
 
   return {
     id: `coach-${Date.now()}`,

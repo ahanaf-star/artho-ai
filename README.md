@@ -1,13 +1,13 @@
 <div align="center">
 
-# 💰 Arthobachao AI
+# 💰 Artho AI
 
 ### AI-Powered Personal Financial Health & Savings Assistant
 
 **Understand your money. Plan smarter. Reach your goals.**
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Arthobachao%20AI-success?style=for-the-badge)](https://arthobachao-ai.onrender.com)
-[![GitHub](https://img.shields.io/badge/GitHub-Source%20Code-black?style=for-the-badge&logo=github)](https://github.com/ahanaf-star/arthobachao-ai)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Artho%20AI-success?style=for-the-badge)](https://arthobachao-ai.onrender.com)
+[![GitHub](https://img.shields.io/badge/GitHub-Source%20Code-black?style=for-the-badge&logo=github)](https://github.com/ahanaf-star/artho-ai)
 
 </div>
 
@@ -15,7 +15,7 @@
 
 ## 🚀 Live Demo
 
-👉 **[Visit Arthobachao AI](https://arthobachao-ai.onrender.com)**
+👉 **[Visit Artho AI](https://arthobachao-ai.onrender.com)**
 
 The application is deployed and accessible online.
 
@@ -23,7 +23,7 @@ The application is deployed and accessible online.
 
 ## 📌 About the Project
 
-**Arthobachao AI** is an AI-powered personal financial health and savings assistant designed to help users understand their spending, manage savings goals, monitor cash flow, and make more informed financial decisions.
+**Artho AI** is an AI-powered personal financial health and savings assistant designed to help users understand their spending, manage savings goals, monitor cash flow, and make more informed financial decisions.
 
 The application combines financial data analysis with **Google Gemini AI** to provide contextual explanations and personalized financial guidance.
 
@@ -75,7 +75,7 @@ The project is built using synthetic/demo financial data and does not use real u
 
 ## 🧠 AI Integration
 
-Arthobachao AI uses **Google Gemini** as the intelligent financial coaching layer.
+Artho AI uses **Google Gemini** as the intelligent financial coaching layer.
 
 The application provides Gemini with relevant financial context such as:
 

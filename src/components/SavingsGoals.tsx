@@ -631,7 +631,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                 </span>
                 <div>
                   <h3 className="font-headline-md text-headline-md text-on-surface font-bold">
-                    ArthoBachao AI Scenario Planning
+                    Artho AI Scenario Planning
                   </h3>
                   <p className="font-body-sm text-body-sm text-on-surface-variant">
                     Accelerate Emergency Fund completion timeline using contextual cash-flow heuristics
@@ -799,7 +799,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
             </div>
             <p className="font-body-sm text-body-sm text-on-surface-variant">
               Set your target monthly savings velocity for{' '}
-              <strong>{adjustModalGoal.title}</strong>. ArthoBachao AI will recalibrate your projected finish date automatically.
+              <strong>{adjustModalGoal.title}</strong>. Artho AI will recalibrate your projected finish date automatically.
             </p>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-outline uppercase tracking-wider">

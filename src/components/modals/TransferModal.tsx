@@ -107,7 +107,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
 
           <div className="p-3 rounded-xl bg-surface-container-low text-xs text-on-surface-variant flex items-center gap-2 border border-outline-variant/15">
             <span className="material-symbols-outlined text-[16px] text-secondary">verified</span>
-            <span>Zero inter-bank NPSB transfer fee via ArthoBachao AI Auto-sweep link.</span>
+            <span>Zero inter-bank NPSB transfer fee via Artho AI Auto-sweep link.</span>
           </div>
 
           <div className="flex items-center gap-2 pt-2">

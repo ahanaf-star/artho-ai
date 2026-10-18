@@ -76,7 +76,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
               <div className="flex flex-col">
                 <span className="font-title-lg text-title-lg text-on-surface tracking-tight leading-none font-bold">
-                  ArthoBachao AI
+                  Artho AI
                 </span>
                 <span className="font-label-sm text-label-sm text-on-surface-variant leading-none mt-1">
                   Intelligent Wealth Engine

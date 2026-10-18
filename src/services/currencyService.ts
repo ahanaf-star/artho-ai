@@ -1,5 +1,5 @@
 /**
- * Centralized Multi-Currency Service for ArthoBachao AI
+ * Centralized Multi-Currency Service for Artho AI
  * 
  * Supports 11 ISO 4217 currencies:
  * 1. Bangladeshi Taka — BDT (৳) (Default)

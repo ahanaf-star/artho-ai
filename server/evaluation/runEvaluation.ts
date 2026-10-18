@@ -5,7 +5,7 @@ import { saveEvaluationReports } from './generateReport';
 
 async function main() {
   console.log('================================================================');
-  console.log(' ArthoBachao AI Coach — 100-Case Automated Evaluation Suite');
+  console.log(' Artho AI Coach — 100-Case Automated Evaluation Suite');
   console.log('================================================================');
 
   const args = process.argv.slice(2);
