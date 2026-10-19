@@ -461,26 +461,59 @@ export default function App() {
     }
   };
 
-  // Create Goal Handler - persists to MongoDB and revalidates
+  // Create Goal Handler - persists to MongoDB and local cache
   const handleCreateGoal = async (newGoal: SavingsGoal) => {
-    setGoals((prev) => [...prev, newGoal]);
+    const stableId = newGoal.id || `goal-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const stableGoal: SavingsGoal = {
+      ...newGoal,
+      id: stableId,
+    };
+
+    setGoals((prev) => {
+      const filtered = prev.filter((g) => (g.id || (g as any).customId || (g as any)._id) !== stableId);
+      const updated = [...filtered, stableGoal];
+      if (currentUser) {
+        financialDataService.saveGoals(currentUser.id, updated);
+      }
+      return updated;
+    });
+
     if (currentUser) {
       try {
-        await apiService.createGoal(currentUser.id, newGoal);
-        await refreshFinancialData(currentUser.id);
+        const created = await apiService.createGoal(currentUser.id, stableGoal);
+        if (created && created.id) {
+          const finalId = created.id;
+          setGoals((prev) => {
+            const updated = prev.map((g) => (g.id === stableId ? { ...g, ...created, id: finalId } : g));
+            financialDataService.saveGoals(currentUser.id, updated);
+            return updated;
+          });
+        }
       } catch (err) {
         console.error('Failed to persist new goal to backend:', err);
       }
     }
   };
 
-  // Update Goal Handler - persists to MongoDB and revalidates
+  // Update Goal Handler - persists to MongoDB and local cache
   const handleUpdateGoal = async (updatedGoal: SavingsGoal) => {
-    setGoals((prev) => prev.map((g) => (g.id === updatedGoal.id ? updatedGoal : g)));
+    const targetId = String(updatedGoal.id || (updatedGoal as any).customId || (updatedGoal as any)._id || '').trim();
+    if (!targetId) return;
+
+    setGoals((prev) => {
+      const updated = prev.map((g) => {
+        const gid = String(g.id || (g as any).customId || (g as any)._id || '').trim();
+        return gid === targetId ? { ...g, ...updatedGoal, id: targetId } : g;
+      });
+      if (currentUser) {
+        financialDataService.saveGoals(currentUser.id, updated);
+      }
+      return updated;
+    });
+
     if (currentUser) {
       try {
-        await apiService.updateGoal(updatedGoal.id, updatedGoal);
-        await refreshFinancialData(currentUser.id);
+        await apiService.updateGoal(targetId, updatedGoal);
       } catch (err) {
         console.error('Failed to persist updated goal to backend:', err);
       }
@@ -489,30 +522,48 @@ export default function App() {
 
   // Delete Goal Handler - persists to MongoDB and revalidates
   const handleDeleteGoal = async (goalId: string): Promise<void> => {
-    if (!currentUser) return;
+    if (!currentUser || !goalId || typeof goalId !== 'string') {
+      console.warn('[App] handleDeleteGoal aborted: invalid goalId', goalId);
+      return;
+    }
+
+    const targetId = String(goalId).trim();
+    if (!targetId) return;
+
     const previousGoals = goals;
 
-    // Optimistically update local goals
-    const updatedGoals = goals.filter((g) => g.id !== goalId);
+    // Optimistically remove ONLY the single goal matching targetId
+    const updatedGoals = previousGoals.filter((g: any) => {
+      const gid = String(g.id || g.customId || g._id || '').trim();
+      return gid !== targetId;
+    });
+
+    // Defensive check: NEVER clear all goals if previousGoals had > 1 goals and updatedGoals became 0
+    if (previousGoals.length > 1 && updatedGoals.length === 0) {
+      console.error('[App] Prevented catastrophic deletion: filter matched all goals', { targetId, previousGoals });
+      return;
+    }
+
     setGoals(updatedGoals);
     financialDataService.saveGoals(currentUser.id, updatedGoals);
 
     // If primary goal was deleted, clear it locally
-    if (currentUser.primaryGoalId === goalId) {
+    if (currentUser.primaryGoalId === targetId) {
       const updatedUser = { ...currentUser, primaryGoalId: undefined };
       setCurrentUser(updatedUser);
       authService.updateProfile({ primaryGoalId: undefined }).catch(() => {});
     }
 
     try {
-      await apiService.deleteGoal(goalId, currentUser.id);
-      await refreshFinancialData(currentUser.id);
-    } catch (err) {
-      console.error('Failed to delete goal in backend:', err);
-      // Rollback optimistic update on failure
-      setGoals(previousGoals);
-      financialDataService.saveGoals(currentUser.id, previousGoals);
-      throw err;
+      await apiService.deleteGoal(targetId, currentUser.id);
+    } catch (err: any) {
+      console.warn('[App] Backend deleteGoal warning:', err);
+      // Rollback only on fatal network error
+      if (err?.message && !err.message.includes('404') && !err.message.includes('not found')) {
+        setGoals(previousGoals);
+        financialDataService.saveGoals(currentUser.id, previousGoals);
+        throw err;
+      }
     }
   };
 

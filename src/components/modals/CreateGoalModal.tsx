@@ -46,7 +46,7 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({
     if (!title.trim() || target <= 0) return;
 
     const newGoal: SavingsGoal = {
-      id: `goal-${Date.now()}`,
+      id: `goal-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       title: title.trim(),
       category,
       icon,

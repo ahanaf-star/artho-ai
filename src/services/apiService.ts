@@ -258,7 +258,13 @@ export const apiService = {
         headers: getAuthHeaders(),
       });
       if (!res.ok) return null;
-      return await res.json();
+      const data = await res.json();
+      if (!Array.isArray(data)) return null;
+      return data.map((g: any) => ({
+        ...g,
+        id: String(g.id || g.customId || g._id || `goal-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`),
+        title: g.title || g.name || 'Untitled Goal',
+      }));
     } catch (err) {
       console.warn(`[apiService] getGoals(${userId}) failed, using local cache:`, err);
       return null;
@@ -276,7 +282,12 @@ export const apiService = {
         body: JSON.stringify(goal),
       });
       if (!res.ok) return null;
-      return await res.json();
+      const created = await res.json();
+      return created ? {
+        ...created,
+        id: String(created.id || created.customId || created._id || goal.id),
+        title: created.title || created.name || goal.title,
+      } : null;
     } catch (err) {
       console.warn(`[apiService] createGoal(${userId}) failed, recorded locally:`, err);
       return null;
@@ -305,9 +316,16 @@ export const apiService = {
    * DELETE /api/goals/:id or DELETE /api/users/:userId/goals/:id
    */
   async deleteGoal(goalId: string, userId?: string): Promise<boolean> {
+    if (!goalId || typeof goalId !== 'string') {
+      console.warn('[apiService] deleteGoal called with invalid goalId:', goalId);
+      return true;
+    }
+    const cleanGoalId = goalId.trim();
+    if (!cleanGoalId) return true;
+
     const url = userId
-      ? `${BASE_URL}/api/users/${encodeURIComponent(userId)}/goals/${encodeURIComponent(goalId)}`
-      : `${BASE_URL}/api/goals/${encodeURIComponent(goalId)}`;
+      ? `${BASE_URL}/api/users/${encodeURIComponent(userId)}/goals/${encodeURIComponent(cleanGoalId)}`
+      : `${BASE_URL}/api/goals/${encodeURIComponent(cleanGoalId)}`;
 
     const res = await fetch(url, {
       method: 'DELETE',
@@ -315,6 +333,9 @@ export const apiService = {
     });
 
     if (!res.ok) {
+      if (res.status === 404) {
+        return true;
+      }
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData.error || `Failed to delete savings goal (${res.status})`);
     }

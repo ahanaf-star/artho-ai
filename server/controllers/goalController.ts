@@ -5,6 +5,20 @@ import { UserModel } from '../models/User';
 import { isDbConnected } from '../config/database';
 import { INITIAL_SAVINGS_GOALS } from '../../src/data/mockGoals';
 
+// Dedicated in-memory store for standalone / fallback mode
+const inMemoryGoalsByUser: Map<string, any[]> = new Map();
+
+function getMemoryGoals(userId: string): any[] {
+  if (!inMemoryGoalsByUser.has(userId)) {
+    if (userId === 'usr-ahmed-01') {
+      inMemoryGoalsByUser.set(userId, [...INITIAL_SAVINGS_GOALS]);
+    } else {
+      inMemoryGoalsByUser.set(userId, []);
+    }
+  }
+  return inMemoryGoalsByUser.get(userId)!;
+}
+
 /**
  * GET /api/users/:userId/goals
  * Retrieve all savings goals for a user
@@ -35,12 +49,7 @@ export async function getGoals(req: Request, res: Response) {
   }
 
   if (!isDbConnected()) {
-    if (userId === 'usr-ahmed-01') {
-      return res.json(INITIAL_SAVINGS_GOALS);
-    }
-    return res.status(503).json({
-      error: 'Database is currently offline. Running in standalone fallback mode.',
-    });
+    return res.json(getMemoryGoals(userId));
   }
 
   try {
@@ -84,7 +93,17 @@ export async function getGoals(req: Request, res: Response) {
       }
     }
 
-    return res.json(goals);
+    const sanitizedGoals = goals.map((doc: any) => {
+      const g = doc.toJSON ? doc.toJSON() : doc.toObject ? doc.toObject() : doc;
+      const stableId = String(g.customId || g.id || doc._id?.toString() || g._id?.toString() || '');
+      return {
+        ...g,
+        id: stableId,
+        customId: stableId,
+        title: g.title || g.name || 'Untitled Goal',
+      };
+    });
+    return res.json(sanitizedGoals);
   } catch (error: any) {
     console.error('Error fetching savings goals:', error.message);
     return res.status(500).json({ error: 'Internal server error fetching savings goals' });
@@ -157,9 +176,12 @@ export async function createGoal(req: Request, res: Response) {
     return res.status(400).json({ error: 'Deadline date is required in YYYY-MM-DD format' });
   }
 
+  const stableId = id || `goal-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
   if (!isDbConnected()) {
     const fallbackGoal = {
-      id: id || `goal-${Date.now()}`,
+      id: stableId,
+      customId: stableId,
       userId,
       name: goalName,
       title: goalName,
@@ -177,12 +199,19 @@ export async function createGoal(req: Request, res: Response) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+    const list = getMemoryGoals(userId);
+    const existingIdx = list.findIndex((g) => g.id === stableId);
+    if (existingIdx !== -1) {
+      list[existingIdx] = fallbackGoal;
+    } else {
+      list.unshift(fallbackGoal);
+    }
     return res.status(201).json(fallbackGoal);
   }
 
   try {
     const newGoal = await SavingsGoalModel.create({
-      customId: id || `goal-${Date.now()}`,
+      customId: stableId,
       userId,
       name: goalName,
       title: goalName,
@@ -199,7 +228,13 @@ export async function createGoal(req: Request, res: Response) {
       milestones: milestones || [],
     });
 
-    return res.status(201).json(newGoal);
+    const g = newGoal.toJSON ? newGoal.toJSON() : newGoal.toObject ? newGoal.toObject() : newGoal;
+    return res.status(201).json({
+      ...g,
+      id: stableId,
+      customId: stableId,
+      title: g.title || g.name || goalName,
+    });
   } catch (error: any) {
     console.error('Error creating savings goal:', error.message);
     return res.status(500).json({ error: error.message || 'Internal server error creating savings goal' });
@@ -229,7 +264,16 @@ export async function updateGoal(req: Request, res: Response) {
   if (updates.title && !updates.name) updates.name = updates.title;
 
   if (!isDbConnected()) {
-    return res.json({
+    let foundGoal: any = null;
+    for (const [uid, list] of inMemoryGoalsByUser.entries()) {
+      const idx = list.findIndex((g) => g.id === id || g.customId === id);
+      if (idx !== -1) {
+        list[idx] = { ...list[idx], ...updates, id, updatedAt: new Date().toISOString() };
+        foundGoal = list[idx];
+        break;
+      }
+    }
+    return res.json(foundGoal || {
       ...updates,
       id,
       updatedAt: new Date().toISOString(),
@@ -242,6 +286,7 @@ export async function updateGoal(req: Request, res: Response) {
       $or: [
         ...(isObjectId ? [{ _id: id }] : []),
         { customId: id },
+        { id: id },
       ],
     };
 
@@ -266,7 +311,12 @@ export async function updateGoal(req: Request, res: Response) {
     Object.assign(existingGoal, updates);
     const updatedGoal = await existingGoal.save();
 
-    return res.json(updatedGoal);
+    const g = updatedGoal.toJSON ? updatedGoal.toJSON() : updatedGoal.toObject ? updatedGoal.toObject() : updatedGoal;
+    return res.json({
+      ...g,
+      id: existingGoal.customId || id,
+      customId: existingGoal.customId || id,
+    });
   } catch (error: any) {
     console.error('Error updating savings goal:', error.message);
     return res.status(500).json({ error: error.message || 'Internal server error updating savings goal' });
@@ -297,6 +347,13 @@ export async function deleteGoal(req: Request, res: Response) {
   }
 
   if (!isDbConnected()) {
+    for (const [uid, list] of inMemoryGoalsByUser.entries()) {
+      const idx = list.findIndex((g) => g.id === id || g.customId === id);
+      if (idx !== -1) {
+        list.splice(idx, 1);
+        break;
+      }
+    }
     const idx = INITIAL_SAVINGS_GOALS.findIndex((g) => g.id === id);
     if (idx !== -1) {
       INITIAL_SAVINGS_GOALS.splice(idx, 1);
@@ -310,6 +367,7 @@ export async function deleteGoal(req: Request, res: Response) {
       $or: [
         ...(isObjectId ? [{ _id: id }] : []),
         { customId: id },
+        { id: id },
       ],
     };
 

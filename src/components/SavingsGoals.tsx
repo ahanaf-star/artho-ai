@@ -65,38 +65,19 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
     accountVault: '',
   });
 
-  // Emergency Fund is the primary goal
-  const heroGoal = goals.find((g) => g.id === 'goal-emergency-fund') || goals[0];
-  const secondaryGoals = goals.filter((g) => g.id !== heroGoal?.id);
+  // Planning goal used for scenario calculations
+  const planningGoal = (user?.primaryGoalId ? goals.find((g) => g.id === user.primaryGoalId) : null) || goals[0];
 
-  // Scenario plans for hero goal
-  const scenarioPlans = heroGoal ? calculateScenarioPlans(heroGoal) : [];
+  // Scenario plans for planning goal
+  const scenarioPlans = planningGoal ? calculateScenarioPlans(planningGoal) : [];
+  const planningRemainingGap = planningGoal ? calculateRemainingGoalAmount(planningGoal) : 0;
 
-  // Handle Quick Deposit of ৳1,000
-  const handleQuickDeposit = () => {
-    if (!heroGoal) return;
-    if (onDepositToGoal) {
-      onDepositToGoal(heroGoal.id, 1000);
-    } else {
-      const newAmount = heroGoal.currentAmount + 1000;
-      const updated: SavingsGoal = {
-        ...heroGoal,
-        currentAmount: Math.min(heroGoal.targetAmount, newAmount),
-      };
-      onUpdateGoal(updated);
-    }
-    setDepositSuccessMsg(`${formatMoney(1000)} deposited into bKash Liquid Vault! Goal progress updated.`);
-    setTimeout(() => {
-      setDepositSuccessMsg(null);
-    }, 4500);
-  };
-
-  // Handle Plan Selection
+  // Handle Plan Selection in Scenario Planning
   const handleSelectPlan = (plan: ScenarioPlan) => {
     setSelectedPlanId(plan.planId);
-    if (heroGoal) {
+    if (planningGoal) {
       const updated: SavingsGoal = {
-        ...heroGoal,
+        ...planningGoal,
         monthlyPace: plan.monthlyAmount,
       };
       onUpdateGoal(updated);
@@ -284,7 +265,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
     </div>
   );
 
-  if (!heroGoal) {
+  if (!goals || goals.length === 0) {
     return (
       <div className="flex flex-col w-full gap-space-lg pb-space-xl">
         {/* Toast Alert */}
@@ -341,9 +322,6 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
       </div>
     );
   }
-
-  const remainingGap = calculateRemainingGoalAmount(heroGoal);
-  const achievedPct = calculateGoalProgressPercentage(heroGoal);
 
   return (
     <div className="flex flex-col w-full gap-space-lg pb-space-xl">
@@ -428,298 +406,132 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
 
       {/* Main Workspace Layout */}
       <div className="flex flex-col gap-space-lg w-full">
-        {/* Hero Goal Card: Emergency Fund */}
-        <div className="relative bg-surface-container-lowest rounded-xl p-space-lg shadow-sm overflow-hidden group border border-outline-variant/20">
-            <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full bg-secondary-container/20 blur-3xl pointer-events-none"></div>
-
-            {/* Header and Badge */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm pb-space-md border-b border-outline-variant/15">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center text-on-surface text-2xl shadow-sm">
-                  {heroGoal.icon}
-                </div>
+        {/* All Savings Goals Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-lg">
+          {goals.map((g) => {
+            const gGap = calculateRemainingGoalAmount(g);
+            const gPct = calculateGoalProgressPercentage(g);
+            return (
+              <div
+                key={g.id}
+                className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between border border-outline-variant/20 hover:border-outline-variant/50 transition-colors"
+              >
                 <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-headline-md text-headline-md text-on-surface font-bold">
-                      {heroGoal.title}
-                    </h2>
-                    <span className="px-2.5 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-semibold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
-                      {heroGoal.status}
-                    </span>
-                  </div>
-                  <span className="font-body-sm text-body-sm text-on-surface-variant">
-                    {heroGoal.category} • {heroGoal.accountVault}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 self-start sm:self-auto">
-                <span className="font-label-sm text-label-sm text-outline uppercase tracking-wider">
-                  Velocity
-                </span>
-                <span className="px-2 py-1 rounded-lg bg-surface-container font-title-md text-title-md text-secondary font-bold">
-                  {formatMoney(heroGoal.monthlyPace)}/mo
-                </span>
-              </div>
-            </div>
-
-            {/* Numbers Breakdown */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-space-sm py-space-md my-space-xs rounded-xl bg-surface-container-low px-space-md border border-outline-variant/15">
-              <div className="flex flex-col">
-                <span className="font-label-sm text-label-sm text-on-surface-variant">
-                  Target Capital
-                </span>
-                <span className="font-title-lg text-title-lg text-on-surface font-bold mt-0.5">
-                  {formatMoney(heroGoal.targetAmount)}
-                </span>
-              </div>
-              <div className="flex flex-col">
-                <span className="font-label-sm text-label-sm text-on-surface-variant">
-                  Current Saved
-                </span>
-                <span className="font-headline-md text-headline-md text-secondary font-bold mt-0.5">
-                  {formatMoney(heroGoal.currentAmount)}
-                </span>
-              </div>
-              <div className="flex flex-col">
-                <span className="font-label-sm text-label-sm text-on-surface-variant">
-                  Remaining Gap
-                </span>
-                <span className="font-title-lg text-title-lg text-error font-bold mt-0.5">
-                  {formatMoney(remainingGap)}
-                </span>
-              </div>
-              <div className="flex flex-col">
-                <span className="font-label-sm text-label-sm text-on-surface-variant">
-                  Completion ETA
-                </span>
-                <span className="font-title-lg text-title-lg text-on-surface font-bold mt-0.5">
-                  Dec 14, 2024
-                </span>
-                <span className="font-label-sm text-label-sm text-on-surface-variant">
-                  1.8 months left
-                </span>
-              </div>
-            </div>
-
-            {/* Progress Visualization Bar with Milestones */}
-            <div className="py-space-md flex flex-col gap-2">
-              <div className="flex justify-between items-center text-body-sm font-body-sm">
-                <span className="text-on-surface font-semibold flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[16px] text-secondary">
-                    verified
-                  </span>
-                  {achievedPct}% achieved
-                </span>
-                <span className="text-on-surface-variant">
-                  Target Pace: {formatMoney(heroGoal.monthlyPace || 5000)}/mo (92% cadence)
-                </span>
-              </div>
-
-              {/* Custom Progress Bar */}
-              <div className="relative w-full h-4 bg-surface-container-high rounded-full overflow-visible p-0.5 mt-1">
-                <div
-                  className="h-full bg-gradient-to-r from-secondary-container via-secondary to-on-secondary-container rounded-full relative transition-all duration-1000 ease-out shadow-sm"
-                  style={{ width: `${Math.min(100, achievedPct)}%` }}
-                >
-                  <div className="absolute -right-2 -top-1 w-6 h-6 bg-surface-container-lowest rounded-full shadow-md flex items-center justify-center border border-secondary">
-                    <div className="w-2.5 h-2.5 rounded-full bg-secondary"></div>
-                  </div>
-                </div>
-
-                {/* Milestone 1 Flag: 10,000 (33.3%) */}
-                <div className="absolute top-6 left-[33.3%] -translate-x-1/2 flex flex-col items-center">
-                  <div className="w-0.5 h-2 bg-secondary"></div>
-                  <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label-sm text-[10px] font-bold">
-                    <span className="material-symbols-outlined text-[10px]">check</span>
-                    {formatMoney(10000, { roundWhole: true })} Hit
-                  </div>
-                </div>
-
-                {/* Milestone 2 Flag: 20,000 (66.6%) */}
-                <div className="absolute top-6 left-[66.6%] -translate-x-1/2 flex flex-col items-center">
-                  <div className="w-0.5 h-2 bg-outline"></div>
-                  <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface font-label-sm text-[10px] font-semibold">
-                    <span className="material-symbols-outlined text-[10px]">flag</span>
-                    {formatMoney(20000, { roundWhole: true })} Next
-                  </div>
-                </div>
-              </div>
-
-              {/* Milestone clearance spacer */}
-              <div className="h-6"></div>
-            </div>
-
-            {/* Bottom Action Strip */}
-            <div className="pt-space-md flex flex-col sm:flex-row items-center justify-between gap-space-md bg-surface-container/50 -mx-space-lg -mb-space-lg px-space-lg py-space-md mt-space-sm border-t border-outline-variant/15">
-              <div className="flex items-center gap-2 text-on-surface-variant font-body-sm text-body-sm">
-                <span className="material-symbols-outlined text-[18px] text-tertiary-container">
-                  info
-                </span>
-                <span>Next scheduled sweep: {formatMoney(350)} tomorrow at 10:00 AM via Dhaka Bank</span>
-              </div>
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <button
-                  onClick={() => openEditGoalModal(heroGoal)}
-                  className="px-space-md py-2 rounded-lg bg-surface-container-lowest text-on-surface font-title-md text-title-md hover:bg-surface-container-high transition-colors shadow-sm w-full sm:w-auto border border-outline-variant/30 flex items-center justify-center gap-1"
-                >
-                  <span className="material-symbols-outlined text-[16px]">edit</span>
-                  <span>Edit Goal</span>
-                </button>
-                <button
-                  onClick={() => openDeleteModal(heroGoal)}
-                  className="px-space-md py-2 rounded-lg bg-surface-container-lowest text-error font-title-md text-title-md hover:bg-error-container/20 transition-colors shadow-sm w-full sm:w-auto border border-outline-variant/30 flex items-center justify-center gap-1"
-                  title="Delete Goal"
-                >
-                  <span className="material-symbols-outlined text-[16px]">delete</span>
-                  <span>Delete Goal</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setAdjustModalGoal(heroGoal);
-                    setNewPaceInput(heroGoal.monthlyPace.toString());
-                  }}
-                  className="px-space-md py-2 rounded-lg bg-surface-container-lowest text-on-surface font-title-md text-title-md hover:bg-surface-container-high transition-colors shadow-sm w-full sm:w-auto border border-outline-variant/30"
-                >
-                  Adjust Pace
-                </button>
-                <button
-                  onClick={handleQuickDeposit}
-                  className="px-space-md py-2 rounded-lg bg-secondary text-on-secondary font-title-md text-title-md hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5 shadow-sm w-full sm:w-auto active:scale-95"
-                >
-                  <span className="material-symbols-outlined text-[18px]">bolt</span>
-                  + Deposit {formatMoney(1000)} Now
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Secondary Goals Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-lg">
-            {secondaryGoals.map((g) => {
-              const gGap = calculateRemainingGoalAmount(g);
-              const gPct = calculateGoalProgressPercentage(g);
-              return (
-                <div
-                  key={g.id}
-                  className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between border border-outline-variant/20"
-                >
-                  <div className="flex flex-col">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-xl shadow-sm">
-                        {g.icon}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-medium">
-                          {g.category}
-                        </span>
-                        <button
-                          onClick={() => openEditGoalModal(g)}
-                          className="p-1 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
-                          title="Edit Goal"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">edit</span>
-                        </button>
-                        <button
-                          onClick={() => openDeleteModal(g)}
-                          className="p-1 rounded-lg text-outline hover:text-error hover:bg-error-container/20 transition-colors"
-                          title="Delete Goal"
-                          aria-label={`Delete goal ${g.title}`}
-                        >
-                          <span className="material-symbols-outlined text-[16px]">delete</span>
-                        </button>
-                      </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-xl shadow-sm">
+                      {g.icon || '🎯'}
                     </div>
-
-                    <h3 className="font-headline-md text-headline-md text-on-surface mt-space-sm font-bold">
-                      {g.title}
-                    </h3>
-                    <p className="font-body-sm text-body-sm text-on-surface-variant mt-0.5 flex flex-wrap items-center gap-2">
-                      <span>Target: {formatMoney(g.targetAmount)}</span>
-                      <span>•</span>
-                      <span>Target Date: {g.deadline || '2025-06-30'}</span>
-                    </p>
-
-                    <div className="mt-space-md flex items-baseline justify-between">
-                      <div>
-                        <span className="font-numeric-hero text-numeric-hero text-on-surface font-bold">
-                          {formatMoney(g.currentAmount)}
-                        </span>
-                        <span className="font-body-sm text-body-sm text-on-surface-variant ml-1">
-                          / {formatMoney(g.targetAmount)}
-                        </span>
-                      </div>
-                      <span className="font-title-md text-title-md text-on-surface font-semibold">
-                        {gPct}%
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-medium">
+                        {g.category}
                       </span>
-                    </div>
-
-                    {/* Progress bar */}
-                    <div className="w-full h-2.5 bg-surface-container-high rounded-full overflow-hidden mt-2">
-                      <div
-                        className="h-full bg-primary-container rounded-full transition-all duration-700"
-                        style={{ width: `${Math.min(100, gPct)}%` }}
-                      ></div>
-                    </div>
-
-                    <div className="flex justify-between items-center mt-3 text-body-sm font-body-sm text-on-surface-variant">
-                      <span>Remaining: {formatMoney(gGap)}</span>
-                      <span className="font-semibold text-on-surface">
-                        Required: {formatMoney(g.monthlyPace)}/mo
-                      </span>
+                      <button
+                        onClick={() => openEditGoalModal(g)}
+                        className="p-1 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
+                        title="Edit Goal"
+                        aria-label={`Edit goal ${g.title}`}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">edit</span>
+                      </button>
+                      <button
+                        onClick={() => openDeleteModal(g)}
+                        className="p-1 rounded-lg text-outline hover:text-error hover:bg-error-container/20 transition-colors"
+                        title="Delete Goal"
+                        aria-label={`Delete goal ${g.title}`}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
                     </div>
                   </div>
 
-                  <div className="pt-space-md mt-space-md flex items-center justify-between border-t border-outline-variant/15">
-                    <span className="font-label-sm text-label-sm text-outline">
-                      {g.accountVault}
-                    </span>
-                    <button
-                      onClick={() => {
-                        if (onDepositToGoal) {
-                          onDepositToGoal(g.id, 1000);
-                        } else {
-                          const updated: SavingsGoal = {
-                            ...g,
-                            currentAmount: Math.min(g.targetAmount, g.currentAmount + 1000),
-                          };
-                          onUpdateGoal(updated);
-                        }
-                        setDepositSuccessMsg(`Boosted ${g.title} by +${formatMoney(1000)}!`);
-                        setTimeout(() => setDepositSuccessMsg(null), 4000);
-                      }}
-                      className="font-title-md text-title-md text-secondary hover:underline flex items-center gap-0.5 font-bold"
-                    >
-                      Boost Goal (+{formatMoney(1000)})
-                      <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Section: AI Savings Plan Comparison Simulator */}
-          <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md relative overflow-hidden border border-outline-variant/20">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-tertiary-container text-[24px]">
-                  psychology
-                </span>
-                <div>
-                  <h3 className="font-headline-md text-headline-md text-on-surface font-bold">
-                    Artho AI Scenario Planning
+                  <h3 className="font-headline-md text-headline-md text-on-surface mt-space-sm font-bold">
+                    {g.title}
                   </h3>
-                  <p className="font-body-sm text-body-sm text-on-surface-variant">
-                    Accelerate Emergency Fund completion timeline using contextual cash-flow heuristics
+                  <p className="font-body-sm text-body-sm text-on-surface-variant mt-0.5 flex flex-wrap items-center gap-2">
+                    <span>Target: {formatMoney(g.targetAmount)}</span>
+                    <span>•</span>
+                    <span>Target Date: {g.deadline || '2025-06-30'}</span>
                   </p>
+
+                  <div className="mt-space-md flex items-baseline justify-between">
+                    <div>
+                      <span className="font-numeric-hero text-numeric-hero text-on-surface font-bold">
+                        {formatMoney(g.currentAmount)}
+                      </span>
+                      <span className="font-body-sm text-body-sm text-on-surface-variant ml-1">
+                        / {formatMoney(g.targetAmount)}
+                      </span>
+                    </div>
+                    <span className="font-title-md text-title-md text-on-surface font-semibold">
+                      {gPct}%
+                    </span>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="w-full h-2.5 bg-surface-container-high rounded-full overflow-hidden mt-2">
+                    <div
+                      className="h-full bg-primary-container rounded-full transition-all duration-700"
+                      style={{ width: `${Math.min(100, gPct)}%` }}
+                    ></div>
+                  </div>
+
+                  <div className="flex justify-between items-center mt-3 text-body-sm font-body-sm text-on-surface-variant">
+                    <span>Remaining: {formatMoney(gGap)}</span>
+                    <span className="font-semibold text-on-surface">
+                      Required: {formatMoney(g.monthlyPace)}/mo
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-space-md mt-space-md flex items-center justify-between border-t border-outline-variant/15">
+                  <span className="font-label-sm text-label-sm text-outline">
+                    {g.accountVault}
+                  </span>
+                  <button
+                    onClick={() => {
+                      if (onDepositToGoal) {
+                        onDepositToGoal(g.id, 1000);
+                      } else {
+                        const updated: SavingsGoal = {
+                          ...g,
+                          currentAmount: Math.min(g.targetAmount, g.currentAmount + 1000),
+                        };
+                        onUpdateGoal(updated);
+                      }
+                      setDepositSuccessMsg(`Boosted ${g.title} by +${formatMoney(1000)}!`);
+                      setTimeout(() => setDepositSuccessMsg(null), 4000);
+                    }}
+                    className="font-title-md text-title-md text-secondary hover:underline flex items-center gap-0.5 font-bold"
+                  >
+                    Boost Goal (+{formatMoney(1000)})
+                    <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                  </button>
                 </div>
               </div>
-              <span className="px-2.5 py-1 rounded-full bg-surface-container font-label-sm text-label-sm text-on-surface font-semibold self-start sm:self-auto">
-                Simulated Target: {formatMoney(remainingGap)}
+            );
+          })}
+        </div>
+
+        {/* Section: AI Savings Plan Comparison Simulator */}
+        <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md relative overflow-hidden border border-outline-variant/20">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-tertiary-container text-[24px]">
+                psychology
               </span>
+              <div>
+                <h3 className="font-headline-md text-headline-md text-on-surface font-bold">
+                  Artho AI Scenario Planning
+                </h3>
+                <p className="font-body-sm text-body-sm text-on-surface-variant">
+                  Accelerate {planningGoal?.title || 'Savings Goal'} completion timeline using contextual cash-flow heuristics
+                </p>
+              </div>
             </div>
+            <span className="px-2.5 py-1 rounded-full bg-surface-container font-label-sm text-label-sm text-on-surface font-semibold self-start sm:self-auto">
+              Simulated Target: {formatMoney(planningRemainingGap)}
+            </span>
+          </div>
 
             {/* 3 Scenario Comparison Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-space-md pt-space-xs">
@@ -1104,7 +916,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
 
             {/* Prompt sentence */}
             <p className="font-body-md text-body-md text-on-surface leading-relaxed">
-              Are you sure you want to delete this savings goal? This action cannot be undone.
+              Are you sure you want to delete this saving goal? This action cannot be undone.
             </p>
 
             {/* Financial Data Retention Notice / Warning */}
