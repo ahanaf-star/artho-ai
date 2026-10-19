@@ -91,7 +91,8 @@ export function generateDeterministicCoachResponse(
   const uncommittedPool = ctx.cashFlow.uncommittedDiscretionaryPool ?? Math.max(0, balance - (upcomingBills + recommendedBuffer));
   const safeSpendingWeekly = ctx.cashFlow.safeSpendingLimitWeekly ?? (uncommittedPool > 0 ? Math.round(uncommittedPool / 4) : 0);
   const remainingDays = ctx.cashFlow.remainingDaysInMonth ?? 14;
-  const primaryGoal = ctx.goals.items[0] || null;
+  const primaryGoal = ctx.goals?.items?.[0] || null;
+  const hasGoals = Boolean(ctx.goals && (ctx.goals.totalGoals > 0 || (ctx.goals.items && ctx.goals.items.length > 0)));
   const healthScore = ctx.health.score;
   const healthBand = ctx.health.band;
   const cashOutTotal = ctx.cashOut.totalAmount;
@@ -100,6 +101,117 @@ export function generateDeterministicCoachResponse(
   let answer = '';
 
   switch (intent) {
+    case 'financial_status': {
+      factsUsed.push(
+        'snapshot.currentBalance',
+        'snapshot.monthlyIncome',
+        'snapshot.monthlySpending',
+        'snapshot.netSavings',
+        'snapshot.savingsRate'
+      );
+      if (topCat) {
+        factsUsed.push('spending.topCategory', 'spending.topCategoryAmount', 'spending.topCategoryPercentage');
+      }
+
+      if (hasGoals) {
+        factsUsed.push('goals.totalGoals');
+        ctx.goals.items.forEach((_, idx) => {
+          const p = `goals.goal${idx + 1}`;
+          factsUsed.push(
+            `${p}.title`,
+            `${p}.targetAmount`,
+            `${p}.currentAmount`,
+            `${p}.progressPercentage`,
+            `${p}.remainingAmount`
+          );
+        });
+      }
+
+      const incTextEn = income > 0 ? `৳${income.toLocaleString()}` : 'No income transactions recorded for the current period';
+      const incTextBn = income > 0 ? `৳${income.toLocaleString()}` : 'চলতি মাসে কোনো আয়ের লেনদেন রেকর্ড করা হয়নি';
+
+      const expTextEn = spending > 0 ? `৳${spending.toLocaleString()}` : 'No expense transactions recorded for the current period';
+      const expTextBn = spending > 0 ? `৳${spending.toLocaleString()}` : 'চলতি মাসে কোনো খরচের লেনদেন রেকর্ড করা হয়নি';
+
+      const topCatTextEn = topCat
+        ? `\n• **Largest Expense**: **${topCat.category}** at ৳${topCat.amount.toLocaleString()} (${topCat.percentage}% of expenses)`
+        : '';
+      const topCatTextBn = topCat
+        ? `\n• **প্রধান খরচের খাত**: **${topCat.category}** (৳${topCat.amount.toLocaleString()}, মোট ব্যয়ের ${topCat.percentage}%)`
+        : '';
+
+      let goalsBlockEn = '';
+      let goalsBlockBn = '';
+
+      if (hasGoals) {
+        const goalLinesEn = ctx.goals.items.map((g) => {
+          const zeroNote = g.currentAmount === 0 ? ' (Recorded progress is 0% with no contributions logged yet)' : '';
+          return `• **${g.title}**: Target ৳${g.targetAmount.toLocaleString()} | Saved: ৳${g.currentAmount.toLocaleString()} (${g.progressPercentage}%) | Remaining: ৳${g.remainingAmount.toLocaleString()} (Target Date: ${g.deadline})${zeroNote}`;
+        }).join('\n');
+
+        const goalLinesBn = ctx.goals.items.map((g) => {
+          const zeroNote = g.currentAmount === 0 ? ' (অগ্রগতি ০%, এখনো কোনো কন্ট্রিবিউশন বা জমা রেকর্ড করা হয়নি)' : '';
+          return `• **${g.title}**: লক্ষ্যমাত্রা ৳${g.targetAmount.toLocaleString()} | বর্তমান জমা: ৳${g.currentAmount.toLocaleString()} (${g.progressPercentage}% সম্পন্ন) | অবশিষ্ট ঘাটতি: ৳${g.remainingAmount.toLocaleString()} (সময়সীমা: ${g.deadline})${zeroNote}`;
+        }).join('\n');
+
+        goalsBlockEn = `\n\n**2. Existing Savings Goals & Progress**:\n${goalLinesEn}`;
+        goalsBlockBn = `\n\n**২. সক্রিয় সঞ্চয় লক্ষ্য ও অগ্রগতি**:\n${goalLinesBn}`;
+      } else {
+        goalsBlockEn = `\n\n**2. Existing Savings Goals & Progress**:\n• No active savings goals currently recorded. You can create a target in the Savings Goals tab to organize your savings.`;
+        goalsBlockBn = `\n\n**২. সক্রিয় সঞ্চয় লক্ষ্য ও অগ্রগতি**:\n• বর্তমানে কোনো সক্রিয় সঞ্চয় লক্ষ্য রেকর্ড করা নেই। সেভিংস গোলস ট্যাব থেকে একটি নতুন লক্ষ্য যোগ করতে পারেন।`;
+      }
+
+      // Next steps / observations
+      let nextStepsEn = '';
+      let nextStepsBn = '';
+      if (hasGoals && primaryGoal) {
+        if (netSavings > 0) {
+          nextStepsEn = `\n\n**3. Observations & Next Steps**:\n• Your current net monthly surplus of ৳${netSavings.toLocaleString()} can be channeled toward your **${primaryGoal.title}** goal to bridge the remaining ৳${primaryGoal.remainingAmount.toLocaleString()} target on schedule.\n• Maintain disciplined tracking of discretionary outflows to preserve this positive savings velocity.`;
+          nextStepsBn = `\n\n**৩. পর্যবেক্ষণ ও পরবর্তী করণীয়**:\n• আপনার বর্তমান মাসিক উদ্বৃত্ত ৳${netSavings.toLocaleString()} থেকে নিয়মিত অর্থ সঞ্চয় লক্ষ্যে বরাদ্দ করে **${primaryGoal.title}**-এর অবশিষ্ট ৳${primaryGoal.remainingAmount.toLocaleString()} ঘাটতি পূরণ করতে পারেন।\n• উদ্বৃত্ত ধরে রাখতে অপ্রয়োজনীয় খরচের দিকে নজর রাখুন।`;
+        } else if (netSavings < 0) {
+          nextStepsEn = `\n\n**3. Observations & Next Steps**:\n• Monthly expenses exceed income by ৳${Math.abs(netSavings).toLocaleString()}. Prioritize balancing your operational cash flow before allocating new funds toward your ৳${primaryGoal.targetAmount.toLocaleString()} **${primaryGoal.title}** target.\n• Review discretionary spending to eliminate the monthly deficit.`;
+          nextStepsBn = `\n\n**৩. পর্যবেক্ষণ ও পরবর্তী করণীয়**:\n• মাসিক ব্যয় আয়ের চেয়ে ৳${Math.abs(netSavings).toLocaleString()} বেশি রয়েছে। **${primaryGoal.title}**-এর ৳${primaryGoal.targetAmount.toLocaleString()} লক্ষ্যে অর্থ জমার আগে বাজেট সমতায় আনাকে অগ্রাধিকার দিন।\n• নমনীয় ও অপ্রয়োজনীয় খরচ অবিলম্বে কমিয়ে আনুন।`;
+        } else {
+          nextStepsEn = `\n\n**3. Observations & Next Steps**:\n• Monthly cash flow is currently balanced at break-even (৳0 surplus). Establishing an intentional monthly savings cushion is recommended before funding your ৳${primaryGoal.targetAmount.toLocaleString()} **${primaryGoal.title}** goal.`;
+          nextStepsBn = `\n\n**৩. পর্যবেক্ষণ ও পরবর্তী করণীয়**:\n• বর্তমানে আয় ও ব্যয় সমান রয়েছে (০% উদ্বৃত্ত)। **${primaryGoal.title}**-এর ৳${primaryGoal.targetAmount.toLocaleString()} লক্ষ্য পূরণে অপ্রয়োজনীয় খরচ কিছুটা কমিয়ে উদ্বৃত্ত তৈরি করুন।`;
+        }
+      } else {
+        if (netSavings > 0) {
+          nextStepsEn = `\n\n**3. Observations & Next Steps**:\n• You have a healthy monthly surplus of ৳${netSavings.toLocaleString()} (savings rate: ${savingsRate}%). Setting up an emergency reserve goal will protect your surplus from lifestyle inflation.`;
+          nextStepsBn = `\n\n**৩. পর্যবেক্ষণ ও পরবর্তী করণীয়**:\n• আপনার মাসিক উদ্বৃত্ত ৳${netSavings.toLocaleString()} (সঞ্চয়ের হার: ${savingsRate}%) ইতিবাচক। একটি জরুরি তহবিল লক্ষ্য সেট করে এই অর্থকে সুরক্ষিত করুন।`;
+        } else {
+          nextStepsEn = `\n\n**3. Observations & Next Steps**:\n• Log ongoing daily expenses to uncover opportunities for expanding your savings margin.`;
+          nextStepsBn = `\n\n**৩. পর্যবেক্ষণ ও পরবর্তী করণীয়**:\n• নিয়মিত দৈনন্দিন খরচ লেজারে অন্তর্ভুক্ত করে সঞ্চয়ের সুযোগ চিহ্নিত করুন।`;
+        }
+      }
+
+      if (isBn) {
+        answer = `${greetingBn}\n\nআপনার সার্বিক আর্থিক অবস্থার সারসংক্ষেপ নিচে তুলে ধরা হলো:\n\n` +
+          `**১. আর্থিক অবস্থান ও ক্যাশ-ফ্লো**:\n` +
+          `• **বর্তমান ব্যালেন্স**: ৳${balance.toLocaleString()}\n` +
+          `• **মাসিক আয়**: ${incTextBn}\n` +
+          `• **মাসিক ব্যয়**: ${expTextBn}\n` +
+          `• **নিট মাসিক সঞ্চয়**: ৳${netSavings.toLocaleString()} (সঞ্চয়ের হার: ${savingsRate}%)${topCatTextBn}` +
+          `${goalsBlockBn}` +
+          `${nextStepsBn}`;
+      } else {
+        answer = `${greetingEn}\n\nHere is your comprehensive financial status overview:\n\n` +
+          `**1. Financial Position & Cash Flow**:\n` +
+          `• **Current Balance**: ৳${balance.toLocaleString()}\n` +
+          `• **Monthly Income**: ${incTextEn}\n` +
+          `• **Monthly Spending**: ${expTextEn}\n` +
+          `• **Net Savings**: ৳${netSavings.toLocaleString()} (Savings Rate: ${savingsRate}%)${topCatTextEn}` +
+          `${goalsBlockEn}` +
+          `${nextStepsEn}`;
+      }
+
+      followUps.push(
+        isBn ? 'আমার সঞ্চয় লক্ষ্য কেমন চলছে?' : 'How are my savings goals progressing?',
+        isBn ? 'আমি কীভাবে আরও বেশি সঞ্চয় করব?' : 'How can I increase my savings rate?'
+      );
+      break;
+    }
+
     case 'spending_vs_income': {
       factsUsed.push('snapshot.monthlyIncome', 'snapshot.monthlySpending', 'snapshot.netSavings', 'snapshot.savingsRate');
       if (topCat) {
@@ -721,13 +833,41 @@ export function generateDeterministicCoachResponse(
     }
 
     case 'savings_goal_progress': {
+      const isListAll =
+        norm.includes('current savings goals') ||
+        norm.includes('what are my savings goals') ||
+        norm.includes('what are my goals') ||
+        norm.includes('list my goals') ||
+        norm.includes('show my goals') ||
+        norm.includes('my savings goals') ||
+        norm.includes('all goals') ||
+        norm.includes('সঞ্চয় লক্ষ্যগুলো') ||
+        norm.includes('সবগুলো লক্ষ্য') ||
+        (ctx.goals.items.length > 1 && !norm.includes('laptop') && !norm.includes('phone') && !norm.includes('car'));
+
+      const isHowMuchMore =
+        norm.includes('how much more') ||
+        norm.includes('much more do i need') ||
+        norm.includes('remaining') ||
+        norm.includes('ঘাটতি কত') ||
+        norm.includes('কত বাকি') ||
+        norm.includes('কত টাকা লাগবে');
+
+      const isAffordOrTrack =
+        norm.includes('afford') ||
+        norm.includes('on track') ||
+        norm.includes('সাধ্য') ||
+        norm.includes('সক্ষম') ||
+        norm.includes('ঠিক পথে') ||
+        norm.includes('পারব কি');
+
       const targetGoal =
         ctx.goals.items.find((g) =>
           norm.includes(g.title.toLowerCase().split(' ')[0]) ||
           g.title.toLowerCase().split(' ').some((word) => word.length > 2 && norm.includes(word.toLowerCase()))
         ) || primaryGoal;
 
-      if (targetGoal) {
+      if (hasGoals && targetGoal) {
         factsUsed.push(
           'goals.goal1.title',
           'goals.goal1.targetAmount',
@@ -736,20 +876,120 @@ export function generateDeterministicCoachResponse(
           'goals.goal1.remainingAmount',
           'goals.goal1.requiredMonthlyContribution'
         );
-        if (isBn) {
-          answer = `আপনার সঞ্চয় লক্ষ্য **${targetGoal.title}** এর বর্তমান অগ্রগতি:\n• লক্ষ্যমাত্রা: ৳${targetGoal.targetAmount.toLocaleString()}\n• বর্তমান জমা: ৳${targetGoal.currentAmount.toLocaleString()} (${targetGoal.progressPercentage}% সম্পন্ন)\n• অবশিষ্ট ঘাটতি: ৳${targetGoal.remainingAmount.toLocaleString()}\n• নির্ধারিত সময়ে পৌঁছাতে প্রয়োজনীয় মাসিক সঞ্চয়: ৳${targetGoal.requiredMonthlyContribution.toLocaleString()}/মাস।`;
+        if (ctx.goals.items.length > 1) {
+          factsUsed.push('goals.count', 'goals.totalTargetAmount', 'goals.totalSavedAmount', 'goals.totalRemainingAmount');
+        }
+
+        const zeroNoteEn = targetGoal.currentAmount === 0 ? ' (Recorded progress is 0% with no contributions logged yet)' : '';
+        const zeroNoteBn = targetGoal.currentAmount === 0 ? ' (অগ্রগতি ০%, এখনো কোনো কন্ট্রিবিউশন বা জমা রেকর্ড করা হয়নি)' : '';
+
+        if (isListAll && ctx.goals.items.length > 0) {
+          const goalLinesEn = ctx.goals.items.map((g) => {
+            const zNote = g.currentAmount === 0 ? ' [0% progress, ৳0 saved]' : '';
+            return `• **${g.title}**: Target ৳${g.targetAmount.toLocaleString()} | Saved: ৳${g.currentAmount.toLocaleString()} (${g.progressPercentage}%) | Remaining: ৳${g.remainingAmount.toLocaleString()} (Deadline: ${g.deadline})${zNote}`;
+          }).join('\n');
+
+          const goalLinesBn = ctx.goals.items.map((g) => {
+            const zNote = g.currentAmount === 0 ? ' [০% অগ্রগতি, ৳০ জমা]' : '';
+            return `• **${g.title}**: লক্ষ্যমাত্রা ৳${g.targetAmount.toLocaleString()} | বর্তমান জমা: ৳${g.currentAmount.toLocaleString()} (${g.progressPercentage}% সম্পন্ন) | অবশিষ্ট ঘাটতি: ৳${g.remainingAmount.toLocaleString()} (সময়সীমা: ${g.deadline})${zNote}`;
+          }).join('\n');
+
+          const totalTarget = ctx.goals.totalTargetAmount ?? ctx.goals.items.reduce((s, g) => s + g.targetAmount, 0);
+          const totalSaved = ctx.goals.totalSavedAmount ?? ctx.goals.items.reduce((s, g) => s + g.currentAmount, 0);
+          const totalRemaining = ctx.goals.totalRemainingAmount ?? ctx.goals.items.reduce((s, g) => s + g.remainingAmount, 0);
+
+          if (isBn) {
+            answer = `আপনার মোট **${ctx.goals.items.length}টি** সক্রিয় সঞ্চয় লক্ষ্য রয়েছে:\n\n${goalLinesBn}\n\n` +
+              `• **মোট লক্ষ্যমাত্রা**: ৳${totalTarget.toLocaleString()}\n` +
+              `• **মোট সঞ্চিত অর্থ**: ৳${totalSaved.toLocaleString()} (বর্তমান উপলব্ধ ব্যালেন্স: ৳${balance.toLocaleString()})\n` +
+              `• **মোট অবশিষ্ট ঘাটতি**: ৳${totalRemaining.toLocaleString()}`;
+          } else {
+            answer = `You have **${ctx.goals.items.length} active savings goal(s)** recorded:\n\n${goalLinesEn}\n\n` +
+              `• **Total Target Amount**: ৳${totalTarget.toLocaleString()} across all goals\n` +
+              `• **Total Saved Amount**: ৳${totalSaved.toLocaleString()} (Current liquid balance: ৳${balance.toLocaleString()})\n` +
+              `• **Total Remaining Gap**: ৳${totalRemaining.toLocaleString()}`;
+          }
+        } else if (isHowMuchMore) {
+          if (isBn) {
+            answer = `আপনার **${targetGoal.title}** সঞ্চয় লক্ষ্য পূরণে (লক্ষ্যমাত্রা: ৳${targetGoal.targetAmount.toLocaleString()}) এখনো আরও **৳${targetGoal.remainingAmount.toLocaleString()}** সঞ্চয় করতে হবে।\n\n` +
+              `• **মোট লক্ষ্যমাত্রা**: ৳${targetGoal.targetAmount.toLocaleString()}\n` +
+              `• **বর্তমান জমা**: ৳${targetGoal.currentAmount.toLocaleString()} (${targetGoal.progressPercentage}% সম্পন্ন)${zeroNoteBn}\n` +
+              `• **অবশিষ্ট ঘাটতি**: **৳${targetGoal.remainingAmount.toLocaleString()}**\n` +
+              `• **প্রয়োজনীয় মাসিক সঞ্চয়**: ৳${targetGoal.requiredMonthlyContribution.toLocaleString()}/মাস (${targetGoal.deadline} এর মধ্যে পূরণ করতে)\n` +
+              `• **বর্তমান মাসিক উদ্বৃত্ত**: ৳${netSavings.toLocaleString()} (মাসিক আয় ৳${income.toLocaleString()} ও ব্যয় ৳${spending.toLocaleString()} এর ভিত্তিতে)`;
+          } else {
+            answer = `To reach your savings goal **${targetGoal.title}** (Target: ৳${targetGoal.targetAmount.toLocaleString()}), you currently need to save **৳${targetGoal.remainingAmount.toLocaleString()} more**.\n\n` +
+              `• **Target Amount**: ৳${targetGoal.targetAmount.toLocaleString()}\n` +
+              `• **Current Saved Amount**: ৳${targetGoal.currentAmount.toLocaleString()} (${targetGoal.progressPercentage}% completed)${zeroNoteEn}\n` +
+              `• **Remaining Gap**: **৳${targetGoal.remainingAmount.toLocaleString()}**\n` +
+              `• **Required Monthly Pace**: ৳${targetGoal.requiredMonthlyContribution.toLocaleString()}/month to meet your deadline (${targetGoal.deadline})\n` +
+              `• **Current Net Monthly Surplus**: ৳${netSavings.toLocaleString()} (based on ৳${income.toLocaleString()} income and ৳${spending.toLocaleString()} expenses)`;
+          }
+        } else if (isAffordOrTrack) {
+          const reqMonthly = targetGoal.requiredMonthlyContribution;
+          const isFeasible = netSavings >= reqMonthly;
+          const monthlyGap = Math.max(0, reqMonthly - netSavings);
+          const surplusMargin = Math.max(0, netSavings - reqMonthly);
+
+          if (isBn) {
+            let evalBn = '';
+            if (isFeasible) {
+              evalBn = `**হ্যাঁ, আপনার সঞ্চয় লক্ষ্যটি বর্তমানে অর্জনযোগ্য।** আপনার মাসিক উদ্বৃত্ত (৳${netSavings.toLocaleString()}) প্রয়োজনীয় মাসিক কিস্তির (৳${reqMonthly.toLocaleString()}) চেয়ে **৳${surplusMargin.toLocaleString()} বেশি** রয়েছে।`;
+            } else if (netSavings > 0) {
+              evalBn = `**আংশিক অগ্রগতি রয়েছে, তবে অতিরিক্ত সমন্বয় প্রয়োজন।** আপনার মাসিক উদ্বৃত্ত ৳${netSavings.toLocaleString()}, ফলে নির্ধারিত সময়ে (${targetGoal.deadline}) পৌঁছাতে প্রতি মাসে আরও **৳${monthlyGap.toLocaleString()}** ঘাটতি রয়েছে। নমনীয় খরচ কমালে এটি অর্জন করা সম্ভব।`;
+            } else {
+              evalBn = `**বর্তমানে বাজেট ঘাটতির কারণে লক্ষ্যটিতে পৌঁছানো ঝুঁকিপূর্ণ।** আপনার মাসিক ব্যয় আয়ের চেয়ে ৳${Math.abs(netSavings).toLocaleString()} বেশি। লক্ষ্য পূরণের আগে আপনার বাজেট সমতায় আনুন।`;
+            }
+
+            answer = `**সঞ্চয় লক্ষ্যের সক্ষমতা ও গতি মূল্যায়ন (${targetGoal.title})**:\n\n` +
+              `• **লক্ষ্যমাত্রা**: ৳${targetGoal.targetAmount.toLocaleString()} | **বর্তমান জমা**: ৳${targetGoal.currentAmount.toLocaleString()} (${targetGoal.progressPercentage}%)${zeroNoteBn}\n` +
+              `• **অবশিষ্ট ঘাটতি**: ৳${targetGoal.remainingAmount.toLocaleString()}\n` +
+              `• **প্রয়োজনীয় মাসিক সঞ্চয়ের গতি**: **৳${reqMonthly.toLocaleString()}/মাস** (সময়সীমা: ${targetGoal.deadline})\n` +
+              `• **আপনার নিট মাসিক ক্যাশ-ফ্লো**: **৳${netSavings.toLocaleString()}/মাস** (আয় ৳${income.toLocaleString()} | ব্যয় ৳${spending.toLocaleString()})\n\n` +
+              `• **মূল্যায়ন ফলাফল**: ${evalBn}`;
+          } else {
+            let evalEn = '';
+            if (isFeasible) {
+              evalEn = `**Yes, you can comfortably afford your savings goal target.** Your monthly surplus of ৳${netSavings.toLocaleString()} exceeds the required contribution of ৳${reqMonthly.toLocaleString()}/month by **৳${surplusMargin.toLocaleString()}**.`;
+            } else if (netSavings > 0) {
+              evalEn = `**Partially on track, but budget adjustments are needed.** Your monthly surplus of ৳${netSavings.toLocaleString()} leaves a monthly shortfall of **৳${monthlyGap.toLocaleString()}/month** against the required pace of ৳${reqMonthly.toLocaleString()}/month. Trimming discretionary spending will bridge this gap.`;
+            } else {
+              evalEn = `**Currently off track due to a monthly cash deficit.** Your monthly expenses exceed income by ৳${Math.abs(netSavings).toLocaleString()}. Prioritize balancing operational cash flow before funding your ৳${targetGoal.targetAmount.toLocaleString()} target.`;
+            }
+
+            answer = `**Savings Goal Feasibility & Pace Assessment (${targetGoal.title})**:\n\n` +
+              `• **Target Amount**: ৳${targetGoal.targetAmount.toLocaleString()} | **Currently Saved**: ৳${targetGoal.currentAmount.toLocaleString()} (${targetGoal.progressPercentage}%)${zeroNoteEn}\n` +
+              `• **Remaining Gap**: ৳${targetGoal.remainingAmount.toLocaleString()}\n` +
+              `• **Required Monthly Pace**: **৳${reqMonthly.toLocaleString()}/month** (Target Date: ${targetGoal.deadline})\n` +
+              `• **Your Net Monthly Cash Flow**: **৳${netSavings.toLocaleString()}/month** (Inflow: ৳${income.toLocaleString()} | Outflow: ৳${spending.toLocaleString()})\n\n` +
+              `• **Status Evaluation**: ${evalEn}`;
+          }
         } else {
-          answer = `Progress for your goal **${targetGoal.title}**:\n• Target: ৳${targetGoal.targetAmount.toLocaleString()}\n• Saved: ৳${targetGoal.currentAmount.toLocaleString()} (${targetGoal.progressPercentage}% completed)\n• Remaining Gap: ৳${targetGoal.remainingAmount.toLocaleString()}\n• Required Monthly Pace: ৳${targetGoal.requiredMonthlyContribution.toLocaleString()}/month to meet your deadline (${targetGoal.deadline}).`;
+          if (isBn) {
+            answer = `আপনার সঞ্চয় লক্ষ্য **${targetGoal.title}** এর বর্তমান অগ্রগতি:\n\n` +
+              `• **লক্ষ্যমাত্রা**: ৳${targetGoal.targetAmount.toLocaleString()}\n` +
+              `• **বর্তমান জমা**: ৳${targetGoal.currentAmount.toLocaleString()} (${targetGoal.progressPercentage}% সম্পন্ন)${zeroNoteBn}\n` +
+              `• **অবশিষ্ট ঘাটতি**: ৳${targetGoal.remainingAmount.toLocaleString()}\n` +
+              `• **নির্ধারিত সময়ে পৌঁছাতে প্রয়োজনীয় মাসিক সঞ্চয়**: ৳${targetGoal.requiredMonthlyContribution.toLocaleString()}/মাস (${targetGoal.deadline} এর মধ্যে)\n` +
+              `• **আর্থিক অবস্থান**: বর্তমান উপলব্ধ ব্যালেন্স ৳${balance.toLocaleString()} | মাসিক নিট উদ্বৃত্ত ৳${netSavings.toLocaleString()}`;
+          } else {
+            answer = `Progress for your goal **${targetGoal.title}**:\n\n` +
+              `• **Target Amount**: ৳${targetGoal.targetAmount.toLocaleString()}\n` +
+              `• **Current Saved Amount**: ৳${targetGoal.currentAmount.toLocaleString()} (${targetGoal.progressPercentage}% completed)${zeroNoteEn}\n` +
+              `• **Remaining Gap**: ৳${targetGoal.remainingAmount.toLocaleString()}\n` +
+              `• **Required Monthly Pace**: ৳${targetGoal.requiredMonthlyContribution.toLocaleString()}/month to meet your deadline (${targetGoal.deadline})\n` +
+              `• **Financial Position**: Current liquid balance ৳${balance.toLocaleString()} | Monthly surplus ৳${netSavings.toLocaleString()}`;
+          }
         }
       } else {
         dataGaps.push('No active savings goals found');
         answer = isBn
-          ? 'বর্তমানে আপনার কোনো সক্রিয় সঞ্চয় লক্ষ্য সেট করা নেই। গোল সেকশন থেকে একটি নতুন লক্ষ্য যোগ করুন।'
-          : 'You do not have any active savings goals set. Add a goal from the Savings Goals screen to track your progress.';
+          ? 'বর্তমানে আপনার কোনো সক্রিয় সঞ্চয় লক্ষ্য রেকর্ড করা নেই। আপনার সঞ্চয়ের অগ্রগতি ট্র্যাক করতে এবং লক্ষ্য অর্জনে মাসিক কিস্তি নির্ধারণ করতে সেভিংস গোলস ট্যাব থেকে একটি নতুন লক্ষ্য যোগ করুন।'
+          : 'You do not have any active savings goals recorded. Add a goal from the Savings Goals screen to track your progress and calculate monthly savings pace.';
       }
       followUps.push(
         isBn ? 'লক্ষ্য দ্রুত পূরণের উপায় কি?' : 'How can I reach my goal faster?',
-        isBn ? 'আমার আর্থিক স্বাস্থ্য স্কোর কত?' : 'What is my financial health score?'
+        isBn ? 'আমার আর্থিক স্বাস্থ্য কেমন?' : 'What is my financial health status?'
       );
       break;
     }
@@ -1291,6 +1531,16 @@ export function generateDeterministicCoachResponse(
           ? `${ctx.health.goalProgress}%`
           : (isBn ? 'কোনো সক্রিয় সঞ্চয় লক্ষ্য নেই' : 'No Active Goals');
 
+      let goalDetailBn = '';
+      let goalDetailEn = '';
+      if (hasGoals && primaryGoal) {
+        factsUsed.push('goals.goal1.title', 'goals.goal1.targetAmount', 'goals.goal1.currentAmount', 'goals.goal1.remainingAmount');
+        const zeroNoteEn = primaryGoal.currentAmount === 0 ? ' [0% progress, ৳0 saved]' : '';
+        const zeroNoteBn = primaryGoal.currentAmount === 0 ? ' [০% অগ্রগতি, ৳০ জমা]' : '';
+        goalDetailBn = `\n\n• **সক্রিয় সঞ্চয় লক্ষ্য**: **${primaryGoal.title}** (লক্ষ্যমাত্রা: ৳${primaryGoal.targetAmount.toLocaleString()} | বর্তমান জমা: ৳${primaryGoal.currentAmount.toLocaleString()} [${primaryGoal.progressPercentage}%] | অবশিষ্ট: ৳${primaryGoal.remainingAmount.toLocaleString()})${zeroNoteBn}`;
+        goalDetailEn = `\n\n• **Active Savings Goal**: **${primaryGoal.title}** (Target: ৳${primaryGoal.targetAmount.toLocaleString()} | Saved: ৳${primaryGoal.currentAmount.toLocaleString()} [${primaryGoal.progressPercentage}%] | Remaining: ৳${primaryGoal.remainingAmount.toLocaleString()})${zeroNoteEn}`;
+      }
+
       if (isBn) {
         const riskNote = isDeficit
           ? `\n\n• **প্রধান দুর্বলতা ও ঝুঁকি**: আপনার মাসিক ব্যয় আয়ের চেয়ে বেশি হওয়ায় **৳${deficitAmt.toLocaleString()}** এর বাজেট ঘাটতি রয়েছে, যা আর্থিক স্থিতিশীলতার জন্য প্রধান ঝুঁকি।`
@@ -1299,7 +1549,7 @@ export function generateDeterministicCoachResponse(
           ? `আপনার Artho AI আর্থিক স্বাস্থ্য ও হেলথ স্কোর (Health Score) **${healthScore} / ১০০** (অবস্থা: **${healthBand}** — সীমিত তথ্যের কারণে প্রাথমিক)।\n\n*প্রাথমিক স্কোরের কারণ*: লেজারে সীমিত সংখ্যক লেনদেন (${totalTx}টি) থাকায় এটি একটি প্রাথমিক মূল্যায়ন। সকল নিয়মিত খরচ অন্তর্ভুক্ত হলে এটি আরও নির্ভুল হবে।`
           : `আপনার Artho AI আর্থিক স্বাস্থ্য ও হেলথ স্কোর (Health Score) **${healthScore} / ১০০** (অবস্থা: **${healthBand}**)।`;
 
-        answer = `চলতি মাসে আপনার রেকর্ডকৃত মোট আয় **৳${income.toLocaleString()}** এবং মোট ব্যয় **৳${spending.toLocaleString()}** (নিট উদ্বৃত্ত: **৳${netSavings.toLocaleString()}**)।\n\n${scoreBlock}${riskNote}\n\nপিলার বিশ্লেষণ:\n• সঞ্চয়ের ধারাবাহিকতা: ${savingConsistencyStr}\n• ব্যয় নিয়ন্ত্রণ: ${spendingControlStr}\n• ক্যাশ-ফ্লো স্থায়িত্ব: ${cashFlowStabilityStr}\n• সঞ্চয় লক্ষ্যের অগ্রগতি: ${goalProgressStr}`;
+        answer = `চলতি মাসে আপনার রেকর্ডকৃত মোট আয় **৳${income.toLocaleString()}** এবং মোট ব্যয় **৳${spending.toLocaleString()}** (নিট উদ্বৃত্ত: **৳${netSavings.toLocaleString()}**)।\n\n${scoreBlock}${riskNote}\n\nপিলার বিশ্লেষণ:\n• সঞ্চয়ের ধারাবাহিকতা: ${savingConsistencyStr}\n• ব্যয় নিয়ন্ত্রণ: ${spendingControlStr}\n• ক্যাশ-ফ্লো স্থায়িত্ব: ${cashFlowStabilityStr}\n• সঞ্চয় লক্ষ্যের অগ্রগতি: ${goalProgressStr}${goalDetailBn}`;
       } else {
         const riskNote = isDeficit
           ? `\n\n• **Core Stability Risk**: Outflows exceed inflows by **৳${deficitAmt.toLocaleString()}**, creating a monthly cash deficit that represents the primary liquidity risk to your financial profile.`
@@ -1308,7 +1558,7 @@ export function generateDeterministicCoachResponse(
           ? `your Artho AI Financial Health Score is **${healthScore} / 100** (Rating: **${healthBand}** — Preliminary due to limited history).\n\n*Note on Preliminary Status*: Because your ledger contains limited transaction history (${totalTx} transaction(s)), this score is an initial baseline. Recurring living costs or pending bills may not yet be reflected.`
           : `your Artho AI Financial Health Score is **${healthScore} / 100** (Rating: **${healthBand}**).`;
 
-        answer = `Based on your recorded monthly income of **৳${income.toLocaleString()}** and total expenses of **৳${spending.toLocaleString()}** (net savings: **৳${netSavings.toLocaleString()}**), ${scoreBlock}${riskNote}\n\nDiagnostic Pillars:\n• Saving Consistency: ${savingConsistencyStr}\n• Spending Control: ${spendingControlStr}\n• Cash Flow Stability: ${cashFlowStabilityStr}\n• Goal Progress: ${goalProgressStr}`;
+        answer = `Based on your recorded monthly income of **৳${income.toLocaleString()}** and total expenses of **৳${spending.toLocaleString()}** (net savings: **৳${netSavings.toLocaleString()}**), ${scoreBlock}${riskNote}\n\nDiagnostic Pillars:\n• Saving Consistency: ${savingConsistencyStr}\n• Spending Control: ${spendingControlStr}\n• Cash Flow Stability: ${cashFlowStabilityStr}\n• Goal Progress: ${goalProgressStr}${goalDetailEn}`;
       }
       followUps.push(
         isBn ? 'স্কোর আরও বাড়ানোর উপায় কি?' : 'How can I improve my health score?',

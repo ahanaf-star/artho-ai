@@ -355,6 +355,9 @@ export function extractAllowedNumbers(
   // 3. Goals numbers
   if (ctx.goals) {
     allowed.add(ctx.goals.totalGoals);
+    if (ctx.goals.totalTargetAmount !== undefined) allowed.add(ctx.goals.totalTargetAmount);
+    if (ctx.goals.totalSavedAmount !== undefined) allowed.add(ctx.goals.totalSavedAmount);
+    if (ctx.goals.totalRemainingAmount !== undefined) allowed.add(ctx.goals.totalRemainingAmount);
     for (const g of (ctx.goals.items || [])) {
       allowed.add(g.targetAmount);
       allowed.add(g.currentAmount);

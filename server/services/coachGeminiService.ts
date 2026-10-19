@@ -73,6 +73,14 @@ DIAGNOSTIC PILLARS INTEGRITY:
 20. SAFE SPENDING LIMIT INTEGRITY: Never recommend spending money that is already committed to scheduled bills, savings goals, or safety reserves. Report the authoritative "cashFlow.safeSpendingLimitWeekly" and "cashFlow.uncommittedDiscretionaryPool". If transaction history is incomplete or accounts are unlinked, explicitly disclose that this is a preliminary spending ceiling and unrecorded daily living essentials may reduce actual spending headroom.
 21. MONTHLY INFLOW BASELINE INTEGRITY: The user's profile benchmark income / monthly inflow baseline ("snapshot.profileMonthlyIncome") is an expected monthly inflow baseline, NOT verified cash in hand. NEVER add this baseline directly to liquid balance or cumulative ledger balance. NEVER assume expected baseline income is guaranteed or realized. NEVER double-count or sum recorded transaction income with expected profile baseline income as realized income. When the baseline currency ("snapshot.profileMonthlyIncomeCurrency") differs from BDT or display currency, always respect the explicit currency designation and never compare different currencies directly without proper conversion.
 22. SAVINGS TARGET & INTENT INTEGRITY: Never invent, assume, or manufacture a savings target (such as ৳1/month or ৳0/week) unless the user explicitly requested that specific target in their prompt or it corresponds to an active, persisted savings goal in their context. If no active savings goal exists, state clearly that no active savings goal is recorded. If the user asks about their income or general finances without an active savings goal or target, answer the income or finance question directly; do NOT redirect to savings planning.
+23. SAVINGS GOALS & FINANCIAL STATUS INTEGRITY:
+- When the user asks about their financial status ("financial_status"), overall financial health, or savings goals:
+  a. Report their active savings goals accurately from "goals.items" (Title, Target Amount, Current Saved Amount, Progress Percentage, Remaining Amount, and Target Date / Deadline).
+  b. CLEARLY DIFFERENTIATE between Target Amount, Current Saved Amount, Current Account Balance ("snapshot.currentBalance"), and Net Monthly Surplus ("snapshot.netSavings"). NEVER confuse a goal's Target Amount (e.g. ৳20,000 target) with money already saved or current balance.
+  c. If a goal has 0 contributions or 0% progress ("currentAmount" is 0), honestly state that ৳0 is saved (0% progress) with no contributions recorded yet. NEVER invent or fabricate past contribution dates or deposits.
+  d. If no active savings goals exist ("goals.hasGoals" is false or "goals.count" is 0), clearly state that no active savings goals are recorded, and suggest setting one up in the Savings Goals tab.
+  e. When asked "How much more do I need to save?", cite the exact Remaining Amount ("remainingAmount") needed to reach the goal.
+  f. When asked "Can I afford my savings goal?" or "Am I on track?", evaluate feasibility by comparing the user's Net Monthly Surplus with the Required Monthly Contribution ("requiredMonthlyContribution").
 
 OUTPUT FORMAT REQUIREMENTS:
 You MUST respond with a single, strictly valid JSON object matching this exact schema:
@@ -151,6 +159,28 @@ export async function executeCoachInquiry(params: CoachCallParams): Promise<Coac
     );
     if (p.monthsDuration !== undefined) {
       additionalPrecomputed.push(p.monthsDuration);
+    }
+  }
+
+  if (
+    intentResult.intent === 'financial_status' ||
+    intentResult.intent === 'savings_goal_progress' ||
+    intentResult.intent === 'financial_health' ||
+    fullContext.goals?.items?.length > 0
+  ) {
+    if (fullContext.goals?.items) {
+      for (const g of fullContext.goals.items) {
+        additionalPrecomputed.push(
+          g.targetAmount,
+          g.currentAmount,
+          g.remainingAmount,
+          g.progressPercentage,
+          g.requiredMonthlyContribution
+        );
+      }
+      if (fullContext.goals.totalTargetAmount) additionalPrecomputed.push(fullContext.goals.totalTargetAmount);
+      if (fullContext.goals.totalSavedAmount) additionalPrecomputed.push(fullContext.goals.totalSavedAmount);
+      if (fullContext.goals.totalRemainingAmount) additionalPrecomputed.push(fullContext.goals.totalRemainingAmount);
     }
   }
 

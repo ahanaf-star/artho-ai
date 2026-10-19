@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { TransactionModel, ITransaction } from '../models/Transaction';
 import { SavingsGoalModel, ISavingsGoal } from '../models/SavingsGoal';
 import { UserModel, IUser } from '../models/User';
@@ -155,6 +156,9 @@ export interface CoachContext {
   goals: {
     available: boolean;
     totalGoals: number;
+    totalTargetAmount?: number;
+    totalSavedAmount?: number;
+    totalRemainingAmount?: number;
     items: Array<{
       id: string;
       title: string;
@@ -280,20 +284,33 @@ export async function buildCoachContext(
             user?._id?.toString(),
             user?.customId,
             (user as any)?.id,
+            (options?.userDoc as any)?._id?.toString(),
+            (options?.userDoc as any)?.customId,
+            (options?.userDoc as any)?.id,
           ].filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
         )
       );
 
+      const validObjectIds = candidateUserIds
+        .filter((id) => mongoose.Types.ObjectId.isValid(id) && id.length === 24)
+        .map((id) => new mongoose.Types.ObjectId(id));
+
       // Find all transactions for this authenticated user (matching any candidate ID)
       rawTransactions = await TransactionModel.find({
-        userId: { $in: candidateUserIds },
+        $or: [
+          { userId: { $in: candidateUserIds } },
+          ...(validObjectIds.length > 0 ? [{ userId: { $in: validObjectIds as any } }] : []),
+        ],
       })
         .sort({ date: -1, createdAt: -1 })
         .lean();
 
       // Find all savings goals for this user
       rawGoals = await SavingsGoalModel.find({
-        userId: { $in: candidateUserIds },
+        $or: [
+          { userId: { $in: candidateUserIds } },
+          ...(validObjectIds.length > 0 ? [{ userId: { $in: validObjectIds as any } }] : []),
+        ],
       })
         .sort({ createdAt: -1 })
         .lean();
@@ -851,6 +868,20 @@ export function buildCoachContextFromData(
       labelEn: `Goal ${idx + 1} Required Monthly Savings`,
       labelBn: `লক্ষ্য ${idx + 1} প্রয়োজনীয় মাসিক সঞ্চয়`,
     };
+    goalsFacts[`${prefix}.deadline`] = {
+      key: `${prefix}.deadline`,
+      value: gi.deadline,
+      available: Boolean(gi.deadline),
+      labelEn: `Goal ${idx + 1} Target Date`,
+      labelBn: `লক্ষ্য ${idx + 1} সময়সীমা`,
+    };
+    goalsFacts[`${prefix}.isOnTrack`] = {
+      key: `${prefix}.isOnTrack`,
+      value: gi.isOnTrack,
+      available: true,
+      labelEn: `Goal ${idx + 1} On Track Status`,
+      labelBn: `লক্ষ্য ${idx + 1} অগ্রগতি স্থিতি`,
+    };
   });
 
   // 4. Cash Flow Fact Group
@@ -1191,6 +1222,9 @@ export function buildCoachContextFromData(
     goals: {
       available: goals.length > 0,
       totalGoals: goals.length,
+      totalTargetAmount: goalItems.reduce((sum, g) => sum + g.targetAmount, 0),
+      totalSavedAmount: goalItems.reduce((sum, g) => sum + g.currentAmount, 0),
+      totalRemainingAmount: goalItems.reduce((sum, g) => sum + g.remainingAmount, 0),
       items: goalItems,
       facts: goalsFacts,
     },

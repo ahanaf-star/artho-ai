@@ -1,6 +1,7 @@
 import { CoachContext, FactItem } from './coachContextBuilder';
 
 export type CoachIntent =
+  | 'financial_status'
   | 'spending_total'
   | 'spending_vs_income'
   | 'top_category'
@@ -1130,6 +1131,25 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
 
   // 5. Savings Goals Progress & On-Track Status
   const goalPatterns = [
+    'what are my current savings goals',
+    'what are my savings goals',
+    'current savings goals',
+    'my savings goals',
+    'my current goals',
+    'existing savings goals',
+    'how much more do i need to save',
+    'how much more to save',
+    'how much more do i have to save',
+    'am i on track to reach my savings goal',
+    'am i on track for my goal',
+    'can i afford my savings goal',
+    'can i afford my goal',
+    'reach my savings goal',
+    'reach my goal',
+    'savings progress',
+    'progress on my goals',
+    'savings goal',
+    'savings goals',
     'goal',
     'on track',
     'emergency fund',
@@ -1145,6 +1165,13 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'emergency reserves',
     'prioritize financial goals',
     'prioritize emergency',
+    'আমার সঞ্চয় লক্ষ্য',
+    'আমার সঞ্চয় লক্ষ্য',
+    'বর্তমান সঞ্চয় লক্ষ্য',
+    'বর্তমান সঞ্চয় লক্ষ্য',
+    'আর কত সঞ্চয় করতে হবে',
+    'আর কত সঞ্চয় করতে হবে',
+    'লক্ষ্য পূরণ করতে পারব কি',
     'লক্ষ্য',
     'টার্গেট',
     'ইমার্জেন্সি ফান্ড',
@@ -1152,6 +1179,7 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     'তহবিল জমার',
     'অগ্রগতি কেমন',
     'জমার অগ্রগতি',
+    'লক্ষ্যের অগ্রগতি',
     'ল্যাপটপ',
     'ল্যাপটপ কেনার',
     'ল্যাপটপ কিনতে',
@@ -1481,6 +1509,32 @@ export function classifyIntent(query: string, currentNetSavings: number = 0): In
     }
   }
 
+  // 6d. Comprehensive Financial Status & Financial Overview
+  const financialStatusPatterns = [
+    'what s my financial status',
+    'what is my financial status',
+    'my financial status',
+    'how am i doing financially',
+    'how am i doing',
+    'financial status',
+    'current financial status',
+    'overall financial status',
+    'financial standing',
+    'status of my finances',
+    'overview of my finances',
+    'সার্বিক আর্থিক অবস্থা',
+    'আর্থিক অবস্থা কেমন',
+    'আর্থিক পরিস্থিতি',
+    'আর্থিক অবস্থান',
+    'আর্থিক চিত্র',
+    'কেমন চলছে আমার আর্থিক',
+  ];
+  for (const p of financialStatusPatterns) {
+    if (matchesKeyword(norm, p)) {
+      return { intent: 'financial_status', confidence: 0.95, matchedKeywords: [p] };
+    }
+  }
+
   // 7. Financial Health Score
   const healthPatterns = [
     'health score',
@@ -1603,7 +1657,47 @@ export function sliceContext(fullContext: CoachContext, intentResult: IntentResu
     }
   };
 
+  // Goals facts included whenever assessing goals, status, or financial health
+  const includeGoals = () => {
+    addFact('goals.totalGoals', fullContext.goals.totalGoals);
+    addFact('goals.available', fullContext.goals.available);
+    if (fullContext.goals.items && fullContext.goals.items.length > 0) {
+      fullContext.goals.items.forEach((g, idx) => {
+        const prefix = `goals.goal${idx + 1}`;
+        addFact(`${prefix}.title`, g.title);
+        addFact(`${prefix}.targetAmount`, g.targetAmount);
+        addFact(`${prefix}.currentAmount`, g.currentAmount);
+        addFact(`${prefix}.progressPercentage`, g.progressPercentage);
+        addFact(`${prefix}.remainingAmount`, g.remainingAmount);
+        addFact(`${prefix}.deadline`, g.deadline);
+        addFact(`${prefix}.isOnTrack`, g.isOnTrack);
+        if (g.requiredMonthlyContribution > 0) {
+          addFact(`${prefix}.requiredMonthlyContribution`, g.requiredMonthlyContribution);
+        }
+      });
+    }
+  };
+
   switch (intent) {
+    case 'financial_status':
+      includeSnapshot(true);
+      addFact('spending.totalSpending', fullContext.spending.totalSpending);
+      if (fullContext.spending.topCategory) {
+        addFact('spending.topCategory', fullContext.spending.topCategory.category);
+        addFact('spending.topCategoryAmount', fullContext.spending.topCategory.amount);
+        addFact('spending.topCategoryPercentage', fullContext.spending.topCategory.percentage);
+      }
+      if (fullContext.spending.lowestCategory) {
+        addFact('spending.lowestCategory', fullContext.spending.lowestCategory.category);
+        addFact('spending.lowestCategoryAmount', fullContext.spending.lowestCategory.amount);
+      }
+      includeGoals();
+      if (fullContext.health.score !== null) {
+        addFact('health.score', fullContext.health.score);
+        addFact('health.band', fullContext.health.band);
+      }
+      addFact('cashFlow.forecastMonthEndBalance', fullContext.cashFlow.forecastMonthEndBalance);
+      break;
     case 'spending_vs_income':
       includeSnapshot(true);
       addFact('spending.totalSpending', fullContext.spending.totalSpending);
@@ -1785,6 +1879,9 @@ export function sliceContext(fullContext: CoachContext, intentResult: IntentResu
           }
         }
       }
+      if (fullContext.goals.totalGoals > 0) {
+        includeGoals();
+      }
       break;
 
     case 'month_end_balance':
@@ -1806,32 +1903,13 @@ export function sliceContext(fullContext: CoachContext, intentResult: IntentResu
       break;
 
     case 'savings_goal_progress':
-      includeSnapshot(false);
-      addFact('snapshot.netSavings', fullContext.snapshot.netSavings);
-      addFact('goals.totalGoals', fullContext.goals.totalGoals);
-      fullContext.goals.items.forEach((g, idx) => {
-        const p = `goals.goal${idx + 1}`;
-        addFact(`${p}.title`, g.title);
-        addFact(`${p}.targetAmount`, g.targetAmount);
-        addFact(`${p}.currentAmount`, g.currentAmount);
-        addFact(`${p}.progressPercentage`, g.progressPercentage);
-        addFact(`${p}.remainingAmount`, g.remainingAmount);
-        addFact(`${p}.deadline`, g.deadline);
-        addFact(`${p}.requiredMonthlyContribution`, g.requiredMonthlyContribution);
-      });
+      includeSnapshot(true);
+      includeGoals();
       break;
 
     case 'savings_plan':
       includeSnapshot(true);
-      addFact('goals.totalGoals', fullContext.goals.totalGoals);
-      if (fullContext.goals.items.length > 0) {
-        const g1 = fullContext.goals.items[0];
-        addFact('goals.primaryGoal.title', g1.title);
-        addFact('goals.primaryGoal.targetAmount', g1.targetAmount);
-        addFact('goals.primaryGoal.currentAmount', g1.currentAmount);
-        addFact('goals.primaryGoal.progressPercentage', g1.progressPercentage);
-        addFact('goals.primaryGoal.requiredMonthlyContribution', g1.requiredMonthlyContribution);
-      }
+      includeGoals();
       if (parsedPlan) {
         addFact('savingsPlan.parsedTargetAmount', parsedPlan.targetAmount);
         if (parsedPlan.monthsDuration !== undefined) {
@@ -1892,6 +1970,7 @@ export function sliceContext(fullContext: CoachContext, intentResult: IntentResu
       addFact('health.spendingControl', fullContext.health.spendingControl);
       addFact('health.cashFlowStability', fullContext.health.cashFlowStability);
       addFact('health.goalProgress', fullContext.health.goalProgress);
+      includeGoals();
       break;
 
     case 'health_recommendations':
@@ -1905,6 +1984,7 @@ export function sliceContext(fullContext: CoachContext, intentResult: IntentResu
       addFact('health.spendingControl', fullContext.health.spendingControl);
       addFact('health.cashFlowStability', fullContext.health.cashFlowStability);
       addFact('health.goalProgress', fullContext.health.goalProgress);
+      includeGoals();
       if (fullContext.spending.topCategory) {
         addFact('spending.topCategory', fullContext.spending.topCategory.category);
         addFact('spending.topCategoryAmount', fullContext.spending.topCategory.amount);

@@ -35,6 +35,85 @@ function buildInitialCoachMessages(userName?: string): CoachMessage[] {
   ];
 }
 
+function renderInlineMarkdown(text: string): React.ReactNode[] {
+  const tokens = text.split(/(\*\*.*?\*\*|\*[^*]+?\*)/g);
+  return tokens.map((tok, idx) => {
+    if (tok.startsWith('**') && tok.endsWith('**') && tok.length >= 4) {
+      return (
+        <strong key={idx} className="font-semibold text-on-surface">
+          {tok.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (tok.startsWith('*') && tok.endsWith('*') && tok.length >= 2) {
+      return (
+        <em key={idx} className="italic text-on-surface-variant">
+          {tok.slice(1, -1)}
+        </em>
+      );
+    }
+    return tok;
+  });
+}
+
+export const FormattedCoachMessage: React.FC<{ text: string }> = ({ text }) => {
+  const lines = text.split('\n');
+
+  return (
+    <div className="flex flex-col gap-1.5 text-on-surface font-body-lg text-body-lg leading-relaxed">
+      {lines.map((rawLine, index) => {
+        let line = rawLine.trim();
+
+        if (!line) {
+          return <div key={index} className="h-1" />;
+        }
+
+        if (/^\*{3,}/.test(line)) {
+          line = line.replace(/^\*{3,}\s*/, '• **');
+        } else if (/^\*\s+\*\*/.test(line)) {
+          line = line.replace(/^\*\s+\*\*/, '• **');
+        }
+
+        if (/^([•\-\*])\s+(.*)/.test(line)) {
+          const match = line.match(/^([•\-\*])\s+(.*)/);
+          const content = match ? match[2] : line;
+          return (
+            <div key={index} className="flex items-start gap-2 ml-1">
+              <span className="text-secondary select-none font-bold mt-0.5">•</span>
+              <span className="flex-1">{renderInlineMarkdown(content)}</span>
+            </div>
+          );
+        }
+
+        const numMatch = line.match(/^(\d+|[১-৯]+)\.\s+(.*)/);
+        if (numMatch) {
+          const [, num, content] = numMatch;
+          return (
+            <div key={index} className="flex items-start gap-2 ml-1">
+              <span className="text-secondary font-semibold select-none min-w-[1.2rem]">{num}.</span>
+              <span className="flex-1">{renderInlineMarkdown(content)}</span>
+            </div>
+          );
+        }
+
+        if (/^\*\*(.*?)\*\*:?$/.test(line) && line.length < 90) {
+          return (
+            <div key={index} className="font-semibold text-on-surface text-[15px] pt-2 pb-0.5">
+              {renderInlineMarkdown(line)}
+            </div>
+          );
+        }
+
+        return (
+          <p key={index} className="leading-relaxed">
+            {renderInlineMarkdown(line)}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
+
 export const AICoach: React.FC<AICoachProps> = ({
   transactions,
   goals,
@@ -386,9 +465,7 @@ export const AICoach: React.FC<AICoachProps> = ({
                       </div>
 
                       {/* Message Core */}
-                      <div className="flex flex-col gap-space-sm text-on-surface font-body-lg text-body-lg leading-relaxed whitespace-pre-line">
-                        {msg.text}
-                      </div>
+                      <FormattedCoachMessage text={msg.text} />
 
                       {/* Velocity Micro-Bar if available */}
                       {sData?.targetVelocity && (

@@ -429,6 +429,7 @@ describe('4. Deterministic Fallback Engine Suite', () => {
   };
 
   const intents: CoachIntent[] = [
+    'financial_status',
     'spending_total',
     'top_category',
     'month_end_balance',
