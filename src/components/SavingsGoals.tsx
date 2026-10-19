@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { SavingsGoal, ScenarioPlan, UserProfile } from '../types/financial';
+import { SavingsGoal, UserProfile } from '../types/financial';
 import {
-  calculateScenarioPlans,
   calculateRemainingGoalAmount,
   calculateGoalProgressPercentage,
 } from '../services/financialCalculations';
@@ -40,7 +39,6 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
     const converted = convertAmount(amountInBDT, 'BDT', userCurrency);
     return formatCurrency(converted, userCurrency, opts);
   };
-  const [selectedPlanId, setSelectedPlanId] = useState<'planA' | 'planB' | 'planC'>('planB');
   const [depositSuccessMsg, setDepositSuccessMsg] = useState<string | null>(null);
   const [adjustModalGoal, setAdjustModalGoal] = useState<SavingsGoal | null>(null);
   const [newPaceInput, setNewPaceInput] = useState<string>('5000');
@@ -64,27 +62,6 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
     deadline: '',
     accountVault: '',
   });
-
-  // Planning goal used for scenario calculations
-  const planningGoal = (user?.primaryGoalId ? goals.find((g) => g.id === user.primaryGoalId) : null) || goals[0];
-
-  // Scenario plans for planning goal
-  const scenarioPlans = planningGoal ? calculateScenarioPlans(planningGoal) : [];
-  const planningRemainingGap = planningGoal ? calculateRemainingGoalAmount(planningGoal) : 0;
-
-  // Handle Plan Selection in Scenario Planning
-  const handleSelectPlan = (plan: ScenarioPlan) => {
-    setSelectedPlanId(plan.planId);
-    if (planningGoal) {
-      const updated: SavingsGoal = {
-        ...planningGoal,
-        monthlyPace: plan.monthlyAmount,
-      };
-      onUpdateGoal(updated);
-      setDepositSuccessMsg(`Applied ${plan.name} (${formatMoney(plan.monthlyAmount)}/month)! Target pace recalibrated.`);
-      setTimeout(() => setDepositSuccessMsg(null), 4500);
-    }
-  };
 
   // Adjust pace save
   const handleSavePace = () => {
@@ -511,166 +488,7 @@ export const SavingsGoals: React.FC<SavingsGoalsProps> = ({
             );
           })}
         </div>
-
-        {/* Section: AI Savings Plan Comparison Simulator */}
-        <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md relative overflow-hidden border border-outline-variant/20">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-tertiary-container text-[24px]">
-                psychology
-              </span>
-              <div>
-                <h3 className="font-headline-md text-headline-md text-on-surface font-bold">
-                  Artho AI Scenario Planning
-                </h3>
-                <p className="font-body-sm text-body-sm text-on-surface-variant">
-                  Accelerate {planningGoal?.title || 'Savings Goal'} completion timeline using contextual cash-flow heuristics
-                </p>
-              </div>
-            </div>
-            <span className="px-2.5 py-1 rounded-full bg-surface-container font-label-sm text-label-sm text-on-surface font-semibold self-start sm:self-auto">
-              Simulated Target: {formatMoney(planningRemainingGap)}
-            </span>
-          </div>
-
-            {/* 3 Scenario Comparison Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-space-md pt-space-xs">
-              {scenarioPlans.map((plan) => {
-                const isSelected = selectedPlanId === plan.planId;
-                const isOptimal = plan.isRecommended;
-
-                if (isOptimal) {
-                  return (
-                    <div
-                      key={plan.planId}
-                      className="bg-primary-container text-on-primary rounded-xl p-space-md flex flex-col justify-between shadow-md relative transform md:-translate-y-1 border border-secondary/40"
-                    >
-                      <div className="absolute -top-3 right-4 px-2.5 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-bold flex items-center gap-1 shadow-sm">
-                        <span className="material-symbols-outlined text-[14px]">
-                          auto_awesome
-                        </span>
-                        AI RECOMMENDED
-                      </div>
-
-                      <div className="flex flex-col">
-                        <div className="flex items-center justify-between pt-1">
-                          <span className="font-label-sm text-label-sm text-primary-fixed-dim uppercase tracking-wider">
-                            Plan B
-                          </span>
-                          <span className="font-label-sm text-label-sm px-2 py-0.5 rounded bg-surface-container-highest/20 text-secondary-container font-medium">
-                            {plan.badge}
-                          </span>
-                        </div>
-
-                        <h4 className="font-title-lg text-title-lg text-on-primary mt-2 font-bold">
-                          {plan.name}
-                        </h4>
-
-                        <div className="my-space-sm">
-                          <span className="font-headline-lg text-headline-lg text-secondary-container font-bold">
-                            {formatMoney(plan.monthlyAmount)}
-                          </span>
-                          <span className="font-body-sm text-body-sm text-on-primary-container">
-                            / month
-                          </span>
-                        </div>
-
-                        <div className="space-y-1.5 pt-space-xs">
-                          <div className="flex items-center gap-1.5 text-body-sm font-body-sm text-on-primary">
-                            <span className="material-symbols-outlined text-[16px] text-secondary-container">
-                              event_available
-                            </span>
-                            <span>
-                              {plan.durationMonths} months ({plan.targetCompletionDate})
-                            </span>
-                          </div>
-                          <div className="flex items-start gap-1.5 text-body-sm font-body-sm text-primary-fixed-dim">
-                            <span className="material-symbols-outlined text-[16px] text-secondary-container mt-0.5">
-                              tune
-                            </span>
-                            <span>{plan.adjustmentNote}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col gap-2 mt-space-md">
-                        <button
-                          onClick={() => handleSelectPlan(plan)}
-                          className="w-full py-2.5 rounded-lg bg-secondary-container text-on-secondary-container font-title-md text-title-md font-bold hover:opacity-95 transition-all shadow-sm active:scale-95"
-                        >
-                          {isSelected ? '✓ Plan Active' : 'Select Balanced Plan'}
-                        </button>
-                        <button
-                          onClick={() => onNavigate('ai-coach')}
-                          className="text-center font-label-md text-label-md text-primary-fixed-dim hover:text-on-primary underline transition-colors"
-                        >
-                          Customize Rules
-                        </button>
-                      </div>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div
-                    key={plan.planId}
-                    className={`bg-surface-container-low rounded-xl p-space-md flex flex-col justify-between hover:bg-surface-container transition-all cursor-pointer border ${
-                      isSelected ? 'border-secondary ring-2 ring-secondary/20' : 'border-outline-variant/20'
-                    }`}
-                  >
-                    <div className="flex flex-col">
-                      <div className="flex items-center justify-between">
-                        <span className="font-label-sm text-label-sm text-outline uppercase tracking-wider">
-                          {plan.planId === 'planA' ? 'Plan A' : 'Plan C'}
-                        </span>
-                        <span className="font-label-sm text-label-sm px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-medium">
-                          {plan.badge}
-                        </span>
-                      </div>
-
-                      <h4 className="font-title-lg text-title-lg text-on-surface mt-2 font-bold">
-                        {plan.name}
-                      </h4>
-
-                      <div className="my-space-sm">
-                        <span className="font-headline-lg text-headline-lg text-on-surface font-bold">
-                          {formatMoney(plan.monthlyAmount)}
-                        </span>
-                        <span className="font-body-sm text-body-sm text-on-surface-variant">
-                          / month
-                        </span>
-                      </div>
-
-                      <div className="space-y-1.5 pt-space-xs">
-                        <div className="flex items-center gap-1.5 text-body-sm font-body-sm text-on-surface">
-                          <span className="material-symbols-outlined text-[16px] text-outline">
-                            schedule
-                          </span>
-                          <span>
-                            {plan.durationMonths} months ({plan.targetCompletionDate})
-                          </span>
-                        </div>
-                        <div className="flex items-start gap-1.5 text-body-sm font-body-sm text-on-surface-variant">
-                          <span className="material-symbols-outlined text-[16px] text-secondary mt-0.5">
-                            {plan.planId === 'planA' ? 'sentiment_satisfied' : 'warning'}
-                          </span>
-                          <span>{plan.adjustmentNote}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => handleSelectPlan(plan)}
-                      className="mt-space-md w-full py-2 rounded-lg bg-surface-container-highest text-on-surface font-title-md text-title-md hover:bg-outline-variant/30 transition-colors active:scale-95"
-                    >
-                      {isSelected ? '✓ Plan Active' : 'Apply Plan'}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+      </div>
 
       {/* Adjust Pace Modal */}
       {adjustModalGoal && (
