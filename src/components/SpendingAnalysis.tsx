@@ -1108,7 +1108,7 @@ export const SpendingAnalysis: React.FC<SpendingAnalysisProps> = ({
               </button>
             </div>
             <p className="font-body-sm text-body-sm text-on-surface-variant">
-              Artho AI's tagger automatically categorizes entries using Dhaka merchant signatures.
+              Artho AI's tagger automatically categorizes entries using smart merchant signatures.
               You can adjust categorization rules for recurring expenses.
             </p>
             <div className="space-y-2">

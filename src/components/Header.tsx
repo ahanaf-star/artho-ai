@@ -241,19 +241,15 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => setIsCurrencyOpen(!isCurrencyOpen)}
-            className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-full bg-surface-container-low hover:bg-surface-container text-on-surface transition-all border border-outline-variant/30 select-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-xs"
+            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-surface-container-low hover:bg-surface-container text-on-surface transition-all border border-outline-variant/30 select-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-xs"
             aria-label={`Select currency, current is ${activeCurrency.name}`}
-            title={`Current Currency: ${activeCurrency.name} (${activeCurrency.code}) • Location: ${user.city || 'Dhaka'}`}
+            title={`Current Currency: ${activeCurrency.name} (${activeCurrency.code})`}
           >
             <span className="font-label-md text-label-md font-bold text-secondary">
               {activeCurrency.displaySymbol}
             </span>
             <span className="font-label-md text-label-md font-medium text-xs sm:text-sm text-on-surface">
               {activeCurrency.code}
-            </span>
-            <span className="text-outline text-xs hidden sm:inline">•</span>
-            <span className="text-on-surface-variant text-xs hidden sm:inline font-medium">
-              {user.city || 'Dhaka'}
             </span>
             <span className="material-symbols-outlined text-[16px] text-outline ml-0.5 transition-transform duration-150">
               {isCurrencyOpen ? 'expand_less' : 'expand_more'}
@@ -360,7 +356,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                 </div>
                 <p className="text-outline italic text-[9.5px]">
-                  * Note: Currency preference changes display currency; your home city remains {user.city || 'Dhaka'}.
+                  * Note: Currency preference changes display currency across all pages.
                 </p>
               </div>
             </div>

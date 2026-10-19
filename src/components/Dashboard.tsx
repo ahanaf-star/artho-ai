@@ -420,8 +420,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               {healthMetrics.score !== null && healthMetrics.percentile !== null ? (
                 <p className="font-body-sm text-body-sm text-center text-on-surface-variant max-w-[220px] mt-2">
                   Consistently outperforming{' '}
-                  <span className="font-semibold text-secondary">{healthMetrics.percentile}%</span> of peers in
-                  Dhaka
+                  <span className="font-semibold text-secondary">{healthMetrics.percentile}%</span> of peers
                 </p>
               ) : (
                 <p className="font-body-sm text-body-sm text-center text-on-surface-variant max-w-[220px] mt-2">

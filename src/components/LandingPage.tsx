@@ -176,7 +176,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               Live Demo Financial Baseline
             </h2>
             <p className="font-body-sm text-body-sm text-on-surface-variant">
-              Actual values calculated for demo user Ahmed Rahman (Dhaka Metro)
+              Actual values calculated for demo user Ahmed Rahman
             </p>
           </div>
           <button
@@ -547,7 +547,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           Take Control of Your Financial Future Today
         </h2>
         <p className="font-body-lg text-primary-fixed-dim max-w-xl text-sm sm:text-base">
-          Explore the full interactive prototype with synthetic Dhaka financial data and Gemini AI Coach.
+          Explore the full interactive prototype with synthetic financial data and Gemini AI Coach.
         </p>
         <button
           onClick={() => onNavigate('dashboard')}

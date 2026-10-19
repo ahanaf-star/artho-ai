@@ -203,7 +203,7 @@ export const AICoach: React.FC<AICoachProps> = ({
 
           <button
             onClick={() => {
-              setActionFeedback('Coach preferences: Dhaka lifestyle rules active.');
+              setActionFeedback('Coach preferences: Lifestyle rules active.');
               setTimeout(() => setActionFeedback(null), 3000);
             }}
             className="p-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant transition-colors border border-outline-variant/30"
@@ -218,7 +218,7 @@ export const AICoach: React.FC<AICoachProps> = ({
       <div className="flex flex-col gap-space-xs">
         <div className="flex items-center justify-between px-space-xs">
           <span className="font-label-sm text-label-sm text-outline uppercase tracking-wider font-semibold">
-            Suggested Inquiries Based on Dhaka Lifestyle
+            Suggested Inquiries Based on Your Lifestyle
           </span>
           <span className="font-label-sm text-label-sm text-secondary font-medium">
             Refreshed 12m ago
@@ -330,7 +330,7 @@ export const AICoach: React.FC<AICoachProps> = ({
                         <p className="font-body-lg text-body-lg font-medium">{msg.text}</p>
                       </div>
                       <span className="font-label-sm text-label-sm text-outline px-1">
-                        {msg.timestamp} • Sent from Dhaka
+                        {msg.timestamp}
                       </span>
                     </div>
                   </div>

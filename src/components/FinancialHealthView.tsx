@@ -31,7 +31,7 @@ export const FinancialHealthView: React.FC<FinancialHealthViewProps> = ({
 
   const benchmarkSubtext = isInsufficient || metrics.percentile === null || metrics.percentile === undefined
     ? 'Requires at least 1 month of transaction records for peer benchmarking.'
-    : `Consistently outperforming ${metrics.percentile}% of peers in Dhaka`;
+    : `Consistently outperforming ${metrics.percentile}% of peers`;
 
   // Factor 1: Saving Consistency
   const isSavingConsistencyAvailable = metrics.factors.savingConsistency !== null;

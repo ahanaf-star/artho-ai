@@ -162,7 +162,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           )}
           <div className="px-space-sm py-1 flex items-center justify-between text-[11px] text-outline">
-            <span>Dhaka Metro • v4.2</span>
+            <span>v4.2</span>
             <span className="flex items-center gap-1 text-secondary">
               <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
               Live Sync

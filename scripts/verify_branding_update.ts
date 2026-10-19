@@ -3,85 +3,90 @@ import path from 'path';
 
 function runBrandingChecks() {
   console.log('====================================================');
-  console.log('   VERIFYING ARTHO AI BRANDING & MARKETING COPY');
+  console.log('   VERIFYING BRANDING & LOCATION LABEL REMOVAL');
   console.log('====================================================');
 
-  const landingPagePath = path.resolve(process.cwd(), 'src/components/LandingPage.tsx');
-  const landingContent = fs.readFileSync(landingPagePath, 'utf-8');
+  const srcDir = path.resolve(process.cwd(), 'src');
 
-  // 1. Check that "Dhaka Metro • AI Wealth Engine" is completely removed from LandingPage
+  // 1. Check Header.tsx currency selector
+  const headerPath = path.join(srcDir, 'components/Header.tsx');
+  const headerContent = fs.readFileSync(headerPath, 'utf-8');
+  if (headerContent.includes('{user.city || \'Dhaka\'}')) {
+    throw new Error('FAILED: Header currency selector still includes {user.city || "Dhaka"}');
+  }
+  if (headerContent.includes('• Location:')) {
+    throw new Error('FAILED: Header currency selector title still includes "• Location:"');
+  }
+  console.log('✅ Header currency selector displays only currency symbol and code without location/Dhaka');
+
+  // 2. Check Sidebar.tsx footer
+  const sidebarPath = path.join(srcDir, 'components/Sidebar.tsx');
+  const sidebarContent = fs.readFileSync(sidebarPath, 'utf-8');
+  if (sidebarContent.includes('Dhaka Metro')) {
+    throw new Error('FAILED: Sidebar footer still contains "Dhaka Metro"');
+  }
+  console.log('✅ Sidebar footer has "Dhaka Metro" label completely removed');
+
+  // 3. Check LandingPage.tsx
+  const landingPath = path.join(srcDir, 'components/LandingPage.tsx');
+  const landingContent = fs.readFileSync(landingPath, 'utf-8');
+  if (landingContent.includes('(Dhaka Metro)')) {
+    throw new Error('FAILED: LandingPage baseline still contains "(Dhaka Metro)"');
+  }
+  if (landingContent.includes('synthetic Dhaka financial data')) {
+    throw new Error('FAILED: LandingPage still contains "synthetic Dhaka financial data"');
+  }
   if (landingContent.includes('Dhaka Metro • AI Wealth Engine')) {
-    throw new Error('FAILED: "Dhaka Metro • AI Wealth Engine" still present in LandingPage.tsx');
+    throw new Error('FAILED: LandingPage header still contains "Dhaka Metro • AI Wealth Engine"');
   }
-  console.log('✅ Subtitle "Dhaka Metro • AI Wealth Engine" removed from top-left header');
+  console.log('✅ Landing page has all Dhaka/Dhaka Metro branding labels removed');
 
-  // 2. Check that "Next-Gen AI Wealth & Savings Engine for Bangladesh" is completely removed
-  if (landingContent.includes('Next-Gen AI Wealth &amp; Savings Engine for Bangladesh') ||
-      landingContent.includes('Next-Gen AI Wealth & Savings Engine for Bangladesh')) {
-    throw new Error('FAILED: Old badge text containing "for Bangladesh" still present in LandingPage.tsx');
+  // 4. Check Dashboard.tsx
+  const dashboardPath = path.join(srcDir, 'components/Dashboard.tsx');
+  const dashboardContent = fs.readFileSync(dashboardPath, 'utf-8');
+  if (dashboardContent.includes('peers in Dhaka')) {
+    throw new Error('FAILED: Dashboard still contains "peers in Dhaka"');
   }
-  console.log('✅ "for Bangladesh" removed from LandingPage badge');
+  console.log('✅ Dashboard peer benchmark has "peers in Dhaka" removed');
 
-  // 3. Check that "Next-Gen AI Wealth & Savings Engine" exists in LandingPage
-  if (!landingContent.includes('Next-Gen AI Wealth &amp; Savings Engine')) {
-    throw new Error('FAILED: Updated badge "Next-Gen AI Wealth &amp; Savings Engine" not found');
+  // 5. Check FinancialHealthView.tsx
+  const healthPath = path.join(srcDir, 'components/FinancialHealthView.tsx');
+  const healthContent = fs.readFileSync(healthPath, 'utf-8');
+  if (healthContent.includes('peers in Dhaka')) {
+    throw new Error('FAILED: FinancialHealthView still contains "peers in Dhaka"');
   }
-  console.log('✅ Badge text correctly updated to "Next-Gen AI Wealth &amp; Savings Engine"');
+  console.log('✅ FinancialHealthView peer benchmark has "peers in Dhaka" removed');
 
-  // 4. Check that "Powered by Gemini" is still present
-  if (!landingContent.includes('Powered by Gemini')) {
-    throw new Error('FAILED: "Powered by Gemini" badge is missing');
+  // 6. Check AICoach.tsx
+  const coachPath = path.join(srcDir, 'components/AICoach.tsx');
+  const coachContent = fs.readFileSync(coachPath, 'utf-8');
+  if (coachContent.includes('Dhaka lifestyle rules') ||
+      coachContent.includes('Based on Dhaka Lifestyle') ||
+      coachContent.includes('Sent from Dhaka')) {
+    throw new Error('FAILED: AICoach still contains location labels with "Dhaka"');
   }
-  console.log('✅ "Powered by Gemini" badge preserved intact');
+  console.log('✅ AICoach has all "Dhaka" lifestyle and location labels removed');
 
-  // 5. Check hero description update
-  const expectedHero = 'AI-assisted spending analysis, 30-day cash flow forecasting, and a financial coach grounded in your real financial numbers.';
-  if (!landingContent.includes(expectedHero)) {
-    throw new Error(`FAILED: Hero description does not match expected text:\n"${expectedHero}"`);
+  // 7. Check SpendingAnalysis.tsx
+  const spendingPath = path.join(srcDir, 'components/SpendingAnalysis.tsx');
+  const spendingContent = fs.readFileSync(spendingPath, 'utf-8');
+  if (spendingContent.includes('Dhaka merchant signatures')) {
+    throw new Error('FAILED: SpendingAnalysis still contains "Dhaka merchant signatures"');
   }
-  if (landingContent.includes('grounded in your real Bangladeshi financial numbers')) {
-    throw new Error('FAILED: Hero description still contains "Bangladeshi"');
-  }
-  console.log('✅ Hero description updated to: "grounded in your real financial numbers."');
+  console.log('✅ SpendingAnalysis reclassify modal has "Dhaka merchant signatures" removed');
 
-  // 6. Check "Built for Real-Life Financial Success" section description
-  const expectedPillars = 'Every feature is engineered to tackle real daily friction points faced by urban professionals.';
-  if (!landingContent.includes(expectedPillars)) {
-    throw new Error(`FAILED: Pillars section description does not match expected text:\n"${expectedPillars}"`);
-  }
-  if (landingContent.includes('faced by urban professionals in Bangladesh')) {
-    throw new Error('FAILED: Pillars description still contains "in Bangladesh"');
-  }
-  console.log('✅ Pillars description updated to: "faced by urban professionals."');
-
-  // 7. Check FAQ subtitle
-  const expectedFaqSubtitle = 'Common questions about data privacy, AI insights, and bank sync';
-  if (!landingContent.includes(expectedFaqSubtitle)) {
-    throw new Error(`FAILED: FAQ subtitle does not match expected text:\n"${expectedFaqSubtitle}"`);
-  }
-  if (landingContent.includes('and Bangladeshi bank sync')) {
-    throw new Error('FAILED: FAQ subtitle still contains "Bangladeshi"');
-  }
-  console.log('✅ FAQ section subtitle updated to: "and bank sync"');
-
-  // 8. Check brand header structure in LandingPage
-  const headerBrandRegex = /<span className="font-title-lg text-base sm:text-lg font-bold text-on-surface tracking-tight leading-tight">\s*Artho AI\s*<\/span>/;
-  if (!headerBrandRegex.test(landingContent)) {
-    throw new Error('FAILED: "Artho AI" title styling or structure modified unexpectedly');
-  }
-  console.log('✅ "Artho AI" brand title typography and styling preserved cleanly');
-
-  // 9. Scan entire src directory for any other occurrences of "Dhaka Metro • AI Wealth Engine"
-  function scanDir(dir: string): string[] {
+  // 8. Verify that NO component in src/components contains "Dhaka Metro"
+  const componentsDir = path.join(srcDir, 'components');
+  function scanForDhakaMetro(dir: string): string[] {
     const results: string[] = [];
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        results.push(...scanDir(fullPath));
-      } else if (/\.(tsx?|jsx?|html|css|json)$/.test(entry.name)) {
-        const fileContent = fs.readFileSync(fullPath, 'utf-8');
-        if (fileContent.includes('Dhaka Metro • AI Wealth Engine')) {
+        results.push(...scanForDhakaMetro(fullPath));
+      } else if (/\.(tsx?)$/.test(entry.name)) {
+        const content = fs.readFileSync(fullPath, 'utf-8');
+        if (content.includes('Dhaka Metro')) {
           results.push(fullPath);
         }
       }
@@ -89,15 +94,14 @@ function runBrandingChecks() {
     return results;
   }
 
-  const srcDir = path.resolve(process.cwd(), 'src');
-  const matches = scanDir(srcDir);
-  if (matches.length > 0) {
-    throw new Error(`FAILED: Found "Dhaka Metro • AI Wealth Engine" in files: ${matches.join(', ')}`);
+  const badFiles = scanForDhakaMetro(componentsDir);
+  if (badFiles.length > 0) {
+    throw new Error(`FAILED: Found "Dhaka Metro" in components: ${badFiles.join(', ')}`);
   }
-  console.log('✅ Verified zero occurrences of "Dhaka Metro • AI Wealth Engine" across src/');
+  console.log('✅ Verified zero occurrences of "Dhaka Metro" in all UI components');
 
   console.log('====================================================');
-  console.log('   🎉 ALL BRANDING & MARKETING COPY CHECKS PASSED!');
+  console.log('   🎉 ALL LOCATION LABEL CHECKS PASSED!');
   console.log('====================================================');
 }
 
