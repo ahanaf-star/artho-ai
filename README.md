@@ -288,7 +288,7 @@ All application configuration is read through environment variables:
 | `BREVO_API_KEY` | Optional | `xkeysib-...` | Brevo HTTPS API key (works on Render Free). |
 
 > [!CAUTION]
-> Never commit your real `.env` file or credentials to source control. The `.gitignore` file is configured to strictly exclude `.env`.
+> Never commit my real `.env` file or credentials to source control. The `.gitignore` file is configured to strictly exclude `.env`.
 
 ---
 
