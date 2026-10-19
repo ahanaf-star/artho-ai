@@ -846,23 +846,11 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           </span>
         </div>
 
-        {/* Upcoming Obligations Card (Synchronized with Details) */}
+        {/* Upcoming Obligations Card */}
         <div className="p-4 rounded-xl bg-surface-container-lowest shadow-sm border border-outline-variant/20 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-outline uppercase tracking-wider">
-              Upcoming Obligations
-            </span>
-            <button
-              onClick={() => setIsBreakdownExpanded((prev) => !prev)}
-              className="text-[11px] font-bold text-secondary hover:underline flex items-center gap-0.5"
-              title={isBreakdownExpanded ? 'Hide breakdown details' : 'View breakdown details'}
-            >
-              <span>{isBreakdownExpanded ? 'Hide' : 'Details'}</span>
-              <span className="material-symbols-outlined text-[14px]">
-                {isBreakdownExpanded ? 'expand_less' : 'expand_more'}
-              </span>
-            </button>
-          </div>
+          <span className="text-xs font-semibold text-outline uppercase tracking-wider">
+            Upcoming Obligations
+          </span>
           <span className="font-headline-lg text-headline-lg text-error font-bold mt-1">
             {formatMoney(upcomingBillsInHorizon)}
           </span>
