@@ -60,14 +60,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               account_balance_wallet
             </span>
           </div>
-          <div className="flex flex-col">
-            <span className="font-title-lg text-base sm:text-lg font-bold text-on-surface tracking-tight leading-tight">
-              Artho AI
-            </span>
-            <span className="text-[10px] sm:text-[11px] text-outline font-medium">
-              Dhaka Metro • AI Wealth Engine
-            </span>
-          </div>
+          <span className="font-title-lg text-base sm:text-lg font-bold text-on-surface tracking-tight leading-tight">
+            Artho AI
+          </span>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
@@ -111,7 +106,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-surface-container-highest border border-outline-variant/30 shadow-xs mb-6">
             <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
             <span className="font-label-md text-label-md text-on-surface font-semibold">
-              Next-Gen AI Wealth &amp; Savings Engine for Bangladesh
+              Next-Gen AI Wealth &amp; Savings Engine
             </span>
             <span className="hidden sm:inline-block px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label-sm text-[11px] font-bold">
               Powered by Gemini
