@@ -3,7 +3,7 @@ import path from 'path';
 
 function runBrandingChecks() {
   console.log('====================================================');
-  console.log('   VERIFYING ARTHO AI BRANDING UPDATES');
+  console.log('   VERIFYING ARTHO AI BRANDING & MARKETING COPY');
   console.log('====================================================');
 
   const landingPagePath = path.resolve(process.cwd(), 'src/components/LandingPage.tsx');
@@ -34,14 +34,44 @@ function runBrandingChecks() {
   }
   console.log('✅ "Powered by Gemini" badge preserved intact');
 
-  // 5. Check brand header structure in LandingPage
+  // 5. Check hero description update
+  const expectedHero = 'AI-assisted spending analysis, 30-day cash flow forecasting, and a financial coach grounded in your real financial numbers.';
+  if (!landingContent.includes(expectedHero)) {
+    throw new Error(`FAILED: Hero description does not match expected text:\n"${expectedHero}"`);
+  }
+  if (landingContent.includes('grounded in your real Bangladeshi financial numbers')) {
+    throw new Error('FAILED: Hero description still contains "Bangladeshi"');
+  }
+  console.log('✅ Hero description updated to: "grounded in your real financial numbers."');
+
+  // 6. Check "Built for Real-Life Financial Success" section description
+  const expectedPillars = 'Every feature is engineered to tackle real daily friction points faced by urban professionals.';
+  if (!landingContent.includes(expectedPillars)) {
+    throw new Error(`FAILED: Pillars section description does not match expected text:\n"${expectedPillars}"`);
+  }
+  if (landingContent.includes('faced by urban professionals in Bangladesh')) {
+    throw new Error('FAILED: Pillars description still contains "in Bangladesh"');
+  }
+  console.log('✅ Pillars description updated to: "faced by urban professionals."');
+
+  // 7. Check FAQ subtitle
+  const expectedFaqSubtitle = 'Common questions about data privacy, AI insights, and bank sync';
+  if (!landingContent.includes(expectedFaqSubtitle)) {
+    throw new Error(`FAILED: FAQ subtitle does not match expected text:\n"${expectedFaqSubtitle}"`);
+  }
+  if (landingContent.includes('and Bangladeshi bank sync')) {
+    throw new Error('FAILED: FAQ subtitle still contains "Bangladeshi"');
+  }
+  console.log('✅ FAQ section subtitle updated to: "and bank sync"');
+
+  // 8. Check brand header structure in LandingPage
   const headerBrandRegex = /<span className="font-title-lg text-base sm:text-lg font-bold text-on-surface tracking-tight leading-tight">\s*Artho AI\s*<\/span>/;
   if (!headerBrandRegex.test(landingContent)) {
     throw new Error('FAILED: "Artho AI" title styling or structure modified unexpectedly');
   }
   console.log('✅ "Artho AI" brand title typography and styling preserved cleanly');
 
-  // 6. Scan entire src directory for any other occurrences of "Dhaka Metro • AI Wealth Engine"
+  // 9. Scan entire src directory for any other occurrences of "Dhaka Metro • AI Wealth Engine"
   function scanDir(dir: string): string[] {
     const results: string[] = [];
     const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -67,7 +97,7 @@ function runBrandingChecks() {
   console.log('✅ Verified zero occurrences of "Dhaka Metro • AI Wealth Engine" across src/');
 
   console.log('====================================================');
-  console.log('   🎉 ALL BRANDING VERIFICATION CHECKS PASSED!');
+  console.log('   🎉 ALL BRANDING & MARKETING COPY CHECKS PASSED!');
   console.log('====================================================');
 }
 

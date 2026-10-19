@@ -124,7 +124,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           {/* Subtitle */}
           <p className="font-body-lg text-lg sm:text-xl text-on-surface-variant max-w-2xl mt-5 leading-relaxed">
-            AI-assisted spending analysis, 30-day cash flow forecasting, and a financial coach grounded in your real Bangladeshi financial numbers.
+            AI-assisted spending analysis, 30-day cash flow forecasting, and a financial coach grounded in your real financial numbers.
           </p>
 
           {/* Action CTAs */}
@@ -241,7 +241,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             Built for Real-Life Financial Success
           </h2>
           <p className="font-body-md text-body-md text-on-surface-variant mt-2">
-            Every feature is engineered to tackle real daily friction points faced by urban professionals in Bangladesh.
+            Every feature is engineered to tackle real daily friction points faced by urban professionals.
           </p>
         </div>
 
@@ -509,7 +509,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             Frequently Asked Questions
           </h2>
           <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">
-            Common questions about data privacy, AI insights, and Bangladeshi bank sync
+            Common questions about data privacy, AI insights, and bank sync
           </p>
         </div>
 
