@@ -178,6 +178,55 @@ let activeRates: ExchangeRatesState = {
 };
 
 const STORAGE_RATES_KEY = 'arthobachao_exchange_rates';
+export const STORAGE_SELECTED_CURRENCY_KEY = 'arthobachao_display_currency';
+
+/**
+ * Get saved display currency from persistent local storage.
+ * Falls back to active auth session user currency, or DEFAULT_CURRENCY_CODE ('BDT').
+ */
+export function getSavedCurrency(): string {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const explicit = localStorage.getItem(STORAGE_SELECTED_CURRENCY_KEY);
+      if (explicit && isValidCurrencyCode(explicit)) {
+        return normalizeCurrencyCode(explicit);
+      }
+      const sessionRaw = localStorage.getItem('finmate_auth_session');
+      if (sessionRaw) {
+        const session = JSON.parse(sessionRaw);
+        if (session?.user?.currency && isValidCurrencyCode(session.user.currency)) {
+          return normalizeCurrencyCode(session.user.currency);
+        }
+      }
+    }
+  } catch {
+    // Ignore storage parse errors
+  }
+  return DEFAULT_CURRENCY_CODE;
+}
+
+/**
+ * Persist selected display currency to persistent local storage and session user.
+ */
+export function saveSelectedCurrency(currencyCode: string): string {
+  const norm = normalizeCurrencyCode(currencyCode);
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_SELECTED_CURRENCY_KEY, norm);
+      const sessionRaw = localStorage.getItem('finmate_auth_session');
+      if (sessionRaw) {
+        const session = JSON.parse(sessionRaw);
+        if (session?.user) {
+          session.user.currency = norm;
+          localStorage.setItem('finmate_auth_session', JSON.stringify(session));
+        }
+      }
+    }
+  } catch {
+    // Ignore storage errors
+  }
+  return norm;
+}
 
 /**
  * Normalizes legacy symbols (৳, $, €) or invalid codes to a canonical ISO 4217 code

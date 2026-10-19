@@ -37,7 +37,18 @@ export const authService = {
    */
   getCurrentUser(): User | null {
     const session = this.getSession();
-    return session ? session.user : null;
+    if (!session || !session.user) return null;
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const savedCurrency = localStorage.getItem('arthobachao_display_currency');
+        if (savedCurrency && session.user.currency !== savedCurrency) {
+          session.user.currency = savedCurrency;
+        }
+      }
+    } catch {
+      // Ignore
+    }
+    return session.user;
   },
 
   /**
@@ -291,6 +302,16 @@ export const authService = {
       ...session.user,
       ...updates,
     };
+
+    if (updates.currency) {
+      try {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('arthobachao_display_currency', updates.currency);
+        }
+      } catch {
+        // Ignore
+      }
+    }
 
     // Update active session locally
     session.user = updatedUser;

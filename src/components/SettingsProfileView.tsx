@@ -18,6 +18,7 @@ interface SettingsProfileViewProps {
   onLogout?: () => void;
   isBangla: boolean;
   onToggleBangla: (bangla: boolean) => void;
+  onCurrencyChange?: (currencyCode: string) => void;
 }
 
 export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
@@ -29,6 +30,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
   onLogout,
   isBangla,
   onToggleBangla: _onToggleBangla,
+  onCurrencyChange,
 }) => {
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
@@ -73,9 +75,24 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
     'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
   ];
 
+  const activeCurrency = normalizeCurrencyCode(user?.currency || currency);
+
   const formatMoney = (amountInBDT: number) => {
-    const converted = convertAmount(amountInBDT, 'BDT', currency);
-    return formatCurrency(converted, currency);
+    const converted = convertAmount(amountInBDT, 'BDT', activeCurrency);
+    return formatCurrency(converted, activeCurrency);
+  };
+
+  const handleCurrencySelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newCode = normalizeCurrencyCode(e.target.value);
+    setCurrency(newCode);
+    if (onCurrencyChange) {
+      onCurrencyChange(newCode);
+    } else {
+      onUpdateUser({
+        ...user,
+        currency: newCode,
+      });
+    }
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -100,7 +117,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
       profileImage: profileImage.trim() || undefined,
       monthlyIncome: parsedIncome,
       monthlyIncomeCurrency,
-      currency,
+      currency: activeCurrency,
     };
     onUpdateUser(updated);
     setSavedMsg(true);
@@ -315,8 +332,8 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
               Display & Base Currency
             </label>
             <select
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
+              value={activeCurrency}
+              onChange={handleCurrencySelect}
               className="p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-body-md text-sm cursor-pointer"
             >
               {SUPPORTED_CURRENCIES.map((c) => (
@@ -349,7 +366,7 @@ export const SettingsProfileView: React.FC<SettingsProfileViewProps> = ({
         }}
         userId={user.id}
         isBangla={isBangla}
-        currency={currency}
+        currency={activeCurrency}
       />
 
       {/* Linked Accounts */}

@@ -21,7 +21,14 @@ import { apiService } from './services/apiService';
 import { financialDataService } from './services/financialDataService';
 import { calculateFinancialHealthScore, getLocalDateString, normalizeTransactionCategory } from './services/financialCalculations';
 import { Transaction, SavingsGoal, UserProfile, CustomCategory, CategoryName } from './types/financial';
-import { fetchExchangeRates, getLoadedRates, ExchangeRatesState } from './services/currencyService';
+import {
+  fetchExchangeRates,
+  getLoadedRates,
+  ExchangeRatesState,
+  getSavedCurrency,
+  saveSelectedCurrency,
+  normalizeCurrencyCode,
+} from './services/currencyService';
 
 const PRIVATE_SCREENS: NavScreen[] = [
   'dashboard',
@@ -110,7 +117,13 @@ function resolveInitialScreen(user: UserProfile | null): NavScreen {
 export default function App() {
   // Authenticated User State - strictly source of truth from authService (null if unauthenticated)
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
-    return authService.getCurrentUser();
+    const user = authService.getCurrentUser();
+    if (!user) return null;
+    const saved = getSavedCurrency();
+    if (saved && normalizeCurrencyCode(user.currency) !== saved) {
+      return { ...user, currency: saved };
+    }
+    return user;
   });
 
   const [activeScreen, setActiveScreen] = useState<NavScreen>(() => {
@@ -239,7 +252,21 @@ export default function App() {
         .getMe()
         .then((remoteUser) => {
           if (remoteUser) {
-            setCurrentUser(remoteUser);
+            const savedCurrency = getSavedCurrency();
+            // Prevent default currency from overwriting user's saved selection on async fetch
+            const effectiveCurrency = (remoteUser.currency && remoteUser.currency !== 'BDT')
+              ? normalizeCurrencyCode(remoteUser.currency)
+              : (savedCurrency || normalizeCurrencyCode(remoteUser.currency || 'BDT'));
+
+            const resolvedUser: UserProfile = {
+              ...remoteUser,
+              currency: effectiveCurrency,
+            };
+            setCurrentUser(resolvedUser);
+            saveSelectedCurrency(effectiveCurrency);
+            if (remoteUser.currency !== effectiveCurrency) {
+              apiService.updateUser(remoteUser.id, { currency: effectiveCurrency }).catch(() => {});
+            }
           } else {
             console.warn('[Auth] Remote validation failed: token rejected. Logging out.');
             authService.logout().then(() => {
@@ -309,7 +336,16 @@ export default function App() {
 
   // When user signs in or changes, reload user-specific data
   const handleAuthenticated = async (session: AuthSession) => {
-    setCurrentUser(session.user);
+    const savedCurrency = getSavedCurrency();
+    const effectiveCurrency = (session.user.currency && session.user.currency !== 'BDT')
+      ? normalizeCurrencyCode(session.user.currency)
+      : (savedCurrency || normalizeCurrencyCode(session.user.currency || 'BDT'));
+    const userWithCurrency: UserProfile = {
+      ...session.user,
+      currency: effectiveCurrency,
+    };
+    saveSelectedCurrency(effectiveCurrency);
+    setCurrentUser(userWithCurrency);
     const userTxs = financialDataService.getTransactions(session.user.id).map((t) => ({
       ...t,
       category: normalizeTransactionCategory(t) as CategoryName,
@@ -327,7 +363,7 @@ export default function App() {
       null;
     setLastFinancialUpdate(savedTs);
 
-    navigateTo('dashboard', session.user);
+    navigateTo('dashboard', userWithCurrency);
     await refreshFinancialData(session.user.id);
   };
 
@@ -356,8 +392,28 @@ export default function App() {
     }
   }, [goals, currentUser?.id]);
 
+  // Centralized currency update handler - single source of truth across navbar & settings
+  const handleCurrencyChange = async (newCurrency: string) => {
+    const normalized = normalizeCurrencyCode(newCurrency);
+    saveSelectedCurrency(normalized);
+    if (!currentUser) return;
+    const updatedUser: UserProfile = {
+      ...currentUser,
+      currency: normalized,
+    };
+    setCurrentUser(updatedUser);
+    try {
+      await userService.setCurrency(normalized);
+    } catch (e) {
+      console.error('Failed saving currency update:', e);
+    }
+  };
+
   // Update User Profile Handler
   const handleUpdateUser = async (updatedUser: UserProfile) => {
+    if (updatedUser.currency) {
+      saveSelectedCurrency(updatedUser.currency);
+    }
     setCurrentUser(updatedUser);
     try {
       await userService.updateProfile(updatedUser);
@@ -782,12 +838,7 @@ export default function App() {
           transactions={transactions}
           goals={goals}
           user={currentUser}
-          onCurrencyChange={(newCurrency) => {
-            handleUpdateUser({
-              ...currentUser,
-              currency: newCurrency,
-            });
-          }}
+          onCurrencyChange={handleCurrencyChange}
           exchangeRateTimestamp={exchangeRates.lastUpdated}
           onLogout={handleLogout}
         />
@@ -913,6 +964,7 @@ export default function App() {
               onLogout={handleLogout}
               isBangla={isBangla}
               onToggleBangla={setIsBangla}
+              onCurrencyChange={handleCurrencyChange}
             />
           )}
         </main>
