@@ -48,8 +48,10 @@ export interface IUser extends Document {
     amount: number;
     dueDay: number;
     category?: string;
-    recurrenceRule: 'monthly' | 'weekly' | 'custom';
+    recurrenceRule: 'monthly' | 'weekly' | 'custom' | string;
     isEnabled: boolean;
+    lastPaidDate?: string;
+    isPaid?: boolean;
   }>;
   passwordHash?: string;
   isEmailVerified?: boolean;
@@ -207,6 +209,8 @@ const UserSchema = new Schema<IUser>(
         category: { type: String, default: 'Utility & Fixed Costs' },
         recurrenceRule: { type: String, default: 'monthly' },
         isEnabled: { type: Boolean, default: true },
+        lastPaidDate: { type: String, required: false },
+        isPaid: { type: Boolean, default: false },
       },
     ],
   },

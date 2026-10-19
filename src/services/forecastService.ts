@@ -61,8 +61,8 @@ export function generateCashFlowForecast(
   const simulationSaving = simulateExpenseCut ? Math.min(300, Math.round(dailyBurn * 0.15)) : 0;
   const effectiveDailyBurn = Math.max(0, dailyBurn - simulationSaving);
 
-  // Active recurring obligations
-  const activeObligations = recurringObligations.filter((o) => o.isEnabled);
+  // Active recurring obligations (unpaid)
+  const activeObligations = recurringObligations.filter((o) => o.isEnabled && !o.isPaid);
   const upcomingBills = activeObligations.reduce((sum, o) => sum + o.amount, 0);
 
   // Authoritative Liquidity Safety Buffer Rule:
@@ -135,7 +135,7 @@ export function getDetailedForecast(
   const monthName = now.toLocaleString('en-US', { month: 'short' });
   const year = now.getFullYear();
 
-  const activeObligations = recurringObligations.filter((o) => o.isEnabled);
+  const activeObligations = recurringObligations.filter((o) => o.isEnabled && !o.isPaid);
   const upcomingBills = activeObligations.reduce((sum, o) => sum + o.amount, 0);
 
   const recurringInflows = transactions.filter((t) => t.type === 'income' && t.isRecurring);

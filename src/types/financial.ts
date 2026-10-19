@@ -55,8 +55,10 @@ export interface RecurringObligation {
   amount: number;
   dueDay: number; // Day of month: 1 - 31
   category?: CategoryName | string;
-  recurrenceRule: 'monthly' | 'weekly' | 'custom';
+  recurrenceRule: 'monthly' | 'weekly' | 'custom' | string;
   isEnabled: boolean;
+  lastPaidDate?: string;
+  isPaid?: boolean;
 }
 
 export interface User {

@@ -886,6 +886,7 @@ export default function App() {
               transactions={transactions}
               goals={goals}
               onUpdateUser={handleUpdateUser}
+              onAddTransaction={handleAddTransaction}
               onNavigate={navigateTo}
               isBangla={isBangla}
             />
