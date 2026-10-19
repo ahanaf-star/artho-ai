@@ -458,5 +458,5 @@ Artho AI is an educational personal finance assistant designed to help users tra
 
 ## 21. Contributors
 
-- **Ahanaf Muttaky** ([@ahanaf-star](https://github.com/ahanaf-star)) — Full-Stack Architecture, Backend API & AI Integration
-- **Abu Ubaydah** ([@abuubaydah2012](https://github.com/abuubaydah2012)) — Product Research, UI/UX Requirements & Financial Planning Domain Design
+- **Ahanaf Muttaky** ([@ahanaf-star](https://github.com/ahanaf-star)) — Creator, Lead Architect & Full-Stack Engineer
+- **Abu Ubaydah** ([@abuubaydah2012](https://github.com/abuubaydah2012)) — Product Research, UI/UX Requirements & System Design
